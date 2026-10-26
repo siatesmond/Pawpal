@@ -37,8 +37,13 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "pawpaladminpanel",
-    "pawpalcustomer",
+    "core",
+    "user",
+    "inventory",
+    "payment",
+    "service",
+    "review",
+    "sitting",
 ]
 
 MIDDLEWARE = [

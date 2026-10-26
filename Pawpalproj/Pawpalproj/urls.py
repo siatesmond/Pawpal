@@ -22,7 +22,11 @@ from . import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("pawpaladminpanel/", include("pawpaladminpanel.urls")),
-    path("pawpalcustomer/", include("pawpalcustomer.urls")),
+    path("core/", include("core.urls")),
+    path("user/", include("user.urls")),
+    path("payment/", include("payment.urls")),
+    path("review/", include("review.urls")),
+    path("service/", include("service.urls")),
+    path("sitting/", include("sitting.urls")),
     path("", views.index, name="index"),
 ]
