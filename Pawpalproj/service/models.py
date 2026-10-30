@@ -1,3 +1,6 @@
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.db.models import Q
 
@@ -6,6 +9,12 @@ from django.db.models import Q
 # TimeSlot
 # Booking
 # BookingUpdate
+
+IMAGE_TYPES = FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"])
+service_images = FileSystemStorage(
+    location=settings.BASE_DIR / "service" / "static" / "service" / "images",
+    base_url="/static/service/images/",
+)
 
 
 class Service(models.Model):
@@ -39,7 +48,7 @@ class TimeSlot(models.Model):
     )
     start_time = models.DateTimeField()
     end_time = models.DateTimeField()
-    capacity = models.PositiveIntegerField()  
+    capacity = models.PositiveIntegerField()
     booked_count = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -133,7 +142,9 @@ class BookingUpdate(models.Model):
         choices=Booking.Status.choices,
     )
     note = models.TextField(blank=True)
-    photo_url = models.URLField(max_length=500, blank=True)
+    photo = models.FileField(
+        storage=service_images, validators=[IMAGE_TYPES], blank=True
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

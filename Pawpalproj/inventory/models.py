@@ -1,3 +1,6 @@
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.db.models import Q
 
@@ -8,6 +11,15 @@ from django.db.models import Q
 # Order
 # OrderItem
 # CartItem
+
+# Validate image uploads
+IMAGE_TYPES = FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"])
+
+# Product images storage / Inventory Image Path
+product_images = FileSystemStorage(
+    location=settings.BASE_DIR / "inventory" / "static" / "inventory" / "images",
+    base_url="/static/inventory/images/",
+)
 
 
 class Category(models.Model):
@@ -37,7 +49,9 @@ class Product(models.Model):
     brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
     pet_type = models.CharField(max_length=20, choices=PetType.choices)
     description = models.TextField()
-    image_url = models.URLField(max_length=500, blank=True)
+    image_url = models.FileField(
+        storage=product_images, validators=[IMAGE_TYPES], blank=True, null=True
+    )
     price_cents = models.PositiveIntegerField()
     stock_quantity = models.PositiveIntegerField(default=0)
     low_stock_level = models.PositiveIntegerField(default=5)
