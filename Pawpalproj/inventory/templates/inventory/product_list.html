@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Shop | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/shop.css' %}" />
+{% endblock %}
+
+{% block top_banner %}
+<section class="top-banner">
+  <div class="top-banner-container">
+    <h1>Shop for your pet</h1>
+
+    <!-- Search for products bar -->
+    <form class="search-row" method="get">
+      <div class="search-box">
+        <label for="search">Search</label>
+        <input id="search" type="search" name="q" placeholder="Search food, treats, toys...">
+      </div>
+      <div class="sort-box">
+        <label for="sort">Sort by</label>
+        <select id="sort" name="sort">
+          <option value="price_asc">Price: low to high</option>
+          <option value="price_desc">Price: high to low</option>
+          <option value="name">Name</option>
+        </select>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="left-container">
+
+  <form class="filters" method="get">
+    <h2>Filters</h2>
+
+    <fieldset>
+      <legend>Pet type</legend>
+      <label><input type="checkbox" name="pet" value="DOG"> Dog</label>
+      <label><input type="checkbox" name="pet" value="CAT"> Cat</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Category</legend>
+      <label><input type="checkbox" name="category" value="food"> Food</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Brand</legend>
+      <label><input type="checkbox" name="brand" value="a"> Brand A</label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Price</legend>
+      <label><input type="checkbox" name="price" value="under20"> Under SGD 20</label>
+    </fieldset>
+
+    <button type="submit" class="apply-filters-btn">Apply filters</button>
+    <a href="{% url 'inventory:product_list' %}" class="clear-btn">Clear filters</a>
+  </form>
+
+</div>
+{% endblock %}
