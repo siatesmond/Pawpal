@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+
 {% load static %}
 
 {% block title %}Shop | Pawpal{% endblock %}
@@ -31,6 +32,7 @@
 </section>
 {% endblock %}
 
+<!-- Filter side bar -->
 {% block content %}
 <div class="left-container">
 
@@ -62,5 +64,17 @@
     <a href="{% url 'inventory:product_list' %}" class="clear-btn">Clear filters</a>
   </form>
 
+  <!-- Product results -->
+  <section class="results">
+    <p class="result-count">{{ products|length }} products</p>
+
+    <div class="product-grid">
+      {% for product in products %}
+      {% include "product_card.html" with show_details=True %}
+      {% empty %}
+      <p>No products found.</p>
+      {% endfor %}
+    </div>
+  </section>
 </div>
 {% endblock %}

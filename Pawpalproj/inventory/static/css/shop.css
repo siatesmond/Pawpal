@@ -41,7 +41,7 @@
   gap: 40px;
 }
 
-/* filters */
+/* filters sidebar */
 .filters h2 {
   margin: 0 0 16px;
   font-family: "Fraunces", serif;
@@ -91,4 +91,17 @@
 .clear-btn {
   background: #fff;
   border: 1px solid var(--text);
+}
+
+/* product results */
+.result-count {
+  margin: 0 0 16px;
+  font-size: 12px;
+  color: #77746a;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
 }
