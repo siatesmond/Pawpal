@@ -1,0 +1,25 @@
+{# used in home and product listing page #}
+<article class="product-card">
+  <div class="product-photo {% if product.stock == 0 %}greyed{% endif %}">Product photo</div>
+
+  {% if product.brand %}
+  <p class="product-brand-pet">
+    {{ product.brand }} · {{ product.pet_type }}
+    {# hardcoded for now #}
+    {% if product.stock_qty == 0 %}
+      <span class="stock-label stock-out">Out of stock</span>
+    {% elif product.stock_qty <= 3 %}
+      <span class="stock-label stock-low">Only {{ product.stock_qty }} left</span>
+    {% endif %}
+  </p>
+  {% endif %}
+
+  <h3>{{ product.name }}</h3>
+  <p class="product-price">SGD {{ product.price }}</p>
+
+  {% if product.stock == 0 %}
+    <button class="cart-btn unavailable" disabled>Unavailable</button>
+  {% else %}
+    <button class="cart-btn">Add to cart</button>
+  {% endif %}
+</article>
