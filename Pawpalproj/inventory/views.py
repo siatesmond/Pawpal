@@ -115,3 +115,15 @@ def loadData(request):
         new_product.save()
 
     return HttpResponse('Data loaded successfully into the database.')
+
+#Views
+
+def product_list(request):
+    products = (
+        Product.objects
+        .filter(is_active=True)
+        .select_related("brand")
+        .order_by("name")
+    )
+
+    return render(request, "inventory/product_list.html", {"products": products})
