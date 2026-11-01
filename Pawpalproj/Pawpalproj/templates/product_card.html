@@ -1,23 +1,28 @@
 {# used in home and product listing page #}
 <article class="product-card">
-  <div class="product-photo {% if product.stock == 0 %}greyed{% endif %}">Product photo</div>
+  <div class="product-photo {% if product.stock_quantity == 0 %}greyed{% endif %}">
+    {% if product.image_url %}
+      <img src="{{ product.image_url.url }}" alt="{{ product.name }}">
+    {% else %}
+      Product photo
+    {% endif %}
+  </div>
 
-  {% if product.brand %}
+  {% if show_details %}
   <p class="product-brand-pet">
-    {{ product.brand }} · {{ product.pet_type }}
-    {# hardcoded for now #}
-    {% if product.stock_qty == 0 %}
+    {{ product.brand.name }} · {{ product.get_pet_type_display }}
+    {% if product.stock_quantity == 0 %}
       <span class="stock-label stock-out">Out of stock</span>
-    {% elif product.stock_qty <= 3 %}
-      <span class="stock-label stock-low">Only {{ product.stock_qty }} left</span>
+    {% elif product.stock_quantity <= product.low_stock_level %}
+      <span class="stock-label stock-low">Only {{ product.stock_quantity }} left</span>
     {% endif %}
   </p>
   {% endif %}
 
   <h3>{{ product.name }}</h3>
-  <p class="product-price">SGD {{ product.price }}</p>
+  <p class="product-price">SGD {{ product.price_dollars|floatformat:2 }}</p>
 
-  {% if product.stock == 0 %}
+  {% if product.stock_quantity == 0 %}
     <button class="cart-btn unavailable" disabled>Unavailable</button>
   {% else %}
     <button class="cart-btn">Add to cart</button>
