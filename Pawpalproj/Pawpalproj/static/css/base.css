@@ -163,6 +163,88 @@ main {
   text-decoration: none;
 }
 
+/* product card (shop page and home page) */
+.product-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.product-photo {
+  aspect-ratio: 10 / 9;
+  background: #dbd3c6;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: #8a8578;
+  margin-bottom: 10px;
+}
+
+.product-photo.greyed {
+  background: #ece9e1;
+}
+
+.product-brand-pet {
+  margin: 0 0 4px;
+  font-size: 10px;
+  color: #77746a;
+}
+
+.stock-label {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+}
+
+.stock-out {
+  background: #f6ddd5;
+  color: #b4492b;
+}
+
+.stock-low {
+  background: #f3e6c3;
+  color: #8a6a14;
+}
+
+.product-card h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.product-price {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.cart-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--gold);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cart-btn:hover {
+  background: #deaa52;
+}
+
+.cart-btn.unavailable {
+  background: #fff;
+  border: 1px solid #ccc7ba;
+  color: #77746a;
+  cursor: default;
+}
+
 /* small screens */
 @media (max-width: 860px) {
   .nav-container {
