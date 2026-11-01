@@ -1,0 +1,33 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Pawpal{% endblock %}</title>
+
+  <!-- Inter font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet" />
+
+  <link rel="stylesheet" href="{% static 'css/base.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+  {% include "navbar.html" %}
+
+  {% block top_banner %}{% endblock %}
+  
+  <main class="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include "footer.html" %}
+</body>
+
+</html>
