@@ -1,0 +1,125 @@
+/* ===== Customer home (C1) ===== */
+
+.home-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+}
+
+.home-banner p {
+  margin: 0;
+  color: #5d6457;
+}
+
+.points-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px 24px;
+  text-align: right;
+}
+
+.points-card span {
+  display: block;
+  font-size: 12px;
+  color: #6f6b60;
+}
+
+.points-card strong {
+  font-family: "Fraunces", serif;
+  font-size: 32px;
+  font-weight: 500;
+  color: var(--green);
+}
+
+.home {
+  max-width: 1200px;
+  margin: 32px auto 0;
+  padding: 0 28px;
+  display: grid;
+  gap: 24px;
+}
+
+.home-card {
+  background: #fff;
+  border: 1px solid #e3dccd;
+  border-radius: 20px;
+  padding: 24px 28px;
+}
+
+.home-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.home-card h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.home-btn {
+  background: var(--gold);
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.home-btn-outline {
+  background: transparent;
+  border: 1px solid var(--text);
+}
+
+.home-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid #eee8dc;
+}
+
+.home-row p,
+.pet-card p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #6f6b60;
+}
+
+.status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1ece2;
+}
+
+.status-confirmed { color: #3f7a3a; }
+.status-pending { color: #a8761c; }
+
+.pet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.pet-card {
+  background: var(--nav-bg);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.home-empty {
+  margin: 8px 0;
+  color: #6f6b60;
+  font-size: 14px;
+}
+
+@media (max-width: 860px) {
+  .home-banner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
