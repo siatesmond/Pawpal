@@ -1,5 +1,7 @@
 from django.shortcuts import render, HttpResponse
 
+from django.db.models import Q
+
 from .models import Brand, Category, Order, Product
 
 categories = ["Food", "Treats", "Toys", "Accessories", "Grooming"]
@@ -79,6 +81,7 @@ products = [
     },
 ]
 
+# Load Data
 
 def loadData(request):
     Order.objects.all().delete()
@@ -126,4 +129,96 @@ def product_list(request):
         .order_by("name")
     )
 
-    return render(request, "inventory/product_list.html", {"products": products})
+    # Get filter options from query string
+    query = request.GET.get("query", "").strip()
+    pets = request.GET.getlist("pet")
+    prices = request.GET.getlist("price")
+    
+    # category ids: keep only numeric values to avoid a crash in the filter query
+    categories = []
+    for c in request.GET.getlist("category"):
+        if c.isdigit():
+            categories.append(c)
+
+    # brand ids: keep only numeric values to avoid a crash in the filter query with ValueError
+    brands = []
+    for b in request.GET.getlist("brand"):
+        if b.isdigit():
+            brands.append(b)
+    
+    # Filters
+    if pets:
+        products = products.filter(pet_type__in=pets)
+
+    if categories:
+        products = products.filter(category_id__in=categories)
+
+    if brands:
+        products = products.filter(brand_id__in=brands)
+
+    # Price ranges 
+    price_ranges = {
+        "under20": Q(price_cents__lt=2000),
+        "20-50": Q(price_cents__gte=2000, price_cents__lte=5000),
+        "over50": Q(price_cents__gt=5000),
+    }
+
+    if prices:
+        price_filter = Q()
+        for key in prices:
+            if key in price_ranges:
+                price_filter = price_filter | price_ranges[key] # OR shows both ticked options
+        products = products.filter(price_filter)
+
+    # Search 
+    if query:
+        products = products.filter(
+            Q(name__icontains=query) | Q(brand__name__icontains=query)
+        )
+    
+    # Sort
+    sort = request.GET.get("sort", "price_asc")
+    if sort == "price_desc":
+        products = products.order_by("-price_cents", "name") #name breaks ties by name sort, so that equal prices are in same order
+    else:
+        sort = "price_asc"
+        products = products.order_by("price_cents", "name")
+
+    # Build checkbox options
+    pet_options = []
+    for value, label in Product.PetType.choices:
+        pet_options.append({
+            "value": value,
+            "label": label,
+            "checked": value in pets,
+        })
+
+    category_options = []
+    for category in Category.objects.all():
+        category_options.append({
+            "value": category.id,
+            "label": category.name,
+            "checked": str(category.id) in categories,
+        })
+
+    brand_options = []
+    for brand in Brand.objects.all():
+        brand_options.append({
+            "value": brand.id,
+            "label": brand.name,
+            "checked": str(brand.id) in brands,
+        })
+    
+    # print("PET:", pet_options)
+    # print("CAT:", category_options)
+    # print("BRAND:", brand_options)
+
+    return render(request, "inventory/product_list.html", {
+        "products": products,
+        "query": query,
+        "sort": sort,
+        "pet_options": pet_options,
+        "category_options": category_options,
+        "brand_options": brand_options,
+        "selected_prices": prices,
+    })

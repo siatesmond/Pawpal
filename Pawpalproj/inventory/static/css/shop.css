@@ -31,8 +31,24 @@
   font-size: 13px;
 }
 
+.search-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.search-btn:hover {
+  background: #3d4b34;
+}
+
 /* page layout */
-.left-container {
+.shop-container {
   max-width: 1200px;
   margin: 0 auto;
   padding: 40px 28px;

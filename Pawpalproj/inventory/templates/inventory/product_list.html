@@ -13,66 +13,84 @@
   <div class="top-banner-container">
     <h1>Shop for your pet</h1>
 
-    <!-- Search for products bar -->
-    <form class="search-row" method="get">
+    {# search and sort price submit together with the sidebar filters #}
+    <div class="search-row">
       <div class="search-box">
         <label for="search">Search</label>
-        <input id="search" type="search" name="q" placeholder="Search food, treats, toys...">
+        <input id="search" type="search" name="query" value="{{ query }}" form="shop-form" placeholder="Search food, treats, toys...">
       </div>
       <div class="sort-box">
         <label for="sort">Sort by</label>
-        <select id="sort" name="sort">
-          <option value="price_asc">Price: low to high</option>
-          <option value="price_desc">Price: high to low</option>
-          <option value="name">Name</option>
+        <select id="sort" name="sort" form="shop-form">
+          <option value="price_asc" {% if sort == "price_asc" %}selected{% endif %}>Price: low to high</option>
+          <option value="price_desc" {% if sort == "price_desc" %}selected{% endif %}>Price: high to low</option>
         </select>
       </div>
-    </form>
+      <button type="submit" form="shop-form" class="search-btn">Search</button>
+    </div>
   </div>
 </section>
 {% endblock %}
 
-<!-- Filter side bar -->
 {% block content %}
-<div class="left-container">
+<div class="shop-container">
 
-  <form class="filters" method="get">
+  {# filter sidebar #}
+  <form id="shop-form" class="filters" method="get">
     <h2>Filters</h2>
 
     <fieldset>
       <legend>Pet type</legend>
-      <label><input type="checkbox" name="pet" value="DOG"> Dog</label>
-      <label><input type="checkbox" name="pet" value="CAT"> Cat</label>
+      {% for option in pet_options %}
+      <label>
+        <input type="checkbox" name="pet" value="{{ option.value }}" {% if option.checked %}checked{% endif %}>
+        {{ option.label }}
+      </label>
+      {% endfor %}
     </fieldset>
 
     <fieldset>
       <legend>Category</legend>
-      <label><input type="checkbox" name="category" value="food"> Food</label>
+      {% for option in category_options %}
+      <label>
+        <input type="checkbox" name="category" value="{{ option.value }}" {% if option.checked %}checked{% endif %}>
+        {{ option.label }}
+      </label>
+      {% endfor %}
     </fieldset>
 
     <fieldset>
       <legend>Brand</legend>
-      <label><input type="checkbox" name="brand" value="a"> Brand A</label>
+      {% for option in brand_options %}
+      <label>
+        <input type="checkbox" name="brand" value="{{ option.value }}" {% if option.checked %}checked{% endif %}>
+        {{ option.label }}
+      </label>
+      {% endfor %}
     </fieldset>
 
     <fieldset>
       <legend>Price</legend>
-      <label><input type="checkbox" name="price" value="under20"> Under SGD 20</label>
+      <label><input type="checkbox" name="price" value="under20" {% if "under20" in selected_prices %}checked{% endif %}> Under SGD 20</label>
+      <label><input type="checkbox" name="price" value="20-50" {% if "20-50" in selected_prices %}checked{% endif %}> SGD 20 – 50</label>
+      <label><input type="checkbox" name="price" value="over50" {% if "over50" in selected_prices %}checked{% endif %}> Over SGD 50</label>
     </fieldset>
 
     <button type="submit" class="apply-filters-btn">Apply filters</button>
+
+    {# Clear filters by removing query params#}
     <a href="{% url 'inventory:product_list' %}" class="clear-btn">Clear filters</a>
   </form>
 
-  <!-- Product results -->
+  {# product results #}
   <section class="results">
-    <p class="result-count">{{ products|length }} products</p>
+    <p class="result-count">{{ products|length }} products{% if query %} for "{{ query }}"{% endif %}</p>
 
     <div class="product-grid">
       {% for product in products %}
-      {% include "product_card.html" with show_details=True %}
+        {% include "product_card.html" with show_details=True %}
       {% empty %}
-      <p>No products found.</p>
+        <p>No products found{% if query %} for "{{ query }}"{% endif %}.</p>
       {% endfor %}
     </div>
   </section>
