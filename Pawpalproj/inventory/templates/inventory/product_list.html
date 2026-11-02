@@ -83,16 +83,39 @@
   </form>
 
   {# product results #}
-  <section class="results">
-    <p class="result-count">{{ products|length }} products{% if query %} for "{{ query }}"{% endif %}</p>
 
-    <div class="product-grid">
-      {% for product in products %}
-        {% include "product_card.html" with show_details=True %}
-      {% empty %}
-        <p>No products found{% if query %} for "{{ query }}"{% endif %}.</p>
-      {% endfor %}
-    </div>
+  <section class="results">
+  <p class="result-count">{{ page_obj.paginator.count }} products{% if query %} for "{{ query }}"{% endif %}</p>
+
+  <div class="product-grid">
+    {% for product in page_obj %}
+      {% include "product_card.html" with show_details=True %}
+    {% empty %}
+      <p>No products found{% if query %} for "{{ query }}"{% endif %}.</p>
+    {% endfor %}
+  </div>
+
+  {# >1 page, show the page numbers #}
+
+  {% if page_obj.has_other_pages %}
+  <nav class="pagination" aria-label="Pages">
+    {# previous arrow except page 1 #}
+    {% if page_obj.has_previous %}
+     <a href="{% querystring page=page_obj.previous_page_number %}">‹</a>
+    {% endif %}
+
+    {# one link per page number #}
+    {% for num in page_obj.paginator.page_range %}
+      <a href="{% querystring page=num %}" {% if num == page_obj.number %}class="current"{% endif %}>{{ num }}</a>
+    {% endfor %}
+
+    {# next arrow except last page #}
+    {% if page_obj.has_next %}
+      <a href="{% querystring page=page_obj.next_page_number %}">›</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
   </section>
 </div>
 {% endblock %}

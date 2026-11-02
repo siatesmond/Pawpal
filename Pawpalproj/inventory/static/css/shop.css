@@ -121,3 +121,39 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 20px;
 }
+
+/* pagination */
+
+.results {
+  display: flex;
+  flex-direction: column;
+  min-height: 70vh;
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 28px;
+}
+
+.pagination a {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.pagination a.current {
+  background: var(--green);
+  color: #fff;
+}
+
+.pagination a:hover {
+  text-decoration: underline;
+}

@@ -2,6 +2,8 @@ from django.shortcuts import render, HttpResponse
 
 from django.db.models import Q
 
+from django.core.paginator import Paginator
+
 from .models import Brand, Category, Order, Product
 
 categories = ["Food", "Treats", "Toys", "Accessories", "Grooming"]
@@ -213,7 +215,12 @@ def product_list(request):
     # print("CAT:", category_options)
     # print("BRAND:", brand_options)
 
+    # Pagination
+    paginator = Paginator(products, 6)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
     return render(request, "inventory/product_list.html", {
+        "page_obj": page_obj,
         "products": products,
         "query": query,
         "sort": sort,
