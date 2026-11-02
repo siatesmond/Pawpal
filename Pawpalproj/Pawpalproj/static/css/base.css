@@ -248,30 +248,7 @@ main {
 }
 
 .cart-btn.unavailable {
-  background: #fff;
-  border: 1px solid #ccc7ba;
+  background: #d6d2c8;
   color: #77746a;
-  cursor: default;
 }
 
-/* small screens */
-@media (max-width: 860px) {
-  .nav-container {
-    grid-template-columns: 1fr auto;
-    row-gap: 12px;
-  }
-
-  .nav-links {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    flex-wrap: wrap;
-  }
-
-  .footer-container {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .footer-about {
-    grid-column: 1 / -1;
-  }
-}

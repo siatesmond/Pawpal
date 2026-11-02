@@ -1,4 +1,4 @@
-from django.shortcuts import render, HttpResponse
+from django.shortcuts import render, HttpResponse, get_object_or_404
 
 from django.db.models import Q
 
@@ -228,4 +228,16 @@ def product_list(request):
         "category_options": category_options,
         "brand_options": brand_options,
         "selected_prices": prices,
+    })
+
+def product_detail(request, product_id):
+    product = get_object_or_404(
+        Product.objects
+        .select_related("brand", "category"),
+        pk=product_id,
+        is_active=True,
+    )
+
+    return render(request, "inventory/product_detail.html", {
+        "product": product,
     })

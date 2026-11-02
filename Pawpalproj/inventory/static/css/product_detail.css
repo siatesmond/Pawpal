@@ -1,0 +1,120 @@
+.product-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 28px 40px;
+}
+
+/* two columns: photo left, info right */
+.product-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  padding-top: 50px;
+  align-items: start;
+}
+
+.product-detail-photo {
+  aspect-ratio: 6 / 5;
+  background: #dbd3c6;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8a8578;
+  font-size: 13px;
+}
+
+.product-detail-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.product-detail-photo.greyed img {
+  opacity: 0.4;
+}
+
+/* info column */
+.product-brand-pet-type {
+  font-size: 15px;
+  color: #77746a;
+}
+
+.stock-in {
+  background: #dde5d3;
+  color: #4a5a3f;
+}
+
+.product-detail-info h1 {
+  margin: 0 0 16px;
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 36px;
+  line-height: 1.15;
+  color: var(--green);
+}
+
+.product-detail-price {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.product-detail-description {
+  margin: 0 0 24px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* quantity and buttons */
+.cart-form label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.cart-form input[type="number"] {
+  width: 90px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border: 1px solid #d6d2c8;
+  border-radius: 999px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  text-align: center;
+}
+
+.cart-btn,
+.continue-shopping-btn {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+}
+
+.cart-btn {
+  background: var(--gold);
+  border: none;
+  margin-bottom: 10px;
+}
+
+.cart-btn:hover {
+  background: #deaa52;
+}
+
+.cart-btn.unavailable {
+  background: #d6d2c8;
+  color: #77746a;
+}
+
+.continue-shopping-btn {
+  background: #fff;
+}

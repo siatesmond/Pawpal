@@ -1,12 +1,16 @@
 {# used in home and product listing page #}
+
+{# product photo links to product detail #}
 <article class="product-card">
-  <div class="product-photo {% if product.stock_quantity == 0 %}greyed{% endif %}">
+<div class="product-photo {% if product.stock_quantity == 0 %}greyed{% endif %}">
+  <a href="{% url 'inventory:product_detail' product.id %}">
     {% if product.image_url %}
       <img src="{{ product.image_url.url }}" alt="{{ product.name }}">
     {% else %}
       Product photo
     {% endif %}
-  </div>
+  </a>
+</div>
 
   {% if show_details %}
   <p class="product-brand-pet">
@@ -19,7 +23,8 @@
   </p>
   {% endif %}
 
-  <h3>{{ product.name }}</h3>
+  {# product name links to product detail  #}
+  <h3><a href="{% url 'inventory:product_detail' product.id %}">{{ product.name }}</a></h3>
   <p class="product-price">SGD {{ product.price_dollars|floatformat:2 }}</p>
 
   {% if product.stock_quantity == 0 %}

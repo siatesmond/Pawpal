@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}{{ product.name }} | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/product_detail.css' %}" />
+{% endblock %}
+
+{% block content %}
+<div class="product-detail-container">
+
+  <div class="product-detail-grid">
+
+    {# product photo #}
+    <div class="product-detail-photo {% if product.stock_quantity == 0 %}greyed{% endif %}">
+      {% if product.image_url %}
+        <img src="{{ product.image_url.url }}" alt="{{ product.name }}">
+      {% else %}
+        Product photo
+      {% endif %}
+    </div>
+
+    {# product info #}
+    <div class="product-detail-info">
+      <p class="product-brand-pet-type">
+        {{ product.brand.name }} · {{ product.get_pet_type_display }} · {{ product.category.name }}
+        {% if product.stock_quantity == 0 %}
+          <span class="stock-label stock-out">Out of stock</span>
+        {% elif product.stock_quantity <= product.low_stock_level %}
+          <span class="stock-label stock-low">Only {{ product.stock_quantity }} left</span>
+        {% else %}
+          <span class="stock-label stock-in">In stock</span>
+        {% endif %}
+      </p>
+
+      {# product name #}
+      <h1>{{ product.name }}</h1>
+
+      <p class="product-detail-price">SGD {{ product.price_dollars|floatformat:2 }}</p>
+
+      <p class="product-detail-description">{{ product.description }}</p>
+
+      <form method="post" class="cart-form">
+        {% csrf_token %}
+        <label for="quantity">Quantity</label>
+        <input id="quantity" type="number" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}" {% if product.stock_quantity == 0 %}disabled{% endif %}>
+
+        {% if product.stock_quantity == 0 %}
+          <button type="button" class="cart-btn unavailable" disabled>Unavailable</button>
+        {% else %}
+          <button type="submit" class="cart-btn">Add to cart</button>
+        {% endif %}
+      </form>
+
+      <a href="{% url 'inventory:product_list' %}" class="continue-shopping-btn">Continue shopping</a>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
