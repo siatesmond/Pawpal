@@ -1,6 +1,6 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404
 
-from django.db.models import Q
+from django.db.models import Q, F, Count
 
 from django.core.paginator import Paginator
 
@@ -240,4 +240,76 @@ def product_detail(request, product_id):
 
     return render(request, "inventory/product_detail.html", {
         "product": product,
+    })
+
+# Orders and Stock (Staff)
+def staff_orders(request):
+    # read the options from the query string
+    method = request.GET.get("method", "all")
+    status = request.GET.get("status", "")
+    query = request.GET.get("query", "").strip()
+
+    all_orders = (
+        Order.objects
+        .select_related("customer", "pickup_outlet")
+        .annotate(item_count=Count("items")) 
+    )
+    orders = all_orders.order_by("-created_at")
+
+    # pick-up vs delivery 
+    if method == "pickup":
+        orders = orders.filter(pickup_outlet__isnull=False) # filter out with no pickup outlet
+    elif method == "delivery":
+        orders = orders.filter(pickup_outlet__isnull=True) # filter out with pickup outlets
+    else:
+        method = "all"
+
+    # status dropdown list
+    if status in Order.Status.values:
+        orders = orders.filter(status=status)
+    else:
+        status = ""
+
+    # search by order number
+    if query.isdigit():
+        orders = orders.filter(pk=query)
+
+    # tab counts
+    counts = {
+        "all": all_orders.count(),
+        "pickup": all_orders.filter(pickup_outlet__isnull=False).count(),
+        "delivery": all_orders.filter(pickup_outlet__isnull=True).count(),
+    }
+
+    # the order shown in the detail panel (defaults to the first in the list)
+    selected_id = request.GET.get("order", "")
+    if not selected_id.isdigit():   
+        first = orders.first()
+        selected_id = first.pk if first else None
+
+    selected = None
+    if selected_id:
+        selected = (
+            Order.objects
+            .select_related("customer", "delivery_address")
+            .prefetch_related("items__product")
+            .filter(pk=selected_id)
+            .first()
+        )
+
+    # stock panel: lowest stock first
+    low_count = Product.objects.filter(stock_quantity__lte=F("low_stock_level")).count()
+    stock_products = Product.objects.order_by("stock_quantity")
+
+    return render(request, "inventory/staff_orders.html", {
+        "active_page": "orders",
+        "orders": orders,
+        "selected": selected,
+        "method": method,
+        "status": status,
+        "query": query,
+        "counts": counts,
+        "status_choices": Order.Status.choices,
+        "low_count": low_count,
+        "stock_products": stock_products,
     })

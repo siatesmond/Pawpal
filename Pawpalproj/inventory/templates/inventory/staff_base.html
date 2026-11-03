@@ -1,0 +1,41 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Staff | Pawpal{% endblock %}</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="{% static 'css/base.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/staff.css' %}" />
+  {% block extra_css %}{% endblock %}
+</head>
+
+<body class="staff-body">
+  <aside class="staff-sidebar">
+    <div>
+      <p class="staff-logo">Pawpal</p>
+      <p class="staff-role">Admin panel</p>
+
+      <nav class="staff-nav">
+        <a href="#" {% if active_page == "today" %}class="active"{% endif %}>Today</a>
+        <a href="#" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>
+        <a href="{% url 'inventory:staff_orders' %}" {% if active_page == "orders" %}class="active"{% endif %}>Orders</a>
+        <a href="#" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
+      </nav>
+    </div>
+  </aside>
+  
+  <!-- need to add account and logout button -->
+
+  <main class="staff-main">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+
+</html>

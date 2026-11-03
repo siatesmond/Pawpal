@@ -8,5 +8,6 @@ app_name = "inventory"
 urlpatterns = [
     path("loaddata/", views.loadData, name="loadData"),
     path("products/", views.product_list, name="product_list"),
-    path("products/<int:product_id>/", views.product_detail, name="product_detail")
+    path("products/<int:product_id>/", views.product_detail, name="product_detail"),
+    path("staff/orders/", views.staff_orders, name="staff_orders"),
 ]
