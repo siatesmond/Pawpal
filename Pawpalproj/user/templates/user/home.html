@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My Pawpal | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/home.css' %}" />
+{% endblock %}
+
+{% block top_banner %}
+<section class="top-banner">
+  <div class="top-banner-container home-banner">
+    <div>
+      <h1>Hi, {{ request.session.username }} 👋</h1>
+      <p>Here's what's happening with your pets.</p>
+    </div>
+    <div class="points-card">
+      <span>Pawpal points</span>
+      <strong>{{ customer.point_balance }}</strong>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<div class="home">
+
+  <section class="home-card">
+    <div class="home-card-head">
+      <h2>Upcoming bookings</h2>
+      <a href="/service/book/" class="home-btn">Book a service</a>
+    </div>
+    {% for booking in upcoming_bookings %}
+      <div class="home-row">
+        <div>
+          <strong>{{ booking.slot.service.name }}</strong> for {{ booking.pet.name }}
+          <p>{{ booking.slot.start_time|date:"D, j M · g:i A" }} · {{ booking.slot.outlet.name }}</p>
+        </div>
+        <span class="status status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
+      </div>
+    {% empty %}
+      <p class="home-empty">No bookings yet. Book a grooming, daycare or boarding session to get started.</p>
+    {% endfor %}
+  </section>
+
+  <section class="home-card">
+    <div class="home-card-head">
+      <h2>My pets</h2>
+      <a href="/user/pets/add/" class="home-btn home-btn-outline">+ Add a pet</a>
+    </div>
+    <div class="pet-grid">
+      {% for pet in pets %}
+        <div class="pet-card">
+          <strong>{{ pet.name }}</strong>
+          <p>{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %} · {{ pet.age }} yr</p>
+        </div>
+      {% empty %}
+        <p class="home-empty">No pets yet. Add your first pet so you can book services for them.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

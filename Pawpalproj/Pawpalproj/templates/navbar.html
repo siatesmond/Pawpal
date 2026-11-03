@@ -12,8 +12,18 @@
 
     <div class="nav-buttons">
       <a href="#">Cart</a>
-      <a href="#">Log in</a>
-      <a href="#" class="signup-btn">Sign up</a>
+      {% if request.session.user_id %}
+        {# logged in: read the name we stored in the session at login #}
+        {% if request.session.user_type == "customer" %}
+          <a href="/user/home">Hi, {{ request.session.username }}</a>
+        {% else %}
+          <span>Hi, {{ request.session.username }}</span>
+        {% endif %}
+        <a href="/user/logout" class="signup-btn">Log out</a>
+      {% else %}
+        <a href="/user/login">Log in</a>
+        <a href="/user/register" class="signup-btn">Sign up</a>
+      {% endif %}
     </div>
   </nav>
 </header>

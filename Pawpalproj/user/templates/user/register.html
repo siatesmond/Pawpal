@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Register | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/login_register.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="login">
+
+  <div class="login-photo" style="background-image: url('{% static 'user/images/register.jpg' %}');"
+       role="img" aria-label="A pet owner hugging their dog"></div>
+
+  <div class="login-panel">
+    <div class="login-box">
+
+      <h1 class="login-title">Create your Pawpal account</h1>
+      <p class="login-subtitle">Book services, shop and track your pets in one place.</p>
+
+      <form method="post" class="login-form" novalidate>
+        {% csrf_token %}
+
+        <div class="form-grid-2">
+          {% include "user/_field.html" with field=form.first_name %}
+          {% include "user/_field.html" with field=form.last_name %}
+        </div>
+        {% include "user/_field.html" with field=form.username %}
+        {% include "user/_field.html" with field=form.email %}
+        {% include "user/_field.html" with field=form.mobile prefix="+65" %}
+        {% include "user/_field.html" with field=form.password %}
+        {% include "user/_field.html" with field=form.confirm_password %}
+
+        <label class="login-remember terms">
+          {{ form.agree_terms }} I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a>
+        </label>
+        {% if form.agree_terms.errors %}<p class="field-error">{{ form.agree_terms.errors.0 }}</p>{% endif %}
+
+        <button type="submit" class="login-btn">Create account</button>
+      </form>
+
+      <p class="login-hint">We'll send a verification code to your email — verify it before your first log in.</p>
+
+      <div class="login-row login-bottom">
+        <span>Already have an account? <a href="/user/login/" class="strong-link">Log in</a></span>
+        <a href="/user/forgot-password/" class="login-link-muted">Forgot password?</a>
+      </div>
+
+      <a href="/sitting/signup/" class="login-sitter">
+        🐾 Want to offer pet sitting? <strong>Become a Pawpal sitter →</strong>
+      </a>
+
+    </div>
+  </div>
+
+</section>
+{% endblock %}
