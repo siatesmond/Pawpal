@@ -72,7 +72,7 @@ class LogoutView(View):
 
 
 class CustomerHomeView(View):
-    """C1 – customer home. The middleware has already checked the login."""
+    """customer home. The middleware has already checked the login."""
 
     template_name = "user/home.html"
 
