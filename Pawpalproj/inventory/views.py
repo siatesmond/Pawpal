@@ -1,4 +1,4 @@
-from django.shortcuts import render, HttpResponse, get_object_or_404
+from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
 
 from django.db.models import Q, F, Count
 
@@ -6,9 +6,20 @@ from django.core.paginator import Paginator
 
 from .models import Brand, Category, Order, Product
 
+from .forms import StockForm
+
 categories = ["Food", "Treats", "Toys", "Accessories", "Grooming"]
 
-brands = ["Black Hawk", "Royal Canin", "Buddy Bites", "Health Extension", "Pet Mrkt", "Gnawlers", "Feline Natural", "Buddy Care"]
+brands = [
+    "Black Hawk",
+    "Royal Canin",
+    "Buddy Bites",
+    "Health Extension",
+    "Pet Mrkt",
+    "Gnawlers",
+    "Feline Natural",
+    "Buddy Care",
+]
 
 products = [
     {
@@ -70,7 +81,7 @@ products = [
         "price_cents": 150,
         "stock_quantity": 3,
         "image": "G-Lallipop-Freeze-Dried-Chicken-Apple-Cat-Treats.webp",
-    },  
+    },
     {
         "name": "Buddy Care Oatmeal pet shampoo 500ml",
         "category": "Grooming",
@@ -85,57 +96,57 @@ products = [
 
 # Load Data
 
+
 def loadData(request):
     Order.objects.all().delete()
     Product.objects.all().delete()
     Brand.objects.all().delete()
     Category.objects.all().delete()
 
-    #Load categories
+    # Load categories
     for category in categories:
         new_category = Category(name=category)
         new_category.save()
 
-    #Load brands
+    # Load brands
     for brand in brands:
         new_brand = Brand(name=brand)
         new_brand.save()
 
-    #Load products
+    # Load products
     for product in products:
-        category_instance = Category.objects.get(name=product['category'])
-        brand_instance = Brand.objects.get(name=product['brand'])
+        category_instance = Category.objects.get(name=product["category"])
+        brand_instance = Brand.objects.get(name=product["brand"])
 
         new_product = Product(
-            name=product['name'],
+            name=product["name"],
             category=category_instance,
             brand=brand_instance,
-            pet_type=product['pet_type'],
-            description=product['description'],
-            price_cents=product['price_cents'],
-            stock_quantity=product['stock_quantity'],
-            image_url=product['image']
+            pet_type=product["pet_type"],
+            description=product["description"],
+            price_cents=product["price_cents"],
+            stock_quantity=product["stock_quantity"],
+            image_url=product["image"],
         )
 
         new_product.save()
 
-    return HttpResponse('Data loaded successfully into the database.')
+    return HttpResponse("Data loaded successfully into the database.")
 
-#Views
+
+# Views
+
 
 def product_list(request):
     products = (
-        Product.objects
-        .filter(is_active=True)
-        .select_related("brand")
-        .order_by("name")
+        Product.objects.filter(is_active=True).select_related("brand").order_by("name")
     )
 
     # Get filter options from query string
     query = request.GET.get("query", "").strip()
     pets = request.GET.getlist("pet")
     prices = request.GET.getlist("price")
-    
+
     # category ids: keep only numeric values to avoid a crash in the filter query
     categories = []
     for c in request.GET.getlist("category"):
@@ -147,7 +158,7 @@ def product_list(request):
     for b in request.GET.getlist("brand"):
         if b.isdigit():
             brands.append(b)
-    
+
     # Filters
     if pets:
         products = products.filter(pet_type__in=pets)
@@ -158,7 +169,7 @@ def product_list(request):
     if brands:
         products = products.filter(brand_id__in=brands)
 
-    # Price ranges 
+    # Price ranges
     price_ranges = {
         "under20": Q(price_cents__lt=2000),
         "20-50": Q(price_cents__gte=2000, price_cents__lte=5000),
@@ -169,19 +180,23 @@ def product_list(request):
         price_filter = Q()
         for key in prices:
             if key in price_ranges:
-                price_filter = price_filter | price_ranges[key] # OR shows both ticked options
+                price_filter = (
+                    price_filter | price_ranges[key]
+                )  # OR shows both ticked options
         products = products.filter(price_filter)
 
-    # Search 
+    # Search
     if query:
         products = products.filter(
             Q(name__icontains=query) | Q(brand__name__icontains=query)
         )
-    
+
     # Sort
     sort = request.GET.get("sort", "price_asc")
     if sort == "price_desc":
-        products = products.order_by("-price_cents", "name") #name breaks ties by name sort, so that equal prices are in same order
+        products = products.order_by(
+            "-price_cents", "name"
+        )  # name breaks ties by name sort, so that equal prices are in same order
     else:
         sort = "price_asc"
         products = products.order_by("price_cents", "name")
@@ -189,28 +204,34 @@ def product_list(request):
     # Build checkbox options
     pet_options = []
     for value, label in Product.PetType.choices:
-        pet_options.append({
-            "value": value,
-            "label": label,
-            "checked": value in pets,
-        })
+        pet_options.append(
+            {
+                "value": value,
+                "label": label,
+                "checked": value in pets,
+            }
+        )
 
     category_options = []
     for category in Category.objects.all():
-        category_options.append({
-            "value": category.id,
-            "label": category.name,
-            "checked": str(category.id) in categories,
-        })
+        category_options.append(
+            {
+                "value": category.id,
+                "label": category.name,
+                "checked": str(category.id) in categories,
+            }
+        )
 
     brand_options = []
     for brand in Brand.objects.all():
-        brand_options.append({
-            "value": brand.id,
-            "label": brand.name,
-            "checked": str(brand.id) in brands,
-        })
-    
+        brand_options.append(
+            {
+                "value": brand.id,
+                "label": brand.name,
+                "checked": str(brand.id) in brands,
+            }
+        )
+
     # print("PET:", pet_options)
     # print("CAT:", category_options)
     # print("BRAND:", brand_options)
@@ -219,48 +240,59 @@ def product_list(request):
     paginator = Paginator(products, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
 
-    return render(request, "inventory/product_list.html", {
-        "page_obj": page_obj,
-        "products": products,
-        "query": query,
-        "sort": sort,
-        "pet_options": pet_options,
-        "category_options": category_options,
-        "brand_options": brand_options,
-        "selected_prices": prices,
-    })
+    return render(
+        request,
+        "inventory/product_list.html",
+        {
+            "page_obj": page_obj,
+            "products": products,
+            "query": query,
+            "sort": sort,
+            "pet_options": pet_options,
+            "category_options": category_options,
+            "brand_options": brand_options,
+            "selected_prices": prices,
+        },
+    )
+
 
 def product_detail(request, product_id):
     product = get_object_or_404(
-        Product.objects
-        .select_related("brand", "category"),
+        Product.objects.select_related("brand", "category"),
         pk=product_id,
         is_active=True,
     )
 
-    return render(request, "inventory/product_detail.html", {
-        "product": product,
-    })
+    return render(
+        request,
+        "inventory/product_detail.html",
+        {
+            "product": product,
+        },
+    )
+
 
 # Orders and Stock (Staff)
-def staff_orders(request):
+def staff_orders_stock(request):
     # read the options from the query string
     method = request.GET.get("method", "all")
     status = request.GET.get("status", "")
     query = request.GET.get("query", "").strip()
 
-    all_orders = (
-        Order.objects
-        .select_related("customer", "pickup_outlet")
-        .annotate(item_count=Count("items")) 
+    all_orders = Order.objects.select_related("customer", "pickup_outlet").annotate(
+        item_count=Count("items")
     )
     orders = all_orders.order_by("-created_at")
 
-    # pick-up vs delivery 
+    # pick-up vs delivery
     if method == "pickup":
-        orders = orders.filter(pickup_outlet__isnull=False) # filter out with no pickup outlet
+        orders = orders.filter(
+            pickup_outlet__isnull=False
+        )  # filter out with no pickup outlet
     elif method == "delivery":
-        orders = orders.filter(pickup_outlet__isnull=True) # filter out with pickup outlets
+        orders = orders.filter(
+            pickup_outlet__isnull=True
+        )  # filter out with pickup outlets
     else:
         method = "all"
 
@@ -283,15 +315,14 @@ def staff_orders(request):
 
     # the order shown in the detail panel (defaults to the first in the list)
     selected_id = request.GET.get("order", "")
-    if not selected_id.isdigit():   
+    if not selected_id.isdigit():
         first = orders.first()
         selected_id = first.pk if first else None
 
     selected = None
     if selected_id:
         selected = (
-            Order.objects
-            .select_related("customer", "delivery_address")
+            Order.objects.select_related("customer", "delivery_address")
             .prefetch_related("items__product")
             .filter(pk=selected_id)
             .first()
@@ -301,15 +332,37 @@ def staff_orders(request):
     low_count = Product.objects.filter(stock_quantity__lte=F("low_stock_level")).count()
     stock_products = Product.objects.order_by("stock_quantity")
 
-    return render(request, "inventory/staff_orders.html", {
-        "active_page": "orders",
-        "orders": orders,
-        "selected": selected,
-        "method": method,
-        "status": status,
-        "query": query,
-        "counts": counts,
-        "status_choices": Order.Status.choices,
-        "low_count": low_count,
-        "stock_products": stock_products,
-    })
+    return render(
+        request,
+        "inventory/staff_orders_stock.html",
+        {
+            "active_page": "orders",
+            "orders": orders,
+            "selected": selected,
+            "method": method,
+            "status": status,
+            "query": query,
+            "counts": counts,
+            "status_choices": Order.Status.choices,
+            "low_count": low_count,
+            "stock_products": stock_products,
+        },
+    )
+
+
+def update_stock(request, pk):
+    product = get_object_or_404(Product, pk=pk)
+
+    if request.method == "POST":
+        form = StockForm(request.POST, instance=product)
+
+        if form.is_valid():
+            form.save()
+            return redirect("/inventory/staff/orders-stock")
+
+    else:
+        form = StockForm(instance=product)
+
+    return render(
+        request, "inventory/staff_update_stock.html", {"form": form, "product": product}
+    )

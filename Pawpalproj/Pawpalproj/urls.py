@@ -30,5 +30,4 @@ urlpatterns = [
     # path("sitting/", include("sitting.urls")),
     path("inventory/", include("inventory.urls")),
     path("", views.index, name="index"),
-    path("inventory/", include("inventory.urls")),
 ]
