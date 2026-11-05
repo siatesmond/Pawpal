@@ -37,7 +37,19 @@
         </div>
     {% endfor %}
 
-<!-- Buttons -->
+    {% if success_message %}
+        <div class="form-alert form-alert-success">
+            {{ success_message }}
+        </div>
+    {% endif %}
+
+    {% if error_message %}
+        <div class="form-alert form-alert-error">
+            {{ error_message }}
+        </div>
+    {% endif %}
+
+    <!-- Buttons -->
     <div class="form-actions">
         <a href="{{ cancel_url }}" class="cancel-btn">
             Cancel

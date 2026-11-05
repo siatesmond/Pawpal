@@ -1,5 +1,7 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
 
+from django.contrib import messages
+
 from django.db.models import Q, F, Count
 
 from django.core.paginator import Paginator
@@ -355,12 +357,18 @@ def update_stock(request, pk):
     product = get_object_or_404(Product, pk=pk)
     action_title = f"Update Stock for Product ID #{product.pk}"
 
+    success_message = None
+    error_message = None
+
     if request.method == "POST":
         form = StockForm(request.POST, instance=product)
 
         if form.is_valid():
+            
             form.save()
-            return redirect("/inventory/staff/orders-stock")
+            success_message = f'Stock quantity for Product ID #{product.id}, {product.name} updated successfully.'
+        else:
+            error_message = 'Please correct the errors below.'
     else:
         form = StockForm(instance=product)
 
@@ -370,6 +378,8 @@ def update_stock(request, pk):
             "form": form, 
             "product": product, 
             "action_title": action_title,
+            "success_message": success_message,
+            "error_message": error_message
         }
     )
 
@@ -441,6 +451,9 @@ def staff_products(request):
 
 # Add/Update product
 def product_form(request, pk=None):
+  
+    success_message = None
+    error_message = None
 
     if pk:
         # Update product
@@ -454,8 +467,15 @@ def product_form(request, pk=None):
     if request.method == "POST":
         form = ProductForm(request.POST, request.FILES, instance=product)
         if form.is_valid():
-            form.save()
-            return redirect("inventory:staff_products")
+            saved_product = form.save()
+            
+            if pk:
+                success_message = f"Product ID #{saved_product.pk}, {saved_product.name} updated successfully."
+            else:
+                success_message = f"Product '{saved_product.name}' created successfully."
+                form = ProductForm() 
+        else:
+            error_message = "Please correct the errors below."
     else:
         form = ProductForm(instance=product)
 
@@ -466,5 +486,7 @@ def product_form(request, pk=None):
             "form": form,
             "product": product,
             "action_title": action_title,
+            "success_message": success_message,
+            "error_message": error_message,
         },
     )
