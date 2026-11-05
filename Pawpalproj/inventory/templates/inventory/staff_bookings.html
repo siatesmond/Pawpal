@@ -1,0 +1,166 @@
+{% extends "inventory/staff_base.html" %}
+
+{% block title %}Bookings | Pawpal staff{% endblock %}
+
+{% block content %}
+
+{# Header & Top Filters #}
+<div class="staff-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1>Bookings</h1>
+    <p style="color: #666; font-size: 0.9rem; margin: 0;">Staff • Tampines Outlet • Fri 16 Oct 2026</p>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <form class="staff-filters" method="get" style="display: flex; gap: 0.75rem; align-items: center; margin: 0; flex-wrap: wrap;">
+      <!-- Search by customer or pet name Filter -->
+      <div>
+        <label for="query">Search</label>
+        <input id="query" type="search" name="query" value="{{ search_query }}" placeholder="Owner or pet name">
+      </div>
+
+      <!-- Filter by outlet dropdown list -->
+      <div>
+        <label for="outlet">Outlet</label>
+        <select id="outlet" name="outlet" onchange="this.form.submit()">
+          <option value="">All Outlets</option>
+          {% for o in outlets %}
+          <option value="{{ o.id }}" {% if outlet_filter == o.id|stringformat:"i" %}selected{% endif %}>{{ o.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+       <!-- Filter by status dropdown list -->
+      <div>
+        <label for="status">Status</label>
+        <select id="status" name="status" onchange="this.form.submit()">
+          <option value="">All Status</option>
+          {% for code, label in status_choices %}
+          <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Filter by date picker -->
+      <div>
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" value="{{ date_filter }}" onchange="this.form.submit()">
+      </div>
+
+    </form>
+  </div>
+</div>
+
+<div class="staff-grid">
+
+  {# Left: Bookings List Table #}
+  <div class="staff-main-col">
+    <section class="panel">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Pet</th>
+            <th>Owner</th>
+            <th>Service</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for booking in bookings %}
+          <tr {% if selected_booking.pk == booking.pk %}class="selected-row"{% endif %}>
+            <td>{{ booking.slot.start_time|time:"H:i" }}</td>
+            <td><b>{{ booking.pet.name }}</b> ({{ booking.pet.breed }})</td>
+            <td>{{ booking.customer.first_name }} {{ booking.customer.last_name }}.</td>
+            <td>{{ booking.slot.service.name }}</td>
+            <td>
+              <span class="status-pill status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
+            </td>
+            <td>
+              <a class="view-details-btn" href="{% querystring booking=booking.pk %}">View details</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="6" class="empty-row">No bookings found for this filter.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  {# Right col: Booking details #}
+  <div class="staff-side-col">
+      {% if selected_booking %}
+      <section class="panel detail-card">
+
+          <h2>Booking #{{ selected_booking.pk }}</h2>
+
+          {# Customer and Pet details #}
+          <div class="detail-card-row">
+              <ul class="detail-card" style="list-style: none; padding: 0; margin: 0;">
+                  <li>
+                      <b>
+                          Customer: {{ selected_booking.customer.first_name }}
+                          {{ selected_booking.customer.last_name }}
+                          ({{ selected_booking.customer.username }})
+                      </b>
+                  </li>
+                  <li>
+                      <b>Pet:</b> {{ selected_booking.pet.name }} 
+                      ({{ selected_booking.pet.pet_type }}{% if selected_booking.pet.breed %} - {{ selected_booking.pet.breed }}{% endif %})
+                  </li>
+                  <li>
+                      <b>Time Slot:</b> {{ selected_booking.slot }}
+                  </li>
+                  <li>
+                      <b>Status:</b> {{ selected_booking.get_status_display }}
+                  </li>
+              </ul>
+          </div>
+
+          {# Medical, Behavior & Vaccination Information matching Pet #}
+          <div class="detail-card-row-no-border" style="margin-top: 1rem;">
+            {% if selected_booking.pet.medical_notes %}
+              <p class="detail-text" style="color: #b45309; font-weight: bold; margin-bottom: 2px;">
+                Medical Notes
+              </p>
+              <p class="detail-text" style="margin-top: 0;">
+                {{ selected_booking.pet.medical_notes }}
+              </p>
+            {% endif %}
+
+            {% if selected_booking.pet.behaviour_notes %}
+              <p class="detail-text" style="margin-top: 0.5rem; margin-bottom: 2px;">
+                <b>Behaviour Notes:</b>
+              </p>
+              <p class="detail-text" style="margin-top: 0;">
+                {{ selected_booking.pet.behaviour_notes }}
+              </p>
+            {% endif %}
+
+            {% if selected_booking.pet.last_vaccination_date %}
+              <p class="detail-text" style="margin-top: 0.5rem;">
+                <b>Last Vaccination:</b> {{ selected_booking.pet.last_vaccination_date|date:"d M Y" }}
+              </p>
+            {% endif %}
+          </div>
+
+          {# Update Booking Button inside detail card #}
+          <div style="margin-top: 1.5rem;">
+              <a href="#" class="edit-product-btn" style="display: block; text-align: center; text-decoration: none; padding: 0.5rem;">
+                Update Booking
+              </a>
+          </div>
+
+      </section>
+      {% endif %}
+  </div>
+  
+
+
+</div>
+
+{% endblock %}

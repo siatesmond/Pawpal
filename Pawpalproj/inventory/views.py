@@ -6,6 +6,10 @@ from django.db.models import Q, F, Count
 
 from django.core.paginator import Paginator
 
+from service.models import Booking  
+
+from user.models import Outlet  
+
 from .models import Brand, Category, Order, Product
 
 from .forms import StockForm, ProductForm
@@ -137,6 +141,71 @@ def loadData(request):
 
 
 # Views
+
+def bookings(request):
+    # Optimize query with select_related for customer, pet, slot, and outlet
+    bookings = Booking.objects.select_related(
+        "customer", "pet", "slot", "slot__outlet"
+    ).order_by("slot__start_time")
+    
+    outlets = Outlet.objects.all()
+
+    # Read query parameters
+    status_filter = request.GET.get("status", "").strip()
+    search_query = request.GET.get("query", "").strip()
+    outlet_filter = request.GET.get("outlet", "").strip()
+    date_filter = request.GET.get("date", "").strip()
+
+    # Filter by status
+    if status_filter in Booking.Status.values:
+        bookings = bookings.filter(status=status_filter)
+
+    # Filter by outlet
+    if outlet_filter.isdigit():
+        bookings = bookings.filter(slot__outlet_id=outlet_filter)
+
+    # Filter by date
+    if date_filter:
+        bookings = bookings.filter(slot__start_time__date=date_filter)
+
+    # Search by customer name or pet name
+    if search_query:
+        bookings = bookings.filter(
+            Q(customer__first_name__icontains=search_query) |
+            Q(customer__last_name__icontains=search_query) |
+            Q(customer__username__icontains=search_query) |
+            Q(pet__name__icontains=search_query)
+        )
+
+    # Booking details
+    selected_id = request.GET.get("booking", "")
+    if not selected_id.isdigit():
+        first_booking = bookings.first()
+        selected_id = first_booking.pk if first_booking else None
+
+    selected_booking = None
+    if selected_id:
+        selected_booking = (
+            Booking.objects.select_related("customer", "pet", "slot", "slot__service")
+            .filter(pk=selected_id)
+            .first()
+        )
+
+    return render(
+        request,
+        "inventory/staff_bookings.html",
+        {
+            "active_page": "bookings",
+            "bookings": bookings,
+            "outlets": outlets,
+            "selected_booking": selected_booking,
+            "status_filter": status_filter,
+            "search_query": search_query,
+            "outlet_filter": outlet_filter,
+            "date_filter": date_filter,
+            "status_choices": Booking.Status.choices,
+        },
+    )
 
 
 def product_list(request):
@@ -276,7 +345,8 @@ def product_detail(request, product_id):
 
 # Orders and Stock (Staff)
 def staff_orders_stock(request):
-    # read the options from the query string
+
+    # Read the options from the query string
     method = request.GET.get("method", "all")
     status = request.GET.get("status", "")
     query = request.GET.get("query", "").strip()
@@ -309,7 +379,7 @@ def staff_orders_stock(request):
         orders = orders.filter(pk=query)
 
     # tab counts
-    counts = {
+    counts = { 
         "all": all_orders.count(),
         "pickup": all_orders.filter(pickup_outlet__isnull=False).count(),
         "delivery": all_orders.filter(pickup_outlet__isnull=True).count(),

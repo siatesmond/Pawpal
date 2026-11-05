@@ -14,4 +14,5 @@ urlpatterns = [
     path("staff/products/", views.staff_products, name="staff_products"),
     path("staff/products/add/", views.product_form, name="add_product"),
     path("staff/products/<int:pk>/edit/", views.product_form, name="update_product"),
+    path("staff/bookings", views.bookings, name="staff_bookings"),
 ]  
