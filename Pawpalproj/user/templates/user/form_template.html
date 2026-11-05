@@ -1,0 +1,12 @@
+{% for field in form %}
+  {% if field.field.widget.input_type == "checkbox" %}
+    <label class="login-remember">{{ field }} {{ field.label }}</label>
+    {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+  {% else %}
+    <div class="field {% if field.errors %}has-error{% endif %}">
+      <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<p class="field-error">{{ field.errors.0 }}</p>{% endif %}
+    </div>
+  {% endif %}
+{% endfor %}

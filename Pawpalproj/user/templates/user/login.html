@@ -21,18 +21,14 @@
       <form method="post" class="login-form" novalidate>
         {% csrf_token %}
 
-        {% include "user/_field.html" with field=form.email %}
-        {% include "user/_field.html" with field=form.password %}
+        {{ form }}
 
-        <div class="login-row">
-          <label class="login-remember">{{ form.remember }} {{ form.remember.label }}</label>
-          <a href="/user/forgot-password/" class="login-link-muted">Forgot password?</a>
-        </div>
+        <a href="/user/forgot-password/" class="login-link-muted">Forgot password?</a>
 
         <button type="submit" class="login-btn">Log in</button>
 
-        {% if form.non_field_errors %}
-          <p class="login-error">{{ form.non_field_errors.0 }}</p>
+        {% if status_message %}
+          <p class="{% if status_type == 'success' %}login-success{% else %}login-error{% endif %}">{{ status_message }}</p>
         {% endif %}
       </form>
 
@@ -44,10 +40,9 @@
           Pet sitters go to their sitter dashboard.</p>
       </div>
 
-      <a href="/sitting/signup" class="login-sitter">
+      <a href="/sitting/signup/" class="login-sitter">
         🐾 Want to offer pet sitting? <strong>Become a Pawpal sitter →</strong>
       </a>
-
     </div>
   </div>
 

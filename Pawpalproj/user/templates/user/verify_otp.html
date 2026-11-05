@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Verify your email | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/login_register.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="login">
+
+  <div class="login-photo" style="background-image: url('{% static 'user/images/register.jpg' %}');"
+       role="img" aria-label="A pet owner hugging their dog"></div>
+
+  <div class="login-panel">
+    <div class="login-box">
+
+      <h1 class="login-title">Check your email</h1>
+      <p class="login-subtitle">We sent a 6-digit code to <strong>{{ email }}</strong>. It expires in 5 minutes.</p>
+
+      <form method="post" action="/user/verify/" class="login-form" novalidate>
+        {% csrf_token %}
+
+        {{ form }}
+
+        <button type="submit" class="login-btn">Verify</button>
+
+        {% if status_message %}
+          <p class="{% if status_type == 'success' %}login-success{% else %}login-error{% endif %}">{{ status_message }}</p>
+        {% endif %}
+      </form>
+
+      <form method="post" action="/user/verify/resend/" class="login-new">
+        {% csrf_token %}
+        Didn't get it? <button type="submit" class="link-btn">Send a new code</button>
+      </form>
+
+      <p class="login-hint">Check your spam folder if the email doesn't arrive within a minute.</p>
+
+    </div>
+  </div>
+
+</section>
+{% endblock %}

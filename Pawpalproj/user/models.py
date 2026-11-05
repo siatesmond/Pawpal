@@ -82,19 +82,24 @@ class Pet(models.Model):
         CAT = "CAT", "Cat"
         OTHER = "OTHER", "Other"
 
+    owner = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="pets")
     name = models.CharField(max_length=100)
-    profile_picture = models.FileField(
-        storage=pet_profile_images, validators=[IMAGE_TYPES], blank=True
-    )
     pet_type = models.CharField(max_length=10, choices=PetType.choices)
     breed = models.CharField(max_length=50, blank=True)
-    age = models.PositiveIntegerField()
-    owner_id = models.ForeignKey(
-        Customer, on_delete=models.CASCADE, related_name="pets"
+    date_of_birth = models.DateField(null=True, blank=True)
+    weight_kg = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True
     )
+    photo = models.FileField(
+        storage=pet_profile_images, validators=[IMAGE_TYPES], blank=True
+    )
+    medical_notes = models.TextField(blank=True)  # allergies, conditions, medication
+    behaviour_notes = models.TextField(blank=True)  # handling tips, triggers
+    last_vaccination_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.species})"
+        return f"{self.name} ({self.get_species_display()})"
 
 
 class OTP(models.Model):

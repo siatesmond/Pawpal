@@ -29,11 +29,26 @@ class LoginForm(forms.Form):
 
 class RegisterForm(forms.ModelForm):
     password = forms.CharField(widget=forms.PasswordInput, min_length=8)
-    confirm_password = forms.CharField(widget=forms.PasswordInput)
+    confirm_password = forms.CharField(
+        widget=forms.PasswordInput, label="Confirm password"
+    )
+    agree_terms = forms.BooleanField(
+        label="I agree to the Terms and Privacy Policy",
+        error_messages={"required": "Please agree to the Terms and Privacy Policy."},
+    )
 
     class Meta:
         model = Customer
-        fields = ["username", "first_name", "last_name", "email", "mobile"]
+        fields = [
+            "first_name",
+            "last_name",
+            "username",
+            "email",
+            "mobile",
+        ]  # order shown on the page
+        labels = {"mobile": "Mobile number (8 digits)"}
+
+    # keep your existing clean() and save() below
 
     def clean(self):
         cleaned_data = super().clean()
@@ -50,3 +65,24 @@ class RegisterForm(forms.ModelForm):
         if commit:
             customer.save()
         return customer
+
+
+class OTPForm(forms.Form):
+    code = forms.CharField(
+        label="6-digit code",
+        min_length=6,
+        max_length=6,
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "123456",
+                "inputmode": "numeric",
+                "autocomplete": "one-time-code",
+            }
+        ),
+    )
+
+    def clean_code(self):
+        code = self.cleaned_data["code"].strip()
+        if not code.isdigit():
+            raise forms.ValidationError("The code should only contain numbers.")
+        return code
