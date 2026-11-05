@@ -6,7 +6,7 @@ from django.core.paginator import Paginator
 
 from .models import Brand, Category, Order, Product
 
-from .forms import StockForm
+from .forms import StockForm, ProductForm
 
 categories = ["Food", "Treats", "Toys", "Accessories", "Grooming"]
 
@@ -349,9 +349,11 @@ def staff_orders_stock(request):
         },
     )
 
-
+# Update a specific product's stock quantity 
 def update_stock(request, pk):
+
     product = get_object_or_404(Product, pk=pk)
+    action_title = f"Update Stock for Product ID #{product.pk}"
 
     if request.method == "POST":
         form = StockForm(request.POST, instance=product)
@@ -359,10 +361,110 @@ def update_stock(request, pk):
         if form.is_valid():
             form.save()
             return redirect("/inventory/staff/orders-stock")
-
     else:
         form = StockForm(instance=product)
 
     return render(
-        request, "inventory/staff_update_stock.html", {"form": form, "product": product}
+        request, "inventory/staff_update_stock.html", 
+        {
+            "form": form, 
+            "product": product, 
+            "action_title": action_title,
+        }
+    )
+
+# Fetch all products
+def staff_products(request):
+   
+    products = Product.objects.select_related("category", "brand").order_by("-id")
+
+    # Read filter options from query string
+    query = request.GET.get("query", "").strip()
+    category_id = request.GET.get("category", "")
+    brand_id = request.GET.get("brand", "")
+    pet_type = request.GET.get("pet_type", "")
+
+    # Search by product name
+    if query:
+        products = products.filter(
+            Q(name__icontains=query)
+        )
+
+    # Filter by category
+    if category_id.isdigit():
+        products = products.filter(category_id=category_id)
+
+    # Filter by brand
+    if brand_id.isdigit():
+        products = products.filter(brand_id=brand_id)
+
+    # Filter by Pet type
+    if pet_type in Product.PetType.values:
+        products = products.filter(pet_type=pet_type)
+
+    # Product details
+    # Filter by product ID
+    selected_id = request.GET.get("product", "")
+    if not selected_id.isdigit():
+        first_product = products.first()
+        selected_id = first_product.pk if first_product else None
+
+    selected_product = None
+    if selected_id:
+        selected_product = (
+            Product.objects.select_related("category", "brand")
+            .filter(pk=selected_id)
+            .first()
+        )
+
+    # Metadata choices for dropdowns
+    categories = Category.objects.all()
+    brands = Brand.objects.all()
+    pet_choices = Product.PetType.choices
+
+    return render(
+        request,
+        "inventory/staff_products.html",
+        {
+            "active_page": "products",
+            "products": products,
+            "selected_product": selected_product,
+            "query": query,
+            "category_id": category_id,
+            "brand_id": brand_id,
+            "pet_type": pet_type,
+            "categories": categories,
+            "brands": brands,
+            "pet_choices": pet_choices,
+        },
+    )
+
+# Add/Update product
+def product_form(request, pk=None):
+
+    if pk:
+        # Update product
+        product = get_object_or_404(Product, pk=pk)
+        action_title = f"Update Product ID #{product.pk}"
+    else:
+        # Add new product
+        product = None
+        action_title = "Add New Product"
+
+    if request.method == "POST":
+        form = ProductForm(request.POST, request.FILES, instance=product)
+        if form.is_valid():
+            form.save()
+            return redirect("inventory:staff_products")
+    else:
+        form = ProductForm(instance=product)
+
+    return render(
+        request,
+        "inventory/staff_product_form.html",
+        {
+            "form": form,
+            "product": product,
+            "action_title": action_title,
+        },
     )

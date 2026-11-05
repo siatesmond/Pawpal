@@ -4,33 +4,18 @@
 {% block title %}Update Stock | Pawpal Staff{% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
 
-<link rel="stylesheet" href="{% static 'css/update_stock.css' %}">
+<div class="form-page">
 
-<div class="stock-page">
-
-    <div class="stock-breadcrumb">
-        <a href="{% url 'inventory:staff_orders_stock' %}">
-            Orders & Stock
-        </a>
-        <span>/</span>
-        <span>Update Stock</span>
+    <div class="form-page-header">
+         <h1>{{ action_title }}</h1>
+        <p>Manage the available inventory for this product</p>
     </div>
 
-    <div class="stock-page-header">
-        <h1>Update Stock</h1>
-        <p>Manage the available inventory for this product.</p>
-    </div>
-
-    <div class="stock-card">
+    <div class="form-card">
 
         <div class="product-info">
-            {% if product.image_url %}
-                <img src="{{ product.image_url.url }}"
-                     alt="{{ product.name }}"
-                     class="product-image">
-            {% endif %}
-
             <div>
                 <h2>{{ product.name }}</h2>
                 <p>Product ID: {{ product.pk }}</p>
@@ -52,35 +37,8 @@
 
         <hr>
 
-        <form method="POST">
-            {% csrf_token %}
-
-            <div class="form-group">
-                <label for="{{ form.stock_quantity.id_for_label }}">
-                    New stock quantity
-                </label>
-
-                {{ form.stock_quantity }}
-
-                {% if form.stock_quantity.errors %}
-                    <div class="form-error">
-                        {{ form.stock_quantity.errors }}
-                    </div>
-                {% endif %}
-            </div>
-
-            <div class="form-actions">
-                <a href="{% url 'inventory:staff_orders_stock' %}"
-                   class="cancel-btn">
-                    Cancel
-                </a>
-
-                <button type="submit" class="save-btn">
-                    Save Changes
-                </button>
-            </div>
-
-        </form>
+        <!-- Form template -->
+        {% include "inventory/form_template.html" with cancel_url="/inventory/staff/orders-stock" submit_text="Save Changes" %}
 
     </div>
 </div>

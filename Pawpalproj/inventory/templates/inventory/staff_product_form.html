@@ -1,0 +1,37 @@
+{% extends "inventory/staff_base.html" %}
+{% load static %}
+
+{% block title %}{{ action_title }} | Pawpal Staff{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
+
+<div class="form-page">
+
+    <div class="form-page-header">
+        <h1>{{ action_title }}</h1>
+        <p>Fill out the details below to {% if product %}update{% else %}create{% endif %} the product in inventory</p>
+    </div>
+
+    <div class="form-card">
+        <!-- Show product info and ID if updating an existing product, otherwise empty fields -->
+        {% if product %}
+        <div class="product-info">
+            {% if product.image_url %}
+                <img src="{{ product.image_url.url }}" alt="{{ product.name }}" class="product-image">
+            {% endif %}
+            <div>
+                <h2>{{ product.name }}</h2>
+                <p>Product ID: {{ product.pk }}</p>
+            </div>
+        </div>
+        <hr>
+        {% endif %}
+
+        <!-- Form template -->
+        {% include "inventory/form_template.html" with cancel_url="/inventory/staff/orders-stock" submit_text="Save Product" %}
+
+    </div>
+</div>
+
+{% endblock %}

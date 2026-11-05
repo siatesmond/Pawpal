@@ -26,7 +26,7 @@
         <a href="#" {% if active_page == "today" %}class="active"{% endif %}>Today</a>
         <a href="#" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>
         <a href="{% url 'inventory:staff_orders_stock' %}" {% if active_page == "orders" %}class="active"{% endif %}>Orders</a>
-        <a href="#" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
+        <a href="{% url 'inventory:staff_products' %}" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
       </nav>
     </div>
   </aside>

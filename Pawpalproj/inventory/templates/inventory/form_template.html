@@ -1,0 +1,50 @@
+<form method="POST" {% if enctype %}enctype="{{ enctype }}"{% endif %} class="product-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+        <div class="form-error-summary">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
+    {% for field in form %}
+        <div class="form-group">
+            {% if field.field.widget.input_type == 'checkbox' %}
+                <!-- Checkbox -->
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}" style="margin-bottom: 0; font-weight: 600; font-size: 0.9rem; color: #374151; cursor: pointer;">
+                        {{ field.label }}
+                    </label>
+                </div>
+            {% else %}
+                <!-- Input layout -->
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+                {{ field }}
+            {% endif %}
+
+            {% if field.help_text %}
+                <small>{{ field.help_text }}</small>
+            {% endif %}
+
+            {% for error in field.errors %}
+                <div class="form-error">
+                    {{ error }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endfor %}
+
+<!-- Buttons -->
+    <div class="form-actions">
+        <a href="{{ cancel_url }}" class="cancel-btn">
+            Cancel
+        </a>
+
+        <button type="submit" class="save-btn">
+            {{ submit_text|default:"Save Changes" }}
+        </button>
+    </div>
+</form>

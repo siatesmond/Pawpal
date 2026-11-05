@@ -5,7 +5,7 @@
   background: #f6f3ec;
 }
 
-/* sidebar */
+/* Nav sidebar menu */
 .staff-sidebar {
   background: #5a6a4c;
   color: #f3efe4;
@@ -74,7 +74,7 @@
   font-size: 13px;
 }
 
-/* main area */
+/* Main area */
 .staff-main {
   padding: 40px 44px;
 }
@@ -133,7 +133,7 @@
   font-weight: 500;
 }
 
-/* tabs */
+/* Filter tabs */
 .method-tabs {
   display: flex;
   gap: 8px;
@@ -152,7 +152,7 @@
   color: #fff;
 }
 
-/* layout */
+/* Layout */
 .staff-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
@@ -354,16 +354,62 @@
   color: #77746a;
 }
 
+/* Buttons */
+
 .update-stock-btn,
-.view-details-btn {
-  width: auto;          /* Or a smaller percentage/fixed width like 120px */
-  padding: 8px 16px;    /* Reduced vertical and horizontal padding */
+.view-details-btn,
+.update-stock-btn {
+  width: auto;          
+  padding: 8px 16px; 
   border-radius: 999px;
   font-family: inherit;
-  font-size: 11px;      /* Slightly smaller text */
-  font-weight: 700;     /* Slightly lighter weight (optional) */
+  font-size: 11px;      
+  font-weight: 700;    
   text-align: center;
   cursor: pointer;
   background: var(--gold);
   border: none;
 }
+
+.cancel-btn,
+.save-btn {
+  padding: 0.8rem 1.4rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  border: 1px solid #ddd;
+  color: #374151;
+  background: #e5e7eb;
+  padding: 10px 24px;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cancel-btn:hover {
+  background: rgb(212, 213, 212);
+}
+
+.save-btn,
+.edit-product-btn {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.save-btn:hover {
+  background: #3d4b34;
+}
+
