@@ -54,7 +54,7 @@
 
     <!-- Add New Product btn -->
     <div>
-      <a href="{% url 'inventory:add_product' %}" class="add-product-btn"">
+      <a href="{% url 'inventory:add_product' %}" class="add-product-btn">
         + Add Product
       </a>
     </div>
@@ -66,7 +66,7 @@
   {# Left Column: Products List Table #}
   <div class="staff-main-col">
     <section class="panel">
-      <table class="orders-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>ID</th>
@@ -117,7 +117,7 @@
   {# Right Column: Selected Product Detail Panel #}
   <div class="staff-side-col">
     {% if selected_product %}
-    <section class="panel order-detail">
+    <section class="panel detail-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <h2 style="margin: 0;">Product #{{ selected_product.pk }}</h2>
         <!-- Update / Edit Product Button -->
@@ -132,8 +132,8 @@
       </div>
       {% endif %}
 
-      <div class="order-detail-row">
-        <ul class="order-detail-items-list">
+      <div class="detail-card-row">
+        <ul style="list-style: none; margin: 0; padding: 0; font-size: 13px;">
           <li><b>Name:</b> {{ selected_product.name }}</li>
           <li><b>Category:</b> {{ selected_product.category.name }}</li>
           <li><b>Brand:</b> {{ selected_product.brand.name }}</li>
@@ -141,8 +141,8 @@
           <li><b>Price (cents):</b> {{ selected_product.price_cents }}</li>
           <li><b>Stock Quantity:</b> {{ selected_product.stock_quantity }}</li>
           <li><b>Status:</b> {% if selected_product.is_active %}Active{% else %}Inactive{% endif %}</li>
-          <li><b>Description:</b> 
-          <li>{{ selected_product.description|default:"No description provided." }}</li></li>
+          <li><b>Description:</b></li>
+          <li>{{ selected_product.description|default:"No description provided." }}</li>
         </ul>
       </div>
     </section>

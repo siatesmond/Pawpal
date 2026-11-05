@@ -235,3 +235,66 @@
   background: #3d4b34;
 }
 
+/* Tables - used in Orders-stock and Products page */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-table th {
+  padding: 8px 6px 14px;
+  border-bottom: 1px solid #e6e1d4;
+  font-size: 12px;
+  font-weight: 400;
+  color: #77746a;
+  text-align: left;
+}
+
+.data-table td {
+  padding: 16px 6px;
+  border-bottom: 1px solid #efebe0;
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.empty-row {
+  text-align: center;
+  color: #77746a;
+}
+
+
+/* Details - used in Orders-stock and Products page */
+.detail-card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+}
+
+.detail-card li {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+}
+
+.detail-card-row {
+  border-bottom: 1px solid #60605d;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+}
+
+.detail-card-row-no-border {
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.detail-text {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: #77746a;
+}

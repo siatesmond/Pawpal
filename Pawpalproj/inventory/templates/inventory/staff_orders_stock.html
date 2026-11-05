@@ -4,7 +4,7 @@
 {% block title %}Orders & stock | Pawpal staff{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{% static 'css/orders_stock.css' %}">
+<link rel="stylesheet" href="{% static 'css/inventory_staff.css' %}">
 
 {# header: title, search, status filter, add product #}
 <div class="staff-header">
@@ -46,7 +46,7 @@
   {# Left col: Orders table #}
   <div class="staff-main-col">
     <section class="panel">
-      <table class="orders-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>Order</th>
@@ -84,7 +84,7 @@
       <div class="stock-head">
         <h2>Stock levels</h2>
       </div>
-      <table class="orders-table">
+      <table class="data-table">
         <thead>
           <tr>
             <th>Product ID</th>
@@ -127,57 +127,57 @@
     </section>
   </div>
 
-{# Right col: Order details #}
-<div class="staff-side-col">
+  {# Right col: Order details #}
+  <div class="staff-side-col">
+      {% if selected %}
+      <section class="panel detail-card">
 
-    {% if selected %}
-    <section class="panel order-detail">
+          <h2>Order #{{ selected.pk }}</h2>
 
-        <h2>Order #{{ selected.pk }}</h2>
+          {# Customer and order items #}
+          <div class="detail-card-row">
+              <ul class="detail-card">
 
-        {# Customer and order items #}
-        <div class="order-detail-row">
-            <ul class="order-detail-items-list">
+                  <li>
+                      <b>
+                          Customer ID: {{ selected.customer.pk }},
+                          {{ selected.customer.first_name }}
+                          {{ selected.customer.last_name }}
+                      </b>
+                  </li>
 
-                <li>
-                    <b>
-                        Customer ID: {{ selected.customer.pk }},
-                        {{ selected.customer.first_name }}
-                        {{ selected.customer.last_name }}
-                    </b>
-                </li>
+                  <li><u>Items:</u></li>
 
-                <li><u>Items:</u></li>
+                  {% for item in selected.items.all %}
+                  <li>
+                      <span>{{ item.product.name }}</span>
+                      <span>× {{ item.quantity }}</span>
+                  </li>
+                  {% empty %}
+                  <li>No items in this order.</li>
+                  {% endfor %}
 
-                {% for item in selected.items.all %}
-                <li>
-                    <span>{{ item.product.name }}</span>
-                    <span>× {{ item.quantity }}</span>
-                </li>
-                {% empty %}
-                <li>No items in this order.</li>
-                {% endfor %}
+              </ul>
+          </div>
 
-            </ul>
-        </div>
-
-        {# Delivery or pick-up information #}
-        <div class="order-detail-row order-method-row">
-
-          {% if selected.delivery_address %}
-            <p class="order-detail-method">
-              <b>Method:</b> Delivery
-            </p>
-            <p class="order-detail-method">
-              Deliver to {{ selected.delivery_address }}
-            </p>
-
-          {% elif selected.pickup_outlet %}
-          <p class="order-detail-method">
-            <b>Method:</b> Pick-up at {{ selected.pickup_outlet.name }}
-          </p>
+          {# Delivery or pick-up information #}
+          <div class="detail-card-row-no-border">
+            {% if selected.delivery_address %}
+              <p class="detail-text">
+                <b>Method:</b> Delivery
+              </p>
+              <p class="detail-text">
+                Deliver to {{ selected.delivery_address }}
+              </p>
+            {% elif selected.pickup_outlet %}
+              <p class="detail-text">
+                <b>Method:</b> Pick-up at {{ selected.pickup_outlet.name }}
+              </p>
+            {% endif %}
+          </div>
+      </section>
       {% endif %}
-</div>
-      {% endif %}
+  </div>
+
 </div>
 {% endblock %}
