@@ -116,5 +116,9 @@
 }
 
 .continue-shopping-btn {
-  background: #fff;
+  background: #d8e1ed
+}
+
+.continue-shopping-btn:hover{
+  background: #bfcdde
 }

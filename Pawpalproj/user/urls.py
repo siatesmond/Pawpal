@@ -13,4 +13,6 @@ urlpatterns = [
     path("home/", CustomerHomeView.as_view(), name="customer_home"),
     path("cart/", views.cart, name="customer_cart"),
     path("cart/add/<int:product_id>/", views.add_to_cart, name="customer_add_to_cart"),
+    path("cart/item/<int:item_id>/increment/", views.increment_cart_item,name="increment_cart_item"),
+    path("cart/item/<int:item_id>/decrement/", views.decrement_cart_item,name="decrement_cart_item")
 ]

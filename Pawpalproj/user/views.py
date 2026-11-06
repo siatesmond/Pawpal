@@ -126,7 +126,6 @@ def cart(request):
 
 
 # CART
-
 # Add a product to the customer's cart
 def add_to_cart(request, product_id):
     # Check if the user is authenticated as customer
@@ -145,19 +144,80 @@ def add_to_cart(request, product_id):
     # Get product if active
     product = get_object_or_404(Product, pk=product_id, is_active=True)
 
-    # Read and parse quantity safely from POST data
-    try:
-        quantity = int(request.POST.get("quantity", "1"))
-    except ValueError:
-        quantity = 0
+    # Check if item is already in cart
+    item = CartItem.objects.filter(customer=customer, product=product).first()
 
-    # Get or create the cart item record
-    item, created = CartItem.objects.get_or_create(
-        customer=customer,
-        product=product,
-        defaults={"quantity": min(quantity, product.stock_quantity)},
-    )
+    if item:
+        # Existing item: Add 1 to current quantity (capped by stock)
+        new_quantity = item.quantity + 1
+        item.quantity = min(new_quantity, product.stock_quantity)
+        item.save(update_fields=["quantity"])
+    else:
+        # New item: Create with a quantity of 1 (capped by stock)
+        CartItem.objects.create(
+            customer=customer,
+            product=product,
+            quantity=min(1, product.stock_quantity),
+        )
 
     messages.success(request, f"Added {product.name} to your cart.")
     return redirect("user:customer_cart")
 
+
+# Increase the quantity of a cart item by one
+def increment_cart_item(request, item_id):
+    if (
+        "user_id" not in request.session
+        or request.session.get("user_type") != "customer"
+    ):
+        messages.error(
+            request, "You must be logged in as a customer to update your cart."
+        )
+        return redirect("user:login")
+
+
+    item = get_object_or_404(
+        CartItem.objects.select_related("product"),
+        pk=item_id,
+        customer_id=request.session["user_id"], #ensures only customer can edit own cart
+    )
+
+    # Check stock availability before saving the incremented quantity
+    if item.quantity >= item.product.stock_quantity:
+        messages.error(
+            request,
+            f"You've reached the maximum available stock for this item",
+        )
+    else:
+        item.quantity += 1
+        item.save(update_fields=["quantity"])
+
+    return redirect("user:customer_cart")
+
+
+# Decrease the quantity of a cart item by one
+def decrement_cart_item(request, item_id):
+    if (
+        "user_id" not in request.session
+        or request.session.get("user_type") != "customer"
+    ):
+        messages.error(
+            request, "You must be logged in as a customer to update your cart."
+        )
+        return redirect("user:login")
+
+    # Get the cart item user clicked on
+    item = get_object_or_404(
+        CartItem.objects.select_related("product"),
+        pk=item_id,
+        customer_id=request.session["user_id"], #ensures only customer can edit own cart
+    )
+
+    # Check stock availability before saving the decremented quantity
+    if item.quantity > 1:
+        item.quantity -= 1
+        item.save(update_fields=["quantity"])
+    else:
+        item.delete()
+
+    return redirect("user:customer_cart")

@@ -4,25 +4,47 @@
 {% block title %}Your Shopping Cart | Pawpal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'user/css/cart.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/cart.css' %}">
 {% endblock %}
 
 {% block content %}
 <section class="cart-page">
     <div class="cart-header">
         <h1>Shopping Cart</h1>
-        <p>Review and manage your items before you continue shopping.</p>
+        <p>Review your items before continuing</p>
     </div>
 
     {% if cart_items %}
         <div class="cart-card">
             {% for item in cart_items %}
                 <article class="cart-item-card">
-                    <div class="cart-item-info">
-                        <h2>{{ item.product.name }}</h2>
-                        <h2>Qty: {{ item.quantity }}</h2>
+                    <div class="cart-item-product">
+                        {% if item.product.image_url %}
+                            <img src="{{ item.product.image_url.url }}" alt="{{ item.product.name }}">
+                        {% else %}
+                            <div class="cart-item-placeholder">P</div>
+                        {% endif %}
+                        <div class="cart-item-info">
+                            <h2>{{ item.product.name }}</h2>
+                            <p>SGD {{ item.product.price_dollars|floatformat:2 }} each</p>
+                        </div>
                     </div>
-                    <div class="cart-item-summary">
+                    <div class="cart-item-controls">
+                        <div class="cart-quantity-group">
+                            <span class="cart-quantity-label">Quantity</span>
+                            <div class="cart-quantity-control">
+                                <form method="post" action="{% url 'user:decrement_cart_item' item.id %}">
+                                {% csrf_token %}
+                                    <button type="submit"
+                                            aria-label="Decrease quantity of {{ item.product.name }}">−</button>
+                                </form>
+                                <span class="cart-quantity-value">{{ item.quantity }}</span>
+                                <form method="post" action="{% url 'user:increment_cart_item' item.id %}">
+                                {% csrf_token %}
+                                    <button type="submit" aria-label="Increase quantity of {{ item.product.name }}">+</button>
+                                </form>
+                            </div>
+                        </div>
                         <strong>SGD {{ item.line_total_dollars|floatformat:2 }}</strong>
                     </div>
                 </article>
@@ -32,7 +54,6 @@
                 <span>Total</span>
                 <strong>SGD {{ subtotal_dollars|floatformat:2 }}</strong>
             </div>
-
             <a href="{% url 'inventory:product_list' %}" class="continue-shopping-btn">
                 Continue Shopping
             </a>
