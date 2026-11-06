@@ -9,7 +9,7 @@ from django.core.paginator import Paginator
 
 from service.models import Booking, BookingUpdate, BookingUpdatePhoto
 
-from user.models import Outlet
+from user.models import Outlet, Staff
 
 from .models import Brand, Category, Order, Product
 
@@ -217,7 +217,7 @@ def bookings(request):
     )
 
 
-# Update Booking - left out staff field for now because routes are not protected yet (to be updated)
+# Update Booking
 def update_booking(request, pk=None):
     booking = get_object_or_404(
         Booking.objects.select_related("customer", "pet", "slot", "slot__service"),
@@ -228,6 +228,13 @@ def update_booking(request, pk=None):
         if form.is_valid():
             booking_update = form.save(commit=False)
             booking_update.booking = booking
+
+            # Get staff id from session and assign to booking_update.staff if user is staff
+            if request.session.get("user_type") == "staff":
+                booking_update.staff = get_object_or_404(
+                    Staff, pk=request.session.get("user_id")
+                )
+
             booking_update.save()
 
             # Loop through all uploaded files and create individual photo records
@@ -236,15 +243,15 @@ def update_booking(request, pk=None):
                     update=booking_update,
                     photo=photo,
                 )
+
             # Update booking new status from the form input
             booking.status = booking_update.new_status
 
-            
             if booking.status == Booking.Status.CANCELLED:
                 if not booking.cancelled_at:
                     booking.cancelled_at = timezone.now()
             else:
-                booking.cancelled_at = None #If the booking is changes from cancelled to another status, clear the cancelled_at timestamp and remove the cancellation fee record
+                booking.cancelled_at = None # Clear cancellation metadata if status changes back
                 booking.cancellation_fee_cents = 0
 
             booking.save()

@@ -6,6 +6,8 @@ PROTECTED_PATHS = {
     "/user/pets/": ["customer"],
     "/inventory/cart/": ["customer"],
     "/inventory/checkout/": ["customer"],
+    "/inventory/staff/": ["staff", "owner"],
+    "/inventory/stock/": ["staff", "owner"],
     "/service/book/": ["customer"],
     "/admin-panel/": ["staff", "owner"],
     "/sitting/jobs/": ["sitter"],
