@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 from django.core.validators import FileExtensionValidator
@@ -62,7 +64,7 @@ class Product(models.Model):
     
     @property
     def price_dollars(self):
-        return self.price_cents / 100
+        return Decimal(self.price_cents) / Decimal("100")
     
 
 class Order(models.Model):

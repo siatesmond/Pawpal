@@ -138,7 +138,7 @@
           <li><b>Category:</b> {{ selected_product.category.name }}</li>
           <li><b>Brand:</b> {{ selected_product.brand.name }}</li>
           <li><b>Pet Type:</b> {{ selected_product.get_pet_type_display }}</li>
-          <li><b>Price (cents):</b> {{ selected_product.price_cents }}</li>
+          <li><b>Price:</b> SGD {{ selected_product.price_dollars|floatformat:2 }}</li>
           <li><b>Stock Quantity:</b> {{ selected_product.stock_quantity }}</li>
           <li><b>Status:</b> {% if selected_product.is_active %}Active{% else %}Inactive{% endif %}</li>
           <li><b>Description:</b></li>
