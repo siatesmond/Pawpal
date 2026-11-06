@@ -42,12 +42,16 @@
 <div class="staff-grid">
 
   {# Left col: Orders table #}
+
   <div class="staff-main-col">
     <section class="panel">
+      <div class="stock-head">
+        <h2>Orders</h2>
+      </div>
       <table class="data-table">
         <thead>
           <tr>
-            <th>Order</th>
+            <th>ID</th>
             <th>Customer</th>
             <th>No. of Items</th>
             <th>Method</th>
@@ -85,7 +89,7 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Product ID</th>
+            <th>ID</th>
             <th>Name</th>
             <th>Stock</th>
             <th>Action</th>
@@ -142,6 +146,12 @@
                           {{ selected.customer.first_name }}
                           {{ selected.customer.last_name }}
                       </b>
+                  </li>
+                  <li>
+                      <b>Status:</b>
+                      <span class="status-pill status-{{ selected.status|lower }}">
+                        {{ selected.get_status_display }}
+                      </span>
                   </li>
 
                   <li><u>Items:</u></li>

@@ -204,6 +204,37 @@
   border: none;
 }
 
+.status-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.status-pill.status-pending {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+.status-pill.status-confirmed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-pill.status-completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-pill.status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .cancel-btn,
 .save-btn {
   padding: 0.8rem 1.4rem;

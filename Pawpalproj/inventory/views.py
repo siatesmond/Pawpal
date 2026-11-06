@@ -486,16 +486,19 @@ def update_stock(request, pk):
     product = get_object_or_404(Product, pk=pk)
     action_title = f"Update Stock for Product ID #{product.pk}"
 
-    success_message = None
     error_message = None
 
     if request.method == "POST":
         form = StockForm(request.POST, instance=product)
 
         if form.is_valid():
-            
             form.save()
-            success_message = f'Stock quantity for Product ID #{product.id}, {product.name} updated successfully.'
+            messages.success(
+                request,
+                f"Stock quantity for Product ID #{product.id}, '{product.name}' "
+                "updated successfully.",
+            )
+            return redirect("inventory:staff_orders_stock")
         else:
             error_message = 'Please correct the errors below.'
     else:
@@ -507,7 +510,6 @@ def update_stock(request, pk):
             "form": form, 
             "product": product, 
             "action_title": action_title,
-            "success_message": success_message,
             "error_message": error_message
         }
     )
@@ -581,7 +583,6 @@ def staff_products(request):
 # Add/Update product
 def product_form(request, pk=None):
   
-    success_message = None
     error_message = None
 
     if pk:
@@ -599,10 +600,14 @@ def product_form(request, pk=None):
             saved_product = form.save()
             
             if pk:
-                success_message = f"Product ID #{saved_product.pk}, {saved_product.name} updated successfully."
+                message = (
+                    f"Product ID #{saved_product.pk}, "
+                    f"'{saved_product.name}' updated successfully."
+                )
             else:
-                success_message = f"Product '{saved_product.name}' created successfully."
-                form = ProductForm() 
+                message = f"Product ID #{saved_product.pk}, '{saved_product.name}' created successfully."
+            messages.success(request, message)
+            return redirect("inventory:staff_products")
         else:
             error_message = "Please correct the errors below."
     else:
@@ -615,7 +620,6 @@ def product_form(request, pk=None):
             "form": form,
             "product": product,
             "action_title": action_title,
-            "success_message": success_message,
             "error_message": error_message,
         },
     )

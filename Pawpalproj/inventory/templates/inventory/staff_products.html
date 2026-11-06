@@ -94,7 +94,7 @@
             </td>
             <td>{{ product.category.name }}</td>
             <td>{{ product.brand.name }}</td>
-            <td><span class="status-pill">{{ product.get_pet_type_display }}</span></td>
+            <td><span>{{ product.get_pet_type_display }}</span></td>
             <td>
               <span class="{% if product.stock_quantity <= product.low_stock_level %}stock-low-text{% endif %}">
                 <b>{{ product.stock_quantity }}</b>
