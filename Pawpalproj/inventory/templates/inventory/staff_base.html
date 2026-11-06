@@ -36,6 +36,11 @@
   <!-- need to add account and logout button -->
 
   <main class="staff-main">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="form-alert form-alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>

@@ -136,6 +136,8 @@ class BookingUpdate(models.Model):
         "user.Staff",
         on_delete=models.PROTECT,
         related_name="booking_updates",
+        null=True,
+        blank=True,
     )
     new_status = models.CharField(
         max_length=20,
@@ -149,3 +151,15 @@ class BookingUpdate(models.Model):
 
     def __str__(self):
         return f"Update for Booking {self.booking}"
+
+# To allow multiple photos for a booking update
+class BookingUpdatePhoto(models.Model):
+    update = models.ForeignKey(
+        BookingUpdate,
+        on_delete=models.CASCADE,
+        related_name="photos",
+    )
+    photo = models.FileField(
+        storage=service_images, validators=[IMAGE_TYPES]
+    )
+    created_at = models.DateTimeField(auto_now_add=True)

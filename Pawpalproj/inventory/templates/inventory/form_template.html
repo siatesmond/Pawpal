@@ -37,6 +37,16 @@
         </div>
     {% endfor %}
 
+    <!-- For booking photo uploads  -->
+    {% if show_photo_upload %}
+        <div class="form-group" style="margin-top: 1rem;">
+            <label for="id_photos">Upload Photos</label>
+            <input type="file" name="photos" id="id_photos" multiple accept="image/*">
+            <small style="display: block; margin-top: 0.25rem; color: #666;">You can select multiple images</small>
+        </div>
+    {% endif %}
+    
+
     {% if success_message %}
         <div class="form-alert form-alert-success">
             {{ success_message }}

@@ -1,18 +1,19 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
-
 from django.contrib import messages
+from django.utils import timezone
 
 from django.db.models import Q, F, Count
+from django.db.models import Prefetch
 
 from django.core.paginator import Paginator
 
-from service.models import Booking  
+from service.models import Booking, BookingUpdate, BookingUpdatePhoto
 
-from user.models import Outlet  
+from user.models import Outlet
 
 from .models import Brand, Category, Order, Product
 
-from .forms import StockForm, ProductForm
+from .forms import BookingUpdateForm, StockForm, ProductForm
 
 categories = ["Food", "Treats", "Toys", "Accessories", "Grooming"]
 
@@ -180,13 +181,21 @@ def bookings(request):
     # Booking details
     selected_id = request.GET.get("booking", "")
     if not selected_id.isdigit():
-        first_booking = bookings.first()
+        first_booking = bookings.first() #show first booking if no booking is selected
         selected_id = first_booking.pk if first_booking else None
 
     selected_booking = None
     if selected_id:
         selected_booking = (
             Booking.objects.select_related("customer", "pet", "slot", "slot__service")
+            .prefetch_related( # use prefetch_related due to high number of related BookingUpdate objects and BookingUpdatePhoto objects
+                Prefetch(
+                    "updates",
+                    # Fetches all booking updates, pre-loading their photos
+                    queryset=BookingUpdate.objects.prefetch_related("photos").order_by("-created_at"),
+                    to_attr="ordered_updates",
+                ),
+            )
             .filter(pk=selected_id)
             .first()
         )
@@ -204,6 +213,56 @@ def bookings(request):
             "outlet_filter": outlet_filter,
             "date_filter": date_filter,
             "status_choices": Booking.Status.choices,
+        },
+    )
+
+
+# Update Booking - left out staff field for now because routes are not protected yet (to be updated)
+def update_booking(request, pk=None):
+    booking = get_object_or_404(
+        Booking.objects.select_related("customer", "pet", "slot", "slot__service"),
+        pk=pk,
+    )
+    if request.method == "POST":
+        form = BookingUpdateForm(request.POST, request.FILES)
+        if form.is_valid():
+            booking_update = form.save(commit=False)
+            booking_update.booking = booking
+            booking_update.save()
+
+            # Loop through all uploaded files and create individual photo records
+            for photo in request.FILES.getlist("photos"):
+                BookingUpdatePhoto.objects.create(
+                    update=booking_update,
+                    photo=photo,
+                )
+            # Update booking new status from the form input
+            booking.status = booking_update.new_status
+
+            
+            if booking.status == Booking.Status.CANCELLED:
+                if not booking.cancelled_at:
+                    booking.cancelled_at = timezone.now()
+            else:
+                booking.cancelled_at = None #If the booking is changes from cancelled to another status, clear the cancelled_at timestamp and remove the cancellation fee record
+                booking.cancellation_fee_cents = 0
+
+            booking.save()
+
+            messages.success(request, f"Booking #{booking.pk} updated successfully.")
+            return redirect("inventory:staff_bookings")
+    else:
+        # Pre-fill the form dropdown with the booking's current status as default 
+        form = BookingUpdateForm(initial={"new_status": booking.status})
+
+    return render(
+        request,
+        "inventory/staff_update_booking.html",
+        {
+            "form": form,
+            "booking": booking,
+            "action_title": f"Update Booking #{booking.pk}",
+            "cancel_url": "/inventory/staff/bookings/",
         },
     )
 
@@ -385,10 +444,10 @@ def staff_orders_stock(request):
         "delivery": all_orders.filter(pickup_outlet__isnull=True).count(),
     }
 
-    # the order shown in the detail panel (defaults to the first in the list)
+    # the order shown in the detail panel 
     selected_id = request.GET.get("order", "")
     if not selected_id.isdigit():
-        first = orders.first()
+        first = orders.first() #show first order if no order is selected
         selected_id = first.pk if first else None
 
     selected = None
@@ -486,7 +545,7 @@ def staff_products(request):
     # Filter by product ID
     selected_id = request.GET.get("product", "")
     if not selected_id.isdigit():
-        first_product = products.first()
+        first_product = products.first() #show first product if no product is selected
         selected_id = first_product.pk if first_product else None
 
     selected_product = None

@@ -24,8 +24,8 @@
         <label for="outlet">Outlet</label>
         <select id="outlet" name="outlet" onchange="this.form.submit()">
           <option value="">All Outlets</option>
-          {% for o in outlets %}
-          <option value="{{ o.id }}" {% if outlet_filter == o.id|stringformat:"i" %}selected{% endif %}>{{ o.name }}</option>
+          {% for outlet in outlets %}
+          <option value="{{ outlet.id }}" {% if outlet_filter == outlet.id|stringformat:"i" %}selected{% endif %}>{{ outlet.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -51,16 +51,20 @@
   </div>
 </div>
 
-<div class="staff-grid">
+<!-- Layout for booking is top and bottom -->
+<div class="staff-grid booking-layout">
 
-  {# Left: Bookings List Table #}
+  {# Bookings List Table #}
   <div class="staff-main-col">
     <section class="panel">
       <table class="data-table">
         <thead>
           <tr>
+            <th>ID</th>
             <th>Time</th>
             <th>Pet</th>
+            <th>Pet Type</th>
+            <th>Breed</th>
             <th>Owner</th>
             <th>Service</th>
             <th>Status</th>
@@ -70,8 +74,11 @@
         <tbody>
           {% for booking in bookings %}
           <tr {% if selected_booking.pk == booking.pk %}class="selected-row"{% endif %}>
+            <td>{{ booking.pk }}</td>
             <td>{{ booking.slot.start_time|time:"H:i" }}</td>
-            <td><b>{{ booking.pet.name }}</b> ({{ booking.pet.breed }})</td>
+            <td><b>{{ booking.pet.name }}</b></td>
+            <td>{{ booking.pet.get_pet_type_display }}</td>
+            <td>{{ booking.pet.breed|default:"—" }}</td>
             <td>{{ booking.customer.first_name }} {{ booking.customer.last_name }}.</td>
             <td>{{ booking.slot.service.name }}</td>
             <td>
@@ -83,7 +90,7 @@
           </tr>
           {% empty %}
           <tr>
-            <td colspan="6" class="empty-row">No bookings found for this filter.</td>
+            <td colspan="8" class="empty-row">No bookings found for this filter.</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -91,16 +98,16 @@
     </section>
   </div>
 
-  {# Right col: Booking details #}
+  {# Bottom Booking details #}
   <div class="staff-side-col">
       {% if selected_booking %}
-      <section class="panel detail-card">
+      <section class="panel detail-card booking-detail-card">
 
           <h2>Booking #{{ selected_booking.pk }}</h2>
 
           {# Customer and Pet details #}
           <div class="detail-card-row">
-              <ul class="detail-card" style="list-style: none; padding: 0; margin: 0;">
+              <ul class="detail-card booking-detail-list" style="list-style: none; padding: 0; margin: 0;">
                   <li>
                       <b>
                           Customer: {{ selected_booking.customer.first_name }}
@@ -132,8 +139,9 @@
               </p>
             {% endif %}
 
+            <!-- Behaviour Notes -->
             {% if selected_booking.pet.behaviour_notes %}
-              <p class="detail-text" style="margin-top: 0.5rem; margin-bottom: 2px;">
+              <p class="detail-text" style="color: #076a48; font-weight: bold; margin-top: 0.5rem; margin-bottom: 2px;">
                 <b>Behaviour Notes:</b>
               </p>
               <p class="detail-text" style="margin-top: 0;">
@@ -141,25 +149,60 @@
               </p>
             {% endif %}
 
+            <!-- Vaccination Date -->
             {% if selected_booking.pet.last_vaccination_date %}
-              <p class="detail-text" style="margin-top: 0.5rem;">
+              <p class="detail-text" style="color: #1c0846; font-weight: bold; margin-top: 0.5rem;">
                 <b>Last Vaccination:</b> {{ selected_booking.pet.last_vaccination_date|date:"d M Y" }}
               </p>
             {% endif %}
           </div>
 
-          {# Update Booking Button inside detail card #}
+          <!-- Chronological Booking Updates Timeline -->
+          <div class="booking-updates-section" style="margin-top: 1.5rem;">
+            <h3>Booking Updates & History</h3>
+            
+            {% for update in selected_booking.ordered_updates %}
+              <div class="update-card" style="border: 1px solid #e5e7eb; padding: 0.875rem; margin-top: 0.75rem; border-radius: 6px; background: #f9fafb;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                  <b style="font-size: 0.9rem; color: #1f2937;">{{ update.get_new_status_display }}</b>
+                  <small style="color: #6b7280; font-size: 0.8rem;">{{ update.created_at|date:"d M Y, H:i" }}</small>
+                </div>
+
+                {% if update.note %}
+                  <p class="detail-text" style="margin: 0.4rem 0; font-size: 0.9rem; color: #4b5563;">{{ update.note }}</p>
+                {% endif %}
+
+                {# Attached Photos for this specific update #}
+                {% if update.photos.all or update.photo %}
+                  <div class="booking-update-photo-grid" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                    {% if update.photo %}
+                      <a href="{{ update.photo.url }}" target="_blank">
+                        <img src="{{ update.photo.url }}" alt="Update photo" style="width: 70px; height: 70px; object-fit: cover; border-radius: 4px;">
+                      </a>
+                    {% endif %}
+                    {% for photo in update.photos.all %}
+                      <a href="{{ photo.photo.url }}" target="_blank">
+                        <img src="{{ photo.photo.url }}" alt="Update photo" style="width: 70px; height: 70px; object-fit: cover; border-radius: 4px;">
+                      </a>
+                    {% endfor %}
+                  </div>
+                {% endif %}
+              </div>
+            {% empty %}
+              <p class="detail-text" style="color: #6b7280; font-style: italic; margin-top: 0.5rem;">No updates recorded yet.</p>
+            {% endfor %}
+          </div>
+
+          {# Update Booking Btn #}
           <div style="margin-top: 1.5rem;">
-              <a href="#" class="edit-product-btn" style="display: block; text-align: center; text-decoration: none; padding: 0.5rem;">
-                Update Booking
+              <a href="{% url 'inventory:update_booking' selected_booking.pk %}" class="edit-product-btn" style="display: block; text-align: center; text-decoration: none;">
+                Update booking
               </a>
           </div>
 
       </section>
       {% endif %}
   </div>
-  
-
 
 </div>
 
