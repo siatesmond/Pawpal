@@ -1,5 +1,6 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, date
 from zoneinfo import ZoneInfo
+from decimal import Decimal
 
 from django.contrib.auth.hashers import make_password
 from django.shortcuts import HttpResponse
@@ -316,59 +317,90 @@ pets = [
         "name": "Mochi",
         "pet_type": "DOG",
         "breed": "Shiba Inu",
-        "age": 3,
+        "date_of_birth": date(2023, 8, 14),
+        "weight_kg": Decimal("9.50"),
+        "medical_notes": "Mild seasonal skin allergies. Uses medicated shampoo monthly.",
+        "behaviour_notes": "Independent and a bit stubborn. Dislikes nail trimming; use treats and go slowly.",
+        "last_vaccination_date": date(2026, 3, 12),
     },
     {
         "owner": "amy_tan",
         "name": "Luna",
         "pet_type": "CAT",
         "breed": "British Shorthair",
-        "age": 2,
+        "date_of_birth": date(2024, 5, 3),
+        "weight_kg": Decimal("4.80"),
+        "medical_notes": "",
+        "behaviour_notes": "Calm, but gets stressed in carriers. Prefers a towel over the carrier.",
+        "last_vaccination_date": date(2026, 5, 20),
     },
     {
         "owner": "jason_lee",
         "name": "Bobby",
         "pet_type": "DOG",
         "breed": "Golden Retriever",
-        "age": 5,
+        "date_of_birth": date(2021, 9, 27),
+        "weight_kg": Decimal("31.20"),
+        "medical_notes": "Early-stage hip dysplasia. Joint supplement daily. Avoid long stair climbs.",
+        "behaviour_notes": "Very friendly and food-motivated. Tends to jump up when excited.",
+        "last_vaccination_date": date(2026, 1, 15),
     },
     {
         "owner": "nur_aisyah",
         "name": "Kopi",
         "pet_type": "CAT",
         "breed": "Domestic Short Hair",
-        "age": 4,
+        "date_of_birth": date(2022, 6, 9),
+        "weight_kg": Decimal("4.20"),
+        "medical_notes": "Allergic to chicken-based food. Feed fish or turkey formulas only.",
+        "behaviour_notes": "Shy with strangers; hides under furniture. Approach slowly and let her come to you.",
+        "last_vaccination_date": date(2025, 11, 30),
     },
     {
         "owner": "nur_aisyah",
         "name": "Snowy",
         "pet_type": "CAT",
         "breed": "Persian",
-        "age": 6,
+        "date_of_birth": date(2020, 12, 1),
+        "weight_kg": Decimal("5.10"),
+        "medical_notes": "Chronic eye discharge (needs daily wiping). Prone to hairballs.",
+        "behaviour_notes": "Gentle but dislikes being brushed around the belly. Short grooming sessions work best.",
+        "last_vaccination_date": date(2026, 2, 8),
     },
     {
         "owner": "kumar_r",
         "name": "Milo",
         "pet_type": "DOG",
         "breed": "Beagle",
-        "age": 7,
+        "date_of_birth": date(2019, 10, 18),
+        "weight_kg": Decimal("12.75"),
+        "medical_notes": "On heart medication (twice daily). Senior dog; avoid strenuous exercise.",
+        "behaviour_notes": "Howls when left alone. Will follow food smells, so keep treats out of reach.",
+        "last_vaccination_date": date(2026, 4, 2),
     },
     {
         "owner": "chloe_ng",
         "name": "Coco",
         "pet_type": "DOG",
         "breed": "Maltese",
-        "age": 2,
+        "date_of_birth": date(2024, 7, 22),
+        "weight_kg": Decimal("3.40"),
+        "medical_notes": "Sensitive stomach. Tear staining; clean around eyes regularly.",
+        "behaviour_notes": "Barks at loud noises and unfamiliar dogs. Handle gently, small and fragile.",
+        "last_vaccination_date": date(2026, 6, 10),
     },
     {
         "owner": "chloe_ng",
         "name": "Tofu",
         "pet_type": "OTHER",
         "breed": "Holland Lop Rabbit",
-        "age": 1,
+        "date_of_birth": date(2025, 9, 5),
+        "weight_kg": Decimal("1.60"),
+        "medical_notes": "Watch for dental overgrowth; provide hay at all times.",
+        "behaviour_notes": "Skittish when picked up. Support the hindquarters and avoid sudden movements.",
+        "last_vaccination_date": None,
     },
 ]
-
 # =====================================================================
 # Mock data – inventory
 # =====================================================================
@@ -1236,7 +1268,11 @@ def loadData(request):
             name=pet["name"],
             pet_type=pet["pet_type"],
             breed=pet["breed"],
-            age=pet["age"],
+            date_of_birth=pet["date_of_birth"],
+            weight_kg=pet["weight_kg"],
+            medical_notes=pet["medical_notes"],
+            behaviour_notes=pet["behaviour_notes"],
+            last_vaccination_date=pet["last_vaccination_date"],
         )
         new_pet.save()
 
