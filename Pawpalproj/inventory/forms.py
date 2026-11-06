@@ -38,6 +38,7 @@ class ProductForm(forms.ModelForm):
         ]
     # checks if the product exists in DB and prefills with the price in dollars 
     # to ensure price is displayed in dollars in the form instead of cents
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
             self.initial["price_dollars"] = (
