@@ -1,10 +1,12 @@
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
+from django.contrib import messages
 from django.utils import timezone
 from django.views import View
 from service.models import Booking
 
 from .forms import LoginForm, RegisterForm
 from .models import Customer
+from inventory.models import CartItem, Product
 
 
 def get_user_type(user):
@@ -104,3 +106,58 @@ def home_for(user_type):
         "owner": "/admin-panel/",
         "sitter": "/sitting/jobs/",
     }.get(user_type, "/")
+
+
+def cart(request):
+    customer = get_object_or_404(Customer, pk=request.session.get("user_id"))
+    cart_items = CartItem.objects.select_related("product").filter(customer=customer)
+    subtotal_cents = sum(item.line_total_cents for item in cart_items)
+
+    return render(
+        request,
+        "user/cart.html",
+        {
+            "active_page": "cart",
+            "cart_items": cart_items,
+            "subtotal_cents": subtotal_cents,
+            "subtotal_dollars": subtotal_cents / 100,
+        },
+    )
+
+
+# CART
+
+# Add a product to the customer's cart
+def add_to_cart(request, product_id):
+    # Check if the user is authenticated as customer
+    if (
+        "user_id" not in request.session
+        or request.session.get("user_type") != "customer"
+    ):
+        messages.error(
+            request, "You must be logged in as a customer to add items to the cart!"
+        )
+        return redirect("user:login")
+
+    # Get customer id from session
+    customer = get_object_or_404(Customer, pk=request.session.get("user_id"))
+
+    # Get product if active
+    product = get_object_or_404(Product, pk=product_id, is_active=True)
+
+    # Read and parse quantity safely from POST data
+    try:
+        quantity = int(request.POST.get("quantity", "1"))
+    except ValueError:
+        quantity = 0
+
+    # Get or create the cart item record
+    item, created = CartItem.objects.get_or_create(
+        customer=customer,
+        product=product,
+        defaults={"quantity": min(quantity, product.stock_quantity)},
+    )
+
+    messages.success(request, f"Added {product.name} to your cart.")
+    return redirect("user:customer_cart")
+

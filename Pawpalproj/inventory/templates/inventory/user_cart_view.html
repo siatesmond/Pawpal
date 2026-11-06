@@ -1,0 +1,32 @@
+{% extends "inventory/base.html" %} <!-- Or your customer base layout -->
+
+{% block title %}Your Shopping Cart | Pawpal{% endblock %}
+
+{% block content %}
+<div class="cart-container" style="max-width: 800px; margin: 2rem auto; padding: 0 1rem;">
+    <h1>Shopping Cart</h1>
+
+    {% if cart.items.all %}
+        <div class="cart-items-list" style="margin-top: 1.5rem;">
+            {% for item in cart.items.all %}
+                <div class="cart-item-card" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding: 1rem 0;">
+                    <div>
+                        <h3 style="margin: 0; font-size: 1.1rem;">{{ item.product.name }}</h3>
+                        <p style="color: #6b7280; margin: 0.25rem 0 0 0;">Price: SGD {{ item.product.price_dollars }}</p>
+                    </div>
+                    <div>
+                        <span>Qty: {{ item.quantity }}</span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div style="margin-top: 2rem; display: flex; justify-content: space-between; align-items: center;">
+            <h3>Total: SGD</h3>
+        </div>
+    {% else %}
+        <p style="color: #6b7280; margin-top: 2rem;">Your cart is currently empty.</p>
+        <a href="{% url 'inventory:product_list' %}" style="color: #2563eb; text-decoration: underline;">Browse products</a>
+    {% endif %}
+</div>
+{% endblock %}

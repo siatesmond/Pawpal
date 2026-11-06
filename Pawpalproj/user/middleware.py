@@ -4,8 +4,7 @@ from django.shortcuts import redirect
 PROTECTED_PATHS = {
     "/user/home/": ["customer"],
     "/user/pets/": ["customer"],
-    "/inventory/cart/": ["customer"],
-    "/inventory/checkout/": ["customer"],
+    "/user/cart/": ["customer"],
     "/inventory/staff/": ["staff", "owner"],
     "/inventory/stock/": ["staff", "owner"],
     "/service/book/": ["customer"],

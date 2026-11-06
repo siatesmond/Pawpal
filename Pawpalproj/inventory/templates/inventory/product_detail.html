@@ -42,7 +42,8 @@
 
       <p class="product-detail-description">{{ product.description }}</p>
 
-      <form method="post" class="cart-form">
+      <!-- Add to Cart -->
+      <form method="post" action="{% url 'user:customer_add_to_cart' product.id %}" class="cart-form">
         {% csrf_token %}
         <label for="quantity">Quantity</label>
         <input id="quantity" type="number" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}" {% if product.stock_quantity == 0 %}disabled{% endif %}>

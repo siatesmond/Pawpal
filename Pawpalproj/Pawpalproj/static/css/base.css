@@ -39,6 +39,20 @@ main {
   flex: 1;
 }
 
+.site-message {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: #e8f3e8;
+  color: #35613b;
+}
+
+.site-message-error {
+  background: #fbe4e0;
+  color: #9b3d2e;
+}
+
 /* navbar */
 .navbar {
   background: var(--nav-bg);
@@ -251,4 +265,3 @@ main {
   background: #d6d2c8;
   color: #77746a;
 }
-

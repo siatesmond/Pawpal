@@ -30,6 +30,9 @@
   {% if product.stock_quantity == 0 %}
     <button class="cart-btn unavailable" disabled>Unavailable</button>
   {% else %}
-    <button class="cart-btn">Add to cart</button>
+    <form method="post" action="{% url 'user:customer_add_to_cart' product.id %}">
+      {% csrf_token %}
+      <button class="cart-btn" type="submit">Add to cart</button>
+    </form>
   {% endif %}
 </article>

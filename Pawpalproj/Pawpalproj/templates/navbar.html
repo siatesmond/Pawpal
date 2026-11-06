@@ -11,7 +11,7 @@
     <a class="logo" href="/">Pawpal</a>
 
     <div class="nav-buttons">
-      <a href="#">Cart</a>
+      <a href="/user/cart">Cart</a>
       {% if request.session.user_id %}
         {# logged in: read the name we stored in the session at login #}
         {% if request.session.user_type == "customer" %}

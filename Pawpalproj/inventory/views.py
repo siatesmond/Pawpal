@@ -9,9 +9,9 @@ from django.core.paginator import Paginator
 
 from service.models import Booking, BookingUpdate, BookingUpdatePhoto
 
-from user.models import Outlet, Staff
+from user.models import Outlet, Staff, Customer
 
-from .models import Brand, Category, Order, Product
+from .models import Brand, Category, Order, Product, CartItem
 
 from .forms import BookingUpdateForm, StockForm, ProductForm
 

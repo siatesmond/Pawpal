@@ -1,0 +1,47 @@
+{% extends "base.html" %} 
+{% load static %}
+
+{% block title %}Your Shopping Cart | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/cart.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="cart-page">
+    <div class="cart-header">
+        <h1>Shopping Cart</h1>
+        <p>Review and manage your items before you continue shopping.</p>
+    </div>
+
+    {% if cart_items %}
+        <div class="cart-card">
+            {% for item in cart_items %}
+                <article class="cart-item-card">
+                    <div class="cart-item-info">
+                        <h2>{{ item.product.name }}</h2>
+                        <h2>Qty: {{ item.quantity }}</h2>
+                    </div>
+                    <div class="cart-item-summary">
+                        <strong>SGD {{ item.line_total_dollars|floatformat:2 }}</strong>
+                    </div>
+                </article>
+            {% endfor %}
+
+            <div class="cart-total">
+                <span>Total</span>
+                <strong>SGD {{ subtotal_dollars|floatformat:2 }}</strong>
+            </div>
+
+            <a href="{% url 'inventory:product_list' %}" class="continue-shopping-btn">
+                Continue Shopping
+            </a>
+        </div>
+    {% else %}
+        <div class="cart-card cart-empty">
+            <p>Your cart is currently empty.</p>
+            <a href="{% url 'inventory:product_list' %}">Browse products</a>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

@@ -24,6 +24,11 @@
   {% block top_banner %}{% endblock %}
   
   <main class="main">
+    {% if messages %}
+      {% for message in messages %}
+        <div class="site-message site-message-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 

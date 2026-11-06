@@ -152,3 +152,11 @@ class CartItem(models.Model):
 
     def __str__(self):
         return f"{self.product.name} x {self.quantity}"
+
+    @property
+    def line_total_cents(self):
+        return self.product.price_cents * self.quantity
+
+    @property
+    def line_total_dollars(self):
+        return self.line_total_cents / 100
