@@ -1,12 +1,11 @@
 from django import forms
 from django.core.validators import RegexValidator
+from django.db.models import Sum
 
 from core.models import Outlet
 from user.models import Address
 
-from .models import Payment
-
-
+from payment.models import Payment
 class CheckoutForm(forms.Form):
     delivery_method = forms.ChoiceField(
         choices=(
@@ -60,21 +59,37 @@ class CheckoutForm(forms.Form):
         empty_label="Select an outlet",
         label="Pick-up outlet",
     )
+    
+    # Points Redemption Fields
+    use_points = forms.BooleanField(
+        required=False,
+        label="Redeem loyalty points for discount",
+    )
+    points_to_redeem = forms.IntegerField(
+        required=False,
+        min_value=0,
+        label="Points to redeem",
+        widget=forms.NumberInput(attrs={"placeholder": "0", "min": "0"}),
+    )
+
+    # Payment Fields
     payment_method = forms.ChoiceField(
         choices=Payment.Method.choices,
         label="Payment method",
     )
     card_number = forms.CharField(
         label="Card number",
-        max_length=19,
+        max_length=16,
         validators=[
             RegexValidator(
-                regex=r"^\d{13,19}$",
-                message="Enter a card number with 13 to 19 digits.",
+                regex=r"^\d{16}$",
+                message="Enter a valid card number.",
             )
         ],
         widget=forms.TextInput(
-            attrs={"inputmode": "numeric", "autocomplete": "cc-number"}
+            attrs={"inputmode": "numeric", 
+                   "autocomplete": "cc-number",
+                   "placeholder": "1234 5678 9012 3456"}
         ),
     )
     expiry = forms.CharField(
@@ -106,12 +121,34 @@ class CheckoutForm(forms.Form):
 
     def __init__(self, customer, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.customer = customer
         
+        # Calculate current net points balance
+        self.max_points = (
+            customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
+        )
+        
+        # Dynamically update label to show available points balance
+        self.fields["use_points"].label = f"Redeem loyalty points for discount (Available: {self.max_points} pts)"
+        
+        # Disable loyalty point fields if user has no points, otherwise set HTML5 constraints
+        if self.max_points <= 0:
+            self.fields["use_points"].disabled = True
+            self.fields["use_points"].help_text = "You have 0 loyalty points available."
+            self.fields["points_to_redeem"].disabled = True
+            self.fields["points_to_redeem"].widget.attrs["placeholder"] = "0 points available"
+        else:
+            self.fields["points_to_redeem"].max_value = self.max_points
+            self.fields["points_to_redeem"].widget.attrs.update({
+                "max": str(self.max_points),
+                "min": "0",
+                "placeholder": f"Max {self.max_points}",
+            })
+
         # Queryset of customer addresses
         addresses = customer.addresses.all()
         self.fields["delivery_address"].queryset = addresses
 
-        # Change empty_label and disable field if no addresses exist
         if not addresses.exists():
             self.fields["delivery_address"].empty_label = "No saved delivery address"
             self.fields["delivery_address"].widget.attrs["disabled"] = "disabled"
@@ -125,6 +162,7 @@ class CheckoutForm(forms.Form):
         cleaned_data = super().clean()
         method = cleaned_data.get("delivery_method")
 
+        # Delivery / Pickup validation
         if method == "delivery":
             if cleaned_data.get("use_new_address"):
                 if not cleaned_data.get("new_address_label"):
@@ -136,10 +174,24 @@ class CheckoutForm(forms.Form):
                         "new_address_postal_code", "Enter your postal code."
                     )
             else:
-                # Validate delivery_address only if the user has saved addresses to choose from
                 if not cleaned_data.get("delivery_address"):
                     self.add_error("delivery_address", "Select a delivery address or use a new address.")
         elif method == "pickup" and not cleaned_data.get("pickup_outlet"):
             self.add_error("pickup_outlet", "Select a pick-up outlet.")
+
+        # Points Redemption Validation
+        use_points = cleaned_data.get("use_points")
+        points_to_redeem = cleaned_data.get("points_to_redeem") or 0
+
+        if use_points:
+            if self.max_points <= 0:
+                self.add_error("use_points", "You do not have any points available to redeem.")
+            elif points_to_redeem <= 0:
+                self.add_error("points_to_redeem", "Enter a valid number of points to redeem.")
+            elif points_to_redeem > self.max_points:
+                self.add_error(
+                    "points_to_redeem",
+                    f"You only have {self.max_points} points available."
+                )
 
         return cleaned_data

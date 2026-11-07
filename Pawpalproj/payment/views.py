@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from inventory.models import CartItem, Order, OrderItem, Product
 from user.models import Address, Customer
+from .models import Payment, PointsTransaction
 
 from .forms import CheckoutForm
 
@@ -19,7 +20,7 @@ def checkout(request):
 
     customer = get_object_or_404(Customer, pk=request.session["user_id"])
 
-    # Calculate current loyalty points balance for context
+     # Calculate current loyalty points balance for context
     points_balance = customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
 
     if request.method == "POST":
@@ -47,7 +48,25 @@ def checkout(request):
                         break  # Break to re-render form with errors
                 else:
                     # No stock errors, proceed with order and payment creation
+                    #Calculate subtotal and total
                     subtotal_cents = sum(item.product.price_cents * item.quantity for item in cart_items)
+
+                    use_points = form.cleaned_data.get("use_points")
+                    points_to_redeem = form.cleaned_data.get("points_to_redeem") or 0   
+
+                    current_balance = customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
+                    if use_points:
+                        # Ensure points to redeem never exceeds actual available balance
+                        points_to_redeem = min(points_to_redeem, current_balance)
+                    else:
+                        points_to_redeem = 0
+
+                    points_discount_cents = 0
+                    if use_points and points_to_redeem > 0:
+                        raw_discount_cents = points_to_redeem * 1
+                        points_discount_cents = min(raw_discount_cents, subtotal_cents)
+
+                    total_cents = subtotal_cents - points_discount_cents
                     method = form.cleaned_data["delivery_method"]
 
                     delivery_address = None
@@ -91,7 +110,7 @@ def checkout(request):
                         delivery_postal_code=delivery_postal_code,
                         pickup_outlet=form.cleaned_data.get("pickup_outlet") if method == "pickup" else None,
                         subtotal_cents=subtotal_cents,
-                        total_cents=subtotal_cents,
+                        total_cents=total_cents,
                     )
 
                     # Create Order Items and decrease Stock
@@ -108,7 +127,6 @@ def checkout(request):
 
                     # Extract card details 
                     card_num = form.cleaned_data.get("card_number", "")
-                    card_last4 = card_num[-4:] if card_num else ""
 
                     # Create Payment Record
                     payment = Payment.objects.create(
@@ -116,9 +134,30 @@ def checkout(request):
                         order=order,
                         amount_cents=order.total_cents,
                         method=form.cleaned_data["payment_method"],
-                        card_last4=card_last4,
-                        status=Payment.Status.SUCCESS,
+                        card_number=card_num,
+                        status=Payment.Status.COMPLETED,
                     )
+
+                    # 7. Record REDEEMED Points Transaction (Must be negative per check constraint)
+                    if points_discount_cents > 0 and points_to_redeem > 0:
+                        PointsTransaction.objects.create(
+                            customer=customer,
+                            points=-points_to_redeem,
+                            transaction_type=PointsTransaction.Type.REDEEMED,
+                            payment=payment,
+                            reason=f"Redeemed on Order #{order.pk}",
+                        )
+
+                    # 8. Record EARNED Points Transaction (10 points per $1 spent on cash total)
+                    points_earned = (total_cents // 100) * 10
+                    if points_earned > 0:
+                        PointsTransaction.objects.create(
+                            customer=customer,
+                            points=points_earned,
+                            transaction_type=PointsTransaction.Type.EARNED,
+                            payment=payment,
+                            reason=f"Earned from Order #{order.pk}",
+                        )
 
                     # Clear Cart
                     CartItem.objects.filter(customer=customer).delete()
@@ -135,6 +174,8 @@ def checkout(request):
         "cart_items": cart_items,
         "subtotal_dollars": subtotal_cents / 100,
         "points_balance": points_balance,
+        "points_discount_dollars": 0,
+        "points_earned": (subtotal_cents // 100) * 10,
         "total_dollars": subtotal_cents / 100,
     }
     return render(request, "payment/checkout.html", checkout_context)

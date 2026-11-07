@@ -10,3 +10,6 @@ class Outlet(models.Model):
     opening_time = models.DateTimeField()
     closing_time = models.DateTimeField()
     is_active = models.BooleanField()
+
+    def __str__(self):
+        return self.name
