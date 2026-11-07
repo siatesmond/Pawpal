@@ -170,12 +170,16 @@
 
           {# Delivery or pick-up information #}
           <div class="detail-card-row-no-border">
-            {% if selected.delivery_address %}
+            {% if selected.delivery_address or selected.delivery_line1 %}
               <p class="detail-text">
                 <b>Method:</b> Delivery
               </p>
               <p class="detail-text">
-                Deliver to {{ selected.delivery_address }}
+                {% if selected.delivery_address %}
+                  Deliver to {{ selected.delivery_address }}
+                {% else %}
+                  Deliver to {{ selected.delivery_line1 }}{% if selected.delivery_line2 %}, {{ selected.delivery_line2 }}{% endif %}, {{ selected.delivery_postal_code }}
+                {% endif %}
               </p>
             {% elif selected.pickup_outlet %}
               <p class="detail-text">

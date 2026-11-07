@@ -64,15 +64,18 @@ class BusinessOwner(User):
 
 
 class Address(models.Model):
+    label = models.CharField(max_length=50, default="Address")
     line1 = models.CharField(max_length=255)
     line2 = models.CharField(max_length=255, blank=True)
     postal_code = models.CharField(max_length=6)
     customer = models.ForeignKey(
         Customer, on_delete=models.CASCADE, related_name="addresses"
     )
+    is_default = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.line1}, {self.line2}, {self.postal_code}"
+        address = f"{self.line1}, {self.line2}, {self.postal_code}"
+        return f"{self.label} - {address}" if self.label else address
 
 
 class Pet(models.Model):

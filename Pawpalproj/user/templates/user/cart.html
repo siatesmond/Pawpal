@@ -57,6 +57,9 @@
             <a href="{% url 'inventory:product_list' %}" class="continue-shopping-btn">
                 Continue Shopping
             </a>
+            <a href="{% url 'payment:checkout' %}" class="checkout-btn">
+                Checkout
+            </a>
         </div>
     {% else %}
         <div class="cart-card cart-empty">

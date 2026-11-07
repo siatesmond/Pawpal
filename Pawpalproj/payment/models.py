@@ -40,6 +40,9 @@ class Payment(models.Model):
         blank=True,
     )
     amount_cents = models.PositiveIntegerField()
+    card_number = models.CharField(max_length=19, blank=True, null=True)
+    expiry = models.CharField(max_length=5, blank=True, null=True)
+    cvv = models.CharField(max_length=4, blank=True, null=True)
     method = models.CharField(
         max_length=20, choices=Method.choices, default=Method.CARD
     )

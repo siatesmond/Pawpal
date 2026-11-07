@@ -91,6 +91,9 @@ class Order(models.Model):
         blank=True,
         related_name="orders",
     )
+    delivery_line1 = models.CharField(max_length=255, blank=True)
+    delivery_line2 = models.CharField(max_length=255, blank=True)
+    delivery_postal_code = models.CharField(max_length=6, blank=True)
     est_delivery_date = models.DateField(null=True, blank=True)
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING

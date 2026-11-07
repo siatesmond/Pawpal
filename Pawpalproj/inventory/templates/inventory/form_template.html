@@ -1,4 +1,4 @@
-<form method="POST" {% if enctype %}enctype="{{ enctype }}"{% endif %} class="product-form">
+<form method="POST" {% if enctype %}enctype="{{ enctype }}"{% endif %} {% if form_id %}id="{{ form_id }}"{% endif %} class="{{ form_css_class|default:'product-form' }}">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -65,8 +65,10 @@
             Cancel
         </a>
 
-        <button type="submit" class="save-btn">
-            {{ submit_text|default:"Save Changes" }}
-        </button>
+        {% if not hide_submit %}
+            <button type="submit" class="save-btn">
+                {{ submit_text|default:"Save Changes" }}
+            </button>
+        {% endif %}
     </div>
 </form>
