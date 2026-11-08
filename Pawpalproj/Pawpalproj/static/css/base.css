@@ -177,6 +177,27 @@ main {
   text-decoration: none;
 }
 
+.success-title {
+  margin-bottom: 0.5px;
+  color: #333;
+  font-family: "Fraunces", serif;
+}
+
+.success-home-btn {
+  padding: 10px 24px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.15s;
+}
+
+.success-home-btn:hover {
+  background: #3d4b34;
+}
+
 /* product card (shop page and home page) */
 .product-card {
   background: #fff;

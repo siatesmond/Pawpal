@@ -132,6 +132,22 @@
   color: #15803d;
 }
 
+.apply-points-btn {
+  margin-top: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.apply-points-btn:hover {
+  background: #3d4b34;
+}
+
 .checkout-pay-btn {
   width: 100%;
   margin-top: 1.25rem;

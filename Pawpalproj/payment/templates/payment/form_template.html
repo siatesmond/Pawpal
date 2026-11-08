@@ -34,6 +34,12 @@
                     {{ error }}
                 </div>
             {% endfor %}
+
+            {% if field.name == "points_to_redeem" %}
+                <button type="submit" name="action" value="preview_points" class="apply-points-btn" formnovalidate>
+                    Apply points
+                </button>
+            {% endif %}
         </div>
     {% endfor %}
 
