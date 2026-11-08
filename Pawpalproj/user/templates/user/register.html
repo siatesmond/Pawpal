@@ -22,20 +22,7 @@
       <form method="post" class="login-form" novalidate>
         {% csrf_token %}
 
-        <div class="form-grid-2">
-          {% include "user/_field.html" with field=form.first_name %}
-          {% include "user/_field.html" with field=form.last_name %}
-        </div>
-        {% include "user/_field.html" with field=form.username %}
-        {% include "user/_field.html" with field=form.email %}
-        {% include "user/_field.html" with field=form.mobile prefix="+65" %}
-        {% include "user/_field.html" with field=form.password %}
-        {% include "user/_field.html" with field=form.confirm_password %}
-
-        <label class="login-remember terms">
-          {{ form.agree_terms }} I agree to the <a href="#">Terms</a> and <a href="#">Privacy Policy</a>
-        </label>
-        {% if form.agree_terms.errors %}<p class="field-error">{{ form.agree_terms.errors.0 }}</p>{% endif %}
+        {{ form }}
 
         <button type="submit" class="login-btn">Create account</button>
       </form>
