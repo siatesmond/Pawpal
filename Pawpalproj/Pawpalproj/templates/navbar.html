@@ -15,7 +15,7 @@
       {% if request.session.user_id %}
         {# logged in: read the name we stored in the session at login #}
         {% if request.session.user_type == "customer" %}
-          <a href="/user/home">Hi, {{ request.session.username }}</a>
+          <a href="/user/profile/">Hi, {{ request.session.username }}</a>
         {% else %}
           <span>Hi, {{ request.session.username }}</span>
         {% endif %}

@@ -12,8 +12,11 @@ from service.models import Booking
 
 from .forms import (
     ForgotPasswordEmailForm,
+    AddressForm,
     LoginForm,
     OTPForm,
+    PasswordChangeForm,
+    ProfileForm,
     RegisterForm,
     ResetPasswordForm,
 )
@@ -355,6 +358,135 @@ class CustomerHomeView(View):
             "upcoming_bookings": upcoming,
         }
         return render(request, self.template_name, context)
+
+
+class CustomerProfileView(View):
+    template_name = "user/profile.html"
+
+    def get(self, request, *args, **kwargs):
+        # Load the customer who is logged in from the session.
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": ProfileForm(instance=customer),
+                "password_form": PasswordChangeForm(),
+            },
+        )
+
+    def post(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        if request.POST.get("action") == "change_password":
+            password_form = PasswordChangeForm(request.POST)
+            if password_form.is_valid() and check_password(
+                password_form.cleaned_data["current_password"],
+                customer.password,
+            ):
+                customer.password = make_password(
+                    password_form.cleaned_data["new_password"]
+                )
+                customer.save(update_fields=["password"])
+                messages.success(request, "Your password has been updated.")
+                return redirect("user:profile")
+            if password_form.is_valid():
+                password_form.add_error(
+                    "current_password", "Your current password is incorrect."
+                )
+            return render(
+                request,
+                self.template_name,
+                {
+                    "customer": customer,
+                    "form": ProfileForm(instance=customer),
+                    "password_form": password_form,
+                },
+            )
+
+        # Bind the submitted values to the logged-in customer's existing record.
+        form = ProfileForm(request.POST, instance=customer)
+
+        if form.is_valid():
+            # Save the updated profile details.
+            form.save()
+            request.session["username"] = customer.first_name or customer.username
+            messages.success(request, "Your profile has been updated.")
+            return redirect("user:profile")
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": form,
+                "password_form": PasswordChangeForm(),
+            },
+        )
+
+
+class AddAddressView(View):
+    template_name = "user/add_address.html"
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"form": AddressForm()})
+
+    def post(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        form = AddressForm(request.POST)
+
+        if form.is_valid():
+            address = form.save(commit=False)
+            address.customer = customer
+
+            # Only one address can be the default address for this customer.
+            if address.is_default:
+                customer.addresses.update(is_default=False)
+
+            address.save()
+            messages.success(request, "Your address has been added.")
+            return redirect("user:profile")
+
+        return render(request, self.template_name, {"form": form})
+
+
+class EditAddressView(View):
+    template_name = "user/add_address.html"
+
+    def get(self, request, address_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        address = get_object_or_404(
+            customer.addresses,
+            pk=address_id,
+        )
+        return render(
+            request,
+            self.template_name,
+            {"form": AddressForm(instance=address), "edit_mode": True},
+        )
+
+    def post(self, request, address_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        address = get_object_or_404(
+            customer.addresses,
+            pk=address_id,
+        )
+        form = AddressForm(request.POST, instance=address)
+
+        if form.is_valid():
+            updated_address = form.save(commit=False)
+            if updated_address.is_default:
+                customer.addresses.exclude(pk=address.pk).update(is_default=False)
+            updated_address.save()
+            messages.success(request, "Your address has been updated.")
+            return redirect("user:profile")
+
+        return render(
+            request,
+            self.template_name,
+            {"form": form, "edit_mode": True},
+        )
 
 
 def home_for(user_type):

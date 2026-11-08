@@ -1,8 +1,9 @@
 from django import forms
+from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Customer, User
+from .models import Address, Customer, User
 
 
 class LoginForm(forms.Form):
@@ -51,6 +52,57 @@ class RegisterForm(forms.ModelForm):
         if commit:
             customer.save()
         return customer
+
+
+class ProfileForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Email changes require a separate verification flow, so keep it fixed here.
+        self.fields["email"].disabled = True
+        self.fields["email"].help_text = (
+            "To change your email, please contact admin at "
+            f"{settings.ADMIN_CONTACT_EMAIL}."
+        )
+
+    class Meta:
+        model = Customer
+        fields = ["first_name", "last_name", "username", "email", "mobile"]
+
+
+class AddressForm(forms.ModelForm):
+    class Meta:
+        model = Address
+        fields = ["label", "line1", "line2", "postal_code", "is_default"]
+        labels = {
+            "label": "Address name",
+            "line1": "Address line 1",
+            "line2": "Address line 2",
+            "postal_code": "Postal code",
+            "is_default": "Make this my default address",
+        }
+
+
+class PasswordChangeForm(forms.Form):
+    current_password = forms.CharField(
+        label="Current password",
+        widget=forms.PasswordInput,
+    )
+    new_password = forms.CharField(
+        label="New password",
+        min_length=8,
+        widget=forms.PasswordInput,
+    )
+    confirm_password = forms.CharField(
+        label="Confirm new password",
+        min_length=8,
+        widget=forms.PasswordInput,
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("new_password") != cleaned_data.get("confirm_password"):
+            self.add_error("confirm_password", "Passwords do not match.")
+        return cleaned_data
 
 
 class ForgotPasswordEmailForm(forms.Form):
