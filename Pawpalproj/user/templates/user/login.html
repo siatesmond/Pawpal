@@ -18,22 +18,16 @@
       <h1 class="login-title">Welcome back</h1>
       <p class="login-subtitle">Log in to manage your pets, bookings and orders.</p>
 
-      <form method="post" class="login-form" novalidate>
+      <form method="post" class="login-form login-page-form" novalidate>
         {% csrf_token %}
 
-        {% include "user/_field.html" with field=form.email %}
-        {% include "user/_field.html" with field=form.password %}
+        {{ form }}
 
         <div class="login-row">
-          <label class="login-remember">{{ form.remember }} {{ form.remember.label }}</label>
           <a href="/user/forgot-password/" class="login-link-muted">Forgot password?</a>
         </div>
 
         <button type="submit" class="login-btn">Log in</button>
-
-        {% if form.non_field_errors %}
-          <p class="login-error">{{ form.non_field_errors.0 }}</p>
-        {% endif %}
       </form>
 
       <p class="login-new">New to Pawpal? <a href="/user/register">Create an account →</a></p>
