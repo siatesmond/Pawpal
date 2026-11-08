@@ -225,6 +225,11 @@
   background: #fff;
 }
 
+.landing-story > div:first-child {
+  width: min(100%, 600px);
+  justify-self: center;
+}
+
 .landing-story h2,
 .landing-sitting h2 {
   font-size: 32px;
@@ -287,15 +292,38 @@
 }
 
 .landing-sitting > div:last-child {
-  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 48px 64px;
   background: #dce6f1;
 }
 
+.landing-sitting h2 {
+  width: 100%;
+  margin-bottom: 18px;
+  text-align: center;
+}
+
 .landing-sitting ul {
-  padding-left: 18px;
+  width: 100%;
+  max-width: 470px;
+  margin: 0 0 22px;
+  padding: 0;
   color: #596356;
-  font-size: 11px;
-  line-height: 2.2;
+  font-size: 12px;
+  line-height: 1.5;
+  list-style: none;
+  text-align: center;
+}
+
+.landing-sitting li + li {
+  margin-top: 10px;
+}
+
+.landing-sitting .landing-button {
+  width: min(100%, 470px);
 }
 
 @media (max-width: 700px) {
@@ -322,6 +350,10 @@
 
   .landing-hero-copy {
     height: auto;
+    padding: 48px 24px;
+  }
+
+  .landing-sitting > div:last-child {
     padding: 48px 24px;
   }
 
