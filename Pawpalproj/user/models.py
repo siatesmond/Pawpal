@@ -96,6 +96,9 @@ class Pet(models.Model):
         max_digits=5, decimal_places=2, null=True, blank=True
     )
     medical_notes = models.TextField(blank=True)  # allergies, conditions, medication
+    allergies = models.CharField(max_length=255, blank=True)
+    conditions = models.CharField(max_length=255, blank=True)
+    medication = models.CharField(max_length=255, blank=True)
     behaviour_notes = models.TextField(blank=True)  # handling tips, triggers
     last_vaccination_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

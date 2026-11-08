@@ -3,7 +3,7 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import validate_password
 
-from .models import Address, Customer, User
+from .models import Address, Customer, Pet, User
 
 
 class LoginForm(forms.Form):
@@ -80,6 +80,57 @@ class AddressForm(forms.ModelForm):
             "postal_code": "Postal code",
             "is_default": "Make this my default address",
         }
+
+
+class PetForm(forms.ModelForm):
+    class Meta:
+        model = Pet
+        fields = [
+            "name",
+            "breed",
+            "date_of_birth",
+            "weight_kg",
+            "pet_type",
+            "profile_picture",
+            "allergies",
+            "conditions",
+            "medication",
+            "behaviour_notes",
+            "last_vaccination_date",
+        ]
+        labels = {
+            "name": "Name *",
+            "breed": "Breed",
+            "date_of_birth": "Date of birth",
+            "weight_kg": "Weight (kg)",
+            "pet_type": "Species *",
+            "profile_picture": "Pet photo",
+            "allergies": "Allergies",
+            "conditions": "Conditions",
+            "medication": "Medication",
+            "behaviour_notes": "Behaviour notes",
+            "last_vaccination_date": "Last vaccination date",
+        }
+        widgets = {
+            "date_of_birth": forms.DateInput(attrs={"type": "date"}),
+            "last_vaccination_date": forms.DateInput(attrs={"type": "date"}),
+            "allergies": forms.TextInput(attrs={"placeholder": "e.g. chicken"}),
+            "conditions": forms.TextInput(attrs={"placeholder": "e.g. sensitive skin"}),
+            "medication": forms.TextInput(attrs={"placeholder": "e.g. none"}),
+            "behaviour_notes": forms.Textarea(
+                attrs={"placeholder": "e.g. nervous around dryers — use low setting"}
+            ),
+            "weight_kg": forms.NumberInput(attrs={"step": "0.1"}),
+            "profile_picture": forms.FileInput(
+                attrs={"accept": "image/jpeg,image/png,image/webp"}
+            ),
+        }
+
+    def clean_profile_picture(self):
+        image = self.cleaned_data.get("profile_picture")
+        if image and image.size >= 100 * 1024 * 1024:
+            raise forms.ValidationError("The pet image must be 100 MB or smaller.")
+        return image
 
 
 class PasswordChangeForm(forms.Form):

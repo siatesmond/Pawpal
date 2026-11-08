@@ -9,23 +9,7 @@
 
 {% block content %}
 <div class="profile-layout">
-  <aside class="profile-sidebar">
-    <h2>My account</h2>
-    <nav>
-      <a href="#profile" class="profile-active">Profile</a>
-      <a href="/user/home/">My pets</a>
-      <a href="/user/home/">Bookings</a>
-      <a href="/user/home/">Orders</a>
-      <a href="#points">Points &amp; rewards</a>
-      <a href="{% url 'user:logout' %}">Log out</a>
-    </nav>
-
-    <div class="profile-points" id="points">
-      <small>POINTS BALANCE</small>
-      <strong>{{ customer.point_balance }} pts</strong>
-      <span>= SGD {{ customer.point_balance|floatformat:0 }} off your next order</span>
-    </div>
-  </aside>
+  {% include "user/_account_sidebar.html" with active_account_page="profile" %}
 
   <main class="profile-main" id="profile">
     <div class="profile-heading">

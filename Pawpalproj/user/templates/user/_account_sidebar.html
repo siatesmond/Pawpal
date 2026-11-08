@@ -1,0 +1,17 @@
+<aside class="profile-sidebar">
+  <h2>My account</h2>
+  <nav>
+    <a href="{% url 'user:profile' %}" class="{% if active_account_page == 'profile' %}profile-active{% endif %}">Profile</a>
+    <a href="{% url 'user:pets' %}" class="{% if active_account_page == 'pets' %}profile-active{% endif %}">My pets</a>
+    <a href="/user/home/">Bookings</a>
+    <a href="/user/home/">Orders</a>
+    <a href="#points">Points &amp; rewards</a>
+    <a href="{% url 'user:logout' %}">Log out</a>
+  </nav>
+
+  <div class="profile-points" id="points">
+    <small>POINTS BALANCE</small>
+    <strong>{{ customer.point_balance }} pts</strong>
+    <span>= SGD {{ customer.point_balance|floatformat:0 }} off your next order</span>
+  </div>
+</aside>

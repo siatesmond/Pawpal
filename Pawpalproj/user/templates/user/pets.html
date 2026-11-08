@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My pets | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/pets.css' %}" />
+{% endblock %}
+
+{% block content %}
+<div class="profile-layout pets-layout">
+  {% include "user/_account_sidebar.html" with active_account_page="pets" %}
+
+  <main class="profile-main">
+    <div class="profile-heading">
+      <h1>My pets</h1>
+      <a class="profile-button profile-button-honey" href="{% url 'user:add_pet' %}">+ Add a pet</a>
+    </div>
+
+    <div class="pet-card-grid">
+      {% for pet in pets %}
+        <article class="pet-summary-card">
+          {% if pet.profile_picture %}
+            <img class="pet-avatar" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
+          {% else %}
+            <div class="pet-avatar pet-avatar-empty" aria-hidden="true">▧</div>
+          {% endif %}
+          <div class="pet-summary-info">
+            <h2>{{ pet.name }}</h2>
+            <p>{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %}</p>
+            {% if pet.weight_kg %}<span>{{ pet.weight_kg }} kg</span>{% endif %}
+          </div>
+          <div class="pet-summary-actions">
+            <a class="pet-book-button" href="/service/book/">Book</a>
+            <a href="{% url 'user:edit_pet' pet.id %}">Edit profile</a>
+          </div>
+        </article>
+      {% empty %}
+        <p class="section-note">No pets yet. Add your first pet to create a profile.</p>
+      {% endfor %}
+    </div>
+
+    {% if editing_pet %}
+      <section class="profile-panel pet-form-panel" id="pet-form">
+        <h2>Edit pet profile — {{ editing_pet.name }}</h2>
+        <form method="post" enctype="multipart/form-data" class="pet-form">
+          {% csrf_token %}
+          {{ form.non_field_errors }}
+          <div class="pet-form-top">
+            <div class="pet-photo-control">
+              {% if editing_pet.profile_picture %}
+                <img id="pet-photo-preview" class="pet-photo-preview" src="{{ editing_pet.profile_picture.url }}" alt="{{ editing_pet.name }}">
+              {% else %}
+                <div id="pet-photo-preview" class="pet-photo-preview pet-avatar-empty" aria-hidden="true">▧</div>
+              {% endif %}
+              <label for="{{ form.profile_picture.id_for_label }}">Upload photo</label>
+              {{ form.profile_picture }}
+              {{ form.profile_picture.errors }}
+            </div>
+            <div class="pet-form-fields pet-two-column">
+              <div class="pet-field">{{ form.name.label_tag }}{{ form.name }}{{ form.name.errors }}</div>
+              <div class="pet-field">{{ form.breed.label_tag }}{{ form.breed }}{{ form.breed.errors }}</div>
+              <div class="pet-field">{{ form.date_of_birth.label_tag }}{{ form.date_of_birth }}{{ form.date_of_birth.errors }}</div>
+              <div class="pet-field">{{ form.weight_kg.label_tag }}{{ form.weight_kg }}{{ form.weight_kg.errors }}</div>
+              <fieldset class="species-field">
+                <legend>{{ form.pet_type.label }}</legend>
+                <div class="species-options">
+                  <label class="species-option"><input type="radio" name="pet_type" value="DOG" {% if form.pet_type.value == "DOG" %}checked{% endif %}><span>Dog</span></label>
+                  <label class="species-option"><input type="radio" name="pet_type" value="CAT" {% if form.pet_type.value == "CAT" %}checked{% endif %}><span>Cat</span></label>
+                </div>
+                {{ form.pet_type.errors }}
+              </fieldset>
+            </div>
+          </div>
+          <div class="pet-medical-section">
+            <h3>Medical notes</h3>
+            <div class="pet-three-column">
+              <div class="pet-field">{{ form.allergies.label_tag }}{{ form.allergies }}{{ form.allergies.errors }}</div>
+              <div class="pet-field">{{ form.conditions.label_tag }}{{ form.conditions }}{{ form.conditions.errors }}</div>
+              <div class="pet-field">{{ form.medication.label_tag }}{{ form.medication }}{{ form.medication.errors }}</div>
+            </div>
+          </div>
+          <div class="pet-behaviour-section">
+            <h3>Behaviour notes</h3>
+            <div class="pet-field">{{ form.behaviour_notes.label_tag }}{{ form.behaviour_notes }}{{ form.behaviour_notes.errors }}</div>
+          </div>
+          <div class="pet-vaccination-row">
+            <div class="pet-field">{{ form.last_vaccination_date.label_tag }}{{ form.last_vaccination_date }}{{ form.last_vaccination_date.errors }}</div>
+            <p>Needed for daycare &amp; boarding (within 12 months)</p>
+          </div>
+          <div class="pet-form-actions">
+            <button class="profile-button profile-button-dark" type="submit">Save pet</button>
+            <button class="profile-button profile-button-outline pet-delete-button" type="submit" formaction="{% url 'user:delete_pet' editing_pet.id %}" formmethod="post" onclick="return confirm('Delete this pet profile?');">Delete pet</button>
+            <a class="profile-button profile-button-outline" href="{% url 'user:pets' %}">Cancel</a>
+          </div>
+        </form>
+      </section>
+    {% endif %}
+
+  </main>
+</div>
+{% if editing_pet %}
+<script>
+  window.addEventListener("load", function () {
+    const petForm = document.getElementById("pet-form");
+    if (petForm) {
+      requestAnimationFrame(function () {
+        petForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  });
+
+  const petPhotoInput = document.getElementById("{{ form.profile_picture.id_for_label }}");
+  const petPhotoPreview = document.getElementById("pet-photo-preview");
+  petPhotoInput.addEventListener("change", function () {
+    const selectedFile = this.files[0];
+    if (!selectedFile) return;
+    if (selectedFile.size >= 100 * 1024 * 1024) {
+      alert("The pet image must be smaller than 100 MB.");
+      this.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", function () {
+      petPhotoPreview.outerHTML =
+        '<img id="pet-photo-preview" class="pet-photo-preview" src="' +
+        reader.result +
+        '" alt="Selected pet photo">';
+    });
+    reader.readAsDataURL(selectedFile);
+  });
+</script>
+{% endif %}
+{% endblock %}

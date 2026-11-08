@@ -16,12 +16,15 @@ from .forms import (
     LoginForm,
     OTPForm,
     PasswordChangeForm,
+    PetForm,
     ProfileForm,
     RegisterForm,
     ResetPasswordForm,
 )
-from .models import OTP, Customer, User
+from .models import OTP, Customer, Pet, User
 
+
+# USER TYPE AND OTP HELPERS
 
 def get_user_type(user):
     """Which child table this user has a row in (multi-table inheritance)."""
@@ -61,6 +64,8 @@ def send_otp_code(user, purpose):
         fail_silently=False,
     )
 
+
+# LOGIN, REGISTRATION AND OTP VERIFICATION
 
 class LoginView(View):
     form_class = LoginForm
@@ -238,6 +243,8 @@ class ResendOTPView(View):
         return redirect("user:verify_otp")
 
 
+# FORGOT PASSWORD
+
 class ForgotPasswordView(View):
     template_name = "user/forgot_password.html"
 
@@ -328,6 +335,8 @@ class ForgotPasswordView(View):
         return redirect("user:forgot_password")
 
 
+# LOGOUT AND CUSTOMER HOME
+
 class LogoutView(View):
     def get(self, request, *args, **kwargs):
         # clears all session data
@@ -359,6 +368,8 @@ class CustomerHomeView(View):
         }
         return render(request, self.template_name, context)
 
+
+# CUSTOMER PROFILE
 
 class CustomerProfileView(View):
     template_name = "user/profile.html"
@@ -426,6 +437,8 @@ class CustomerProfileView(View):
         )
 
 
+# CUSTOMER ADDRESSES
+
 class AddAddressView(View):
     template_name = "user/add_address.html"
 
@@ -450,6 +463,112 @@ class AddAddressView(View):
 
         return render(request, self.template_name, {"form": form})
 
+
+# CUSTOMER PET PROFILES
+
+class PetListView(View):
+    template_name = "user/pets.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "pets": customer.pets.all().order_by("name"),
+                "active_account_page": "pets",
+            },
+        )
+
+
+class AddPetView(View):
+    template_name = "user/pet_form.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": PetForm(),
+                "active_account_page": "pets",
+            },
+        )
+
+    def post(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        form = PetForm(request.POST, request.FILES)
+        if form.is_valid():
+            pet = form.save(commit=False)
+            pet.owner_id = customer
+            pet.save()
+            messages.success(request, "Your pet has been added.")
+            return redirect("user:pets")
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": form,
+                "active_account_page": "pets",
+            },
+        )
+
+
+class EditPetView(View):
+    template_name = "user/pets.html"
+
+    def get_pet(self, request, pet_id):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        pet = get_object_or_404(Pet, pk=pet_id, owner_id=customer)
+        return customer, pet
+
+    def get(self, request, pet_id, *args, **kwargs):
+        customer, pet = self.get_pet(request, pet_id)
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "pets": customer.pets.all().order_by("name"),
+                "form": PetForm(instance=pet),
+                "editing_pet": pet,
+                "active_account_page": "pets",
+            },
+        )
+
+    def post(self, request, pet_id, *args, **kwargs):
+        customer, pet = self.get_pet(request, pet_id)
+        form = PetForm(request.POST, request.FILES, instance=pet)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your pet profile has been updated.")
+            return redirect("user:pets")
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "pets": customer.pets.all().order_by("name"),
+                "form": form,
+                "editing_pet": pet,
+                "active_account_page": "pets",
+            },
+        )
+
+
+class DeletePetView(View):
+    def post(self, request, pet_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        pet = get_object_or_404(Pet, pk=pet_id, owner_id=customer)
+        pet.delete()
+        messages.success(request, "Your pet has been deleted.")
+        return redirect("user:pets")
+
+
+# ADDRESS EDITING
 
 class EditAddressView(View):
     template_name = "user/add_address.html"
@@ -489,6 +608,8 @@ class EditAddressView(View):
         )
 
 
+# REDIRECT USERS TO THE CORRECT HOME PAGE
+
 def home_for(user_type):
     """Where each type of user lands after logging in."""
     return {
@@ -498,6 +619,8 @@ def home_for(user_type):
         "sitter": "/sitting/jobs/",
     }.get(user_type, "/")
 
+
+# CART
 
 def cart(request):
     customer = get_object_or_404(Customer, pk=request.session.get("user_id"))
@@ -516,7 +639,6 @@ def cart(request):
     )
 
 
-# CART
 # Add a product to the customer's cart
 def add_to_cart(request, product_id):
     # Check if the user is authenticated as customer
