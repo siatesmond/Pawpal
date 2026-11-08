@@ -1,15 +1,98 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Shop | Pawpal{% endblock %}
+{% block title %}Pawpal | Care for every pet{% endblock %}
 
-{% block top_banner %}
-<section class="top-banner">
-  <div class="top-banner-container">
-    <h1>Test</h1>
-  </div>
-</section>
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/landing.css' %}" />
 {% endblock %}
 
 {% block content %}
-  <p>test</p>
+<div class="landing-page">
+  <section class="landing-hero">
+    <div class="landing-hero-copy">
+      <p class="eyebrow">PET CARE OUTLETS ACROSS SINGAPORE</p>
+      <h1>You know your pet.<br>We'll take care of the rest.</h1>
+      <p>Grooming, daycare, boarding and training — book with live availability, pay online and track your pet's care in one account.</p>
+      <div class="landing-actions">
+        <a class="landing-button landing-button-gold" href="{% url 'user:login' %}?guest_notice=1">Book a service</a>
+        <a class="landing-button landing-button-outline" href="{% url 'user:login' %}?guest_notice=1">Shop products</a>
+      </div>
+      <small>* Earn 1 point for every SGD 1 spent</small>
+    </div>
+    <div class="landing-image-placeholder">
+      <img src="{% static 'image/home_banner.jpg' %}" alt="Dog being cared for by Pawpal">
+    </div>
+  </section>
+
+  <section class="landing-section landing-services">
+    <div class="landing-section-heading">
+      <h2>Our services</h2>
+      <p>Choose a service, pick an outlet and see live slots instantly.</p>
+    </div>
+    <div class="landing-service-grid">
+      {% for service in services %}
+        <article class="landing-service-card">
+          <div class="landing-card-image">Photo: {{ service.get_category_display|lower }}</div>
+          <div class="landing-card-content">
+            <h3>{{ service.get_category_display }}</h3>
+            <p>{{ service.description|truncatewords:8 }}</p>
+            <strong>From SGD {{ service.price_cents|floatformat:0 }}</strong>
+            <a href="{% url 'user:login' %}?guest_notice=1" class="landing-small-button">Check availability</a>
+          </div>
+        </article>
+      {% empty %}
+        <p>No services available yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="landing-story">
+    <div>
+      <h2>Pet families choose<br>the trusted Pawpal.</h2>
+      <p>Every booking shows a live status — Checked In, In Progress, Ready for Pick-up — with notes and photos from our staff, so you always know how your pet is doing.</p>
+      <a href="{% url 'user:login' %}?guest_notice=1" class="landing-button landing-button-blue">Get started →</a>
+    </div>
+    <div class="landing-image-placeholder">
+      <img src="{% static 'image/lifestyle_photo.jpg' %}" alt="Happy dog at home">
+    </div>
+  </section>
+
+  <section class="landing-section landing-shop">
+    <div class="landing-section-heading landing-shop-heading">
+      <h2>Shop for your pet</h2>
+      <a href="{% url 'user:login' %}?guest_notice=1">View all products →</a>
+    </div>
+    <div class="landing-product-grid">
+      {% for product in products %}
+        <article class="landing-product-card">
+          <div class="landing-product-image">
+            {% if product.image_url %}<img src="{{ product.image_url.url }}" alt="{{ product.name }}">{% else %}Product photo{% endif %}
+          </div>
+          <small>{{ product.brand.name }}</small>
+          <h3>{{ product.name }}</h3>
+          <p>SGD {{ product.price_dollars|floatformat:2 }}</p>
+          <a href="{% url 'user:login' %}?guest_notice=1" class="landing-button landing-button-outline">Add to cart</a>
+        </article>
+      {% empty %}
+        <p>No products available yet.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="landing-sitting">
+    <div class="landing-image-placeholder">
+      <img src="{% static 'image/pet_sitter.jpg' %}" alt="Pet Sitter">
+    </div>
+    <div>
+      <h2>Pet sitting at home:</h2>
+      <ul>
+        <li>Tell us your dates, location and care needs</li>
+        <li>Choose from recommended, verified sitters</li>
+        <li>Get photo updates while you are away</li>
+      </ul>
+      <a href="{% url 'user:login' %}?guest_notice=1" class="landing-button landing-button-dark">Find a pet sitter →</a>
+    </div>
+  </section>
+</div>
 {% endblock %}

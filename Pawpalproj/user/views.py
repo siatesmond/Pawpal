@@ -75,6 +75,8 @@ class LoginView(View):
         # already logged in -> go straight to the right page
         if "user_id" in request.session:
             return redirect(home_for(request.session.get("user_type")))
+        if request.GET.get("guest_notice") == "1":
+            messages.info(request, "Please log in to view more details.")
         return render(request, self.template_name, {"form": self.form_class()})
 
     def post(self, request, *args, **kwargs):
