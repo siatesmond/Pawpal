@@ -1,0 +1,56 @@
+{% extends "user/owner_base.html" %}
+
+{% block title %}Business owner dashboard | Pawpal{% endblock %}
+
+{% block content %}
+<header class="staff-page-heading">
+  <div>
+    <h1>Good morning, {{ request.session.username }}</h1>
+    <p>Business owner · All outlets</p>
+  </div>
+</header>
+
+<section class="owner-metrics">
+  <article><span>Total revenue</span><strong>SGD {{ revenue|floatformat:2 }}</strong><small>From confirmed and completed orders</small></article>
+  <article><span>Bookings</span><strong>{{ booking_count }}</strong><small>All service bookings</small></article>
+  <article><span>Orders</span><strong>{{ order_count }}</strong><small>Product orders</small></article>
+  <article><span>Customers</span><strong>{{ customer_count }}</strong><small>Registered customers</small></article>
+</section>
+
+<section class="owner-dashboard-grid">
+  <article class="owner-panel">
+    <h2>Recent bookings</h2>
+    {% for booking in recent_bookings %}
+      <div class="owner-row">
+        <span>{{ booking.customer.first_name }} · {{ booking.pet.name }}</span>
+        <span>{{ booking.slot.service.name }}</span>
+        <strong>{{ booking.get_status_display }}</strong>
+      </div>
+    {% empty %}
+      <p class="owner-empty">No bookings yet.</p>
+    {% endfor %}
+  </article>
+
+  <article class="owner-panel">
+    <h2>Low stock alerts</h2>
+    {% for product in low_stock_products %}
+      <div class="owner-row">
+        <span>{{ product.name }}</span>
+        <strong>{{ product.stock_quantity }} left</strong>
+      </div>
+    {% empty %}
+      <p class="owner-empty">No low stock alerts.</p>
+    {% endfor %}
+  </article>
+</section>
+
+<section class="owner-panel">
+  <h2>Manage your business</h2>
+  <div class="owner-quick-links">
+    <a href="{% url 'inventory:staff_bookings' %}">View bookings →</a>
+    <a href="{% url 'inventory:staff_orders_stock' %}">View orders →</a>
+    <a href="{% url 'inventory:staff_products' %}">Manage products →</a>
+    <a href="{% url 'core:owner_customers' %}">View customers →</a>
+  </div>
+</section>
+{% endblock %}

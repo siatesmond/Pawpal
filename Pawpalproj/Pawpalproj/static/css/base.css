@@ -49,8 +49,37 @@ main {
 }
 
 .site-message-error {
+  border: 1px solid #d87b70;
   background: #fbe4e0;
   color: #9b3d2e;
+}
+
+/* Django form errors use this shared alert style across every form. */
+.errorlist,
+.form-error,
+.form-error-summary,
+.form-alert-error {
+  margin: 6px 0;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: #fbe4e0;
+  color: #a9362d;
+  font-size: 11px;
+  line-height: 1.4;
+  list-style: none;
+}
+
+.errorlist {
+  border-left: 3px solid #c84c40;
+}
+
+.errorlist li + li {
+  margin-top: 3px;
+}
+
+.form-error-summary,
+.form-alert-error {
+  border: 1px solid #d87b70;
 }
 
 /* navbar */

@@ -10,8 +10,13 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
+
+import certifi
+
+# Use certifi's trusted certificates for secure connections (Gmail SMTP)
+os.environ["SSL_CERT_FILE"] = certifi.where()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -49,7 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware", # this must be above custom middleware
+    "django.contrib.sessions.middleware.SessionMiddleware",  # this must be above custom middleware
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -133,7 +138,9 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Use Gmail when credentials are set; otherwise print OTPs in the terminal.
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER") or os.getenv("EMAIL_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or os.getenv("EMAIL_PASSWORD", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD") or os.getenv(
+    "EMAIL_PASSWORD", ""
+)
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER or "no-reply@pawpal.local"
 ADMIN_CONTACT_EMAIL = "pawpal.sg.demo@gmail.com"
 

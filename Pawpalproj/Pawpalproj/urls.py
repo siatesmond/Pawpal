@@ -22,12 +22,13 @@ from . import views
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("core/", include("core.urls")),
+    path("core/", include(("core.urls", "core_legacy"), namespace="core_legacy")),
+    path("", include("core.urls")),
     path("user/", include("user.urls")),
     path("payment/", include("payment.urls")),
     # path("review/", include("review.urls")),
     path("service/", include("service.urls")),
-    # path("sitting/", include("sitting.urls")),
+    path("sitting/", include("sitting.urls")),
     path("inventory/", include("inventory.urls")),
     path("", views.index, name="index"),
 ]
