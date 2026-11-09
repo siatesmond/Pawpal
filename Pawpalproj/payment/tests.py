@@ -136,6 +136,8 @@ class CheckoutSuccessTests(TestCase):
         self.assertEqual(redeemed.points, -1000)
         balance = sum(t.points for t in self.customer.points_transactions.all())
         self.assertEqual(balance, 4000)
+        # Shared record_payment() keeps only the last 4 card digits
+        self.assertEqual(redeemed.payment.card_number, "**** 5678")
 
 
 class CheckoutFormPointsTests(TestCase):
@@ -210,3 +212,20 @@ class PreviewPointsTests(TestCase):
             response.content.decode(),
             r'<input type="radio" name="delivery_method" value="pickup"[^>]*checked',
         )
+
+
+class PaymentDetailsFormTests(TestCase):
+    def test_expired_card_is_rejected(self):
+        from payment.forms import PaymentDetailsForm
+
+        customer = Customer.objects.create(
+            username="carduser", email="card@example.com", password="password"
+        )
+        form = PaymentDetailsForm(
+            customer,
+            {"payment_method": "CARD", "card_number": "1234567812345678",
+             "expiry": "01/20", "cvv": "123"},
+            points_balance=0,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("This card has expired.", form.errors["expiry"])

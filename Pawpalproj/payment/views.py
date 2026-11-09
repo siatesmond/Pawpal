@@ -1,21 +1,20 @@
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
-from inventory.models import CartItem, Order, OrderItem, Product
+from inventory.models import CartItem, Order, OrderItem
 from user.models import Address, Customer
-from .models import Payment, PointsTransaction
 
 from .forms import CheckoutForm
+from .services import (
+    bind_checkout_form,
+    calculate_points_discount,
+    checkout_totals,
+    get_points_balance,
+    record_payment,
+)
 
-
-def calculate_points_discount(subtotal_cents, points_to_redeem, points_balance):
-    if points_to_redeem <= 0:
-        return 0
-    return min(points_to_redeem, points_balance, subtotal_cents)
-
-
+# Checkout for the products shopping cart
 def checkout(request):
     if (
         "user_id" not in request.session
@@ -25,185 +24,114 @@ def checkout(request):
         return redirect("user:login")
 
     customer = get_object_or_404(Customer, pk=request.session["user_id"])
+    points_balance = get_points_balance(customer)
+    form, preview_points = bind_checkout_form(request, CheckoutForm, customer, points_balance)
 
-     # Calculate current loyalty points balance for context
-    points_balance = customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
-
-    if request.method == "POST":
-        if request.POST.get("action") == "preview_points":
-            # Unbound form pre-filled with the user's input, so previewing points
-            # doesn't trigger validation errors for fields not filled in yet.
-            form = CheckoutForm(
-                customer,
-                initial=request.POST.dict(),
-                points_balance=points_balance,
+    # preview_points is None only for "Place order"
+    if preview_points is None and form.is_valid():
+        with transaction.atomic():
+            # Lock the cart rows while the order is created
+            cart_items = list(
+                CartItem.objects.select_for_update()
+                .select_related("product")
+                .filter(customer=customer)
             )
-            try:
-                preview_points = int(request.POST.get("points_to_redeem") or 0)
-            except (TypeError, ValueError):
-                preview_points = 0
-        else:
-            form = CheckoutForm(customer, request.POST, points_balance=points_balance)
+            if not cart_items:
+                messages.error(request, "Your cart is empty.")
+                return redirect("user:customer_cart")
 
-            if form.is_valid():
-                with transaction.atomic():
-                    # Fetch cart items with locks only when processing POST
-                    cart_items = list(
-                        CartItem.objects.select_for_update()
-                        .select_related("product")
-                        .filter(customer=customer)
-                    )
+            short = next((i for i in cart_items if i.quantity > i.product.stock_quantity), None)
+            if short:
+                form.add_error(
+                    None,
+                    f"Stock for {short.product.name} is insufficient, please reduce the quantity.",
+                )
+            else:
+                order = _create_order(customer, form, cart_items)
+                record_payment(
+                    customer, form,
+                    amount_cents=order.total_cents,
+                    points_redeemed=order.points_discount_cents,
+                    label=f"Order #{order.pk}",
+                    order=order,
+                )
+                CartItem.objects.filter(customer=customer).delete()
+                request.session["checkout_order_id"] = order.pk
+                return redirect("payment:checkout_success")
 
-                    if not cart_items:
-                        messages.error(request, "Your cart is empty.")
-                        return redirect("user:customer_cart")
-
-                    # Validate stock levels
-                    for item in cart_items:
-                        if item.quantity > item.product.stock_quantity:
-                            form.add_error(
-                                None,
-                                f"Stock for {item.product.name} is insufficient, please reduce the quantity.",
-                            )
-                            break  # Break to re-render form with errors
-                    else:
-                        # No stock errors, proceed with order and payment creation
-                        #Calculate subtotal and total
-                        subtotal_cents = sum(item.product.price_cents * item.quantity for item in cart_items)
-
-                        points_to_redeem = form.cleaned_data.get("points_to_redeem") or 0   
-
-                        current_balance = customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
-                        points_discount_cents = calculate_points_discount(
-                            subtotal_cents,
-                            points_to_redeem,
-                            current_balance,
-                        )
-
-                        total_cents = subtotal_cents - points_discount_cents
-                        method = form.cleaned_data["delivery_method"]
-
-                        delivery_address = None
-                        delivery_line1 = ""
-                        delivery_line2 = ""
-                        delivery_postal_code = ""
-
-                        if method == "delivery":
-                            if form.cleaned_data.get("use_new_address"):
-                                delivery_line1 = form.cleaned_data["new_address_line1"]
-                                delivery_line2 = form.cleaned_data.get("new_address_line2", "")
-                                delivery_postal_code = form.cleaned_data["new_address_postal_code"]
-
-                                # Save the new address to user profile if checked
-                                if form.cleaned_data.get("save_address"):
-                                    if form.cleaned_data.get("new_address_is_default"):
-                                        customer.addresses.update(is_default=False)
-
-                                    delivery_address = Address.objects.create(
-                                        customer=customer,
-                                        label=form.cleaned_data["new_address_label"],
-                                        line1=delivery_line1,
-                                        line2=delivery_line2,
-                                        postal_code=delivery_postal_code,
-                                        is_default=form.cleaned_data.get("new_address_is_default", False),
-                                    )
-                            else:
-                                # Use selected saved address as delivery address in order table
-                                delivery_address = form.cleaned_data.get("delivery_address")
-                                if delivery_address:
-                                    delivery_line1 = delivery_address.line1
-                                    delivery_line2 = delivery_address.line2 or ""
-                                    delivery_postal_code = delivery_address.postal_code
-
-                        # Create Order
-                        order = Order.objects.create(
-                            customer=customer,
-                            delivery_address=delivery_address if method == "delivery" else None,
-                            delivery_line1=delivery_line1,
-                            delivery_line2=delivery_line2,
-                            delivery_postal_code=delivery_postal_code,
-                            pickup_outlet=form.cleaned_data.get("pickup_outlet") if method == "pickup" else None,
-                            subtotal_cents=subtotal_cents,
-                            points_discount_cents=points_discount_cents,
-                            total_cents=total_cents,
-                        )
-
-                        # Create Order Items and decrease Stock
-                        for item in cart_items:
-                            product = item.product
-                            OrderItem.objects.create(
-                                order=order,
-                                product=product,
-                                quantity=item.quantity,
-                                unit_price_cents=product.price_cents,
-                            )
-                            product.stock_quantity -= item.quantity
-                            product.save(update_fields=["stock_quantity"])
-
-                        # Extract card details 
-                        card_num = form.cleaned_data.get("card_number", "")
-
-                        # Create Payment Record
-                        payment = Payment.objects.create(
-                            customer=customer,
-                            order=order,
-                            amount_cents=order.total_cents,
-                            method=form.cleaned_data["payment_method"],
-                            card_number=card_num,
-                            status=Payment.Status.COMPLETED,
-                        )
-
-                        # Record REDEEMED Points Transaction (Must be negative per check constraint)
-                        # Only deduct the points actually used (discount is capped at the subtotal)
-                        if points_discount_cents > 0:
-                            PointsTransaction.objects.create(
-                                customer=customer,
-                                points=-points_discount_cents,
-                                transaction_type=PointsTransaction.Type.REDEEMED,
-                                payment=payment,
-                                reason=f"Redeemed on Order #{order.pk}",
-                            )
-
-                        # Record EARNED Points Transaction (10 points per $1 spent on total)
-                        points_earned = (total_cents // 100) * 10
-                        if points_earned > 0:
-                            PointsTransaction.objects.create(
-                                customer=customer,
-                                points=points_earned,
-                                transaction_type=PointsTransaction.Type.EARNED,
-                                payment=payment,
-                                reason=f"Earned from Order #{order.pk}",
-                            )
-
-                        # Clear Cart
-                        CartItem.objects.filter(customer=customer).delete()
-                        request.session["checkout_order_id"] = order.pk
-                        return redirect("payment:checkout_success")
-    else:
-        form = CheckoutForm(customer, points_balance=points_balance)
-
-    # Context for GET or failed POST validation
+    # GET, "Apply points", or a failed "Place order"
     cart_items = list(CartItem.objects.select_related("product").filter(customer=customer))
     subtotal_cents = sum(item.product.price_cents * item.quantity for item in cart_items)
-    if request.method == "POST" and request.POST.get("action") == "preview_points":
-        points_discount_cents = calculate_points_discount(
-            subtotal_cents,
-            preview_points,
-            points_balance,
-        )
-    else:
-        points_discount_cents = 0
+    discount_cents = calculate_points_discount(subtotal_cents, preview_points, points_balance)
 
-    checkout_context = {
+    return render(request, "payment/checkout.html", {
         "form": form,
         "cart_items": cart_items,
-        "subtotal_dollars": subtotal_cents / 100,
         "points_balance": points_balance,
-        "points_discount_dollars": points_discount_cents / 100,
-        "points_earned": (subtotal_cents // 100) * 10,
-        "total_dollars": (subtotal_cents - points_discount_cents) / 100,
-    }
-    return render(request, "payment/checkout.html", checkout_context)
+        **checkout_totals(subtotal_cents, discount_cents),
+    })
+
+# Create and save an order from the cart items and the checkout form
+def _create_order(customer, form, cart_items):
+    data = form.cleaned_data
+    subtotal_cents = sum(item.product.price_cents * item.quantity for item in cart_items)
+
+    # Re-check the balance inside the transaction so points can't be spent twice
+    discount_cents = calculate_points_discount(
+        subtotal_cents, data.get("points_to_redeem") or 0, get_points_balance(customer)
+    )
+
+    method = data["delivery_method"]
+    delivery_address = None
+    line1 = line2 = postal_code = ""
+    if method == "delivery":
+        if data.get("use_new_address"):
+            line1 = data["new_address_line1"]
+            line2 = data.get("new_address_line2", "")
+            postal_code = data["new_address_postal_code"]
+
+            # Save the new address to the profile if chosen, 
+            # and set it as default if selected
+            if data.get("save_address"):
+                if data.get("new_address_is_default"):
+                    customer.addresses.update(is_default=False)
+                delivery_address = Address.objects.create(
+                    customer=customer,
+                    label=data["new_address_label"],
+                    line1=line1,
+                    line2=line2,
+                    postal_code=postal_code,
+                    is_default=data.get("new_address_is_default", False),
+                )
+        else:
+            delivery_address = data.get("delivery_address")
+            if delivery_address:
+                line1 = delivery_address.line1
+                line2 = delivery_address.line2 or ""
+                postal_code = delivery_address.postal_code
+
+    order = Order.objects.create(
+        customer=customer,
+        delivery_address=delivery_address,
+        delivery_line1=line1,
+        delivery_line2=line2,
+        delivery_postal_code=postal_code,
+        pickup_outlet=data.get("pickup_outlet") if method == "pickup" else None,
+        subtotal_cents=subtotal_cents,
+        points_discount_cents=discount_cents,
+        total_cents=subtotal_cents - discount_cents,
+    )
+
+    for item in cart_items:
+        OrderItem.objects.create(
+            order=order,
+            product=item.product,
+            quantity=item.quantity,
+            unit_price_cents=item.product.price_cents,
+        )
+        item.product.stock_quantity -= item.quantity
+        item.product.save(update_fields=["stock_quantity"]) # Update stock quantity after order is placed
+    return order
 
 
 def checkout_success(request):
