@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Application status | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="sitter-status-banner">✓ Email verified — your application has been sent to the Pawpal team.</div>
+<section class="status-layout">
+  <div>
+    <h1>Hi {{ sitter.first_name }}, your application is {{ sitter.get_application_status_display|lower }}</h1>
+    {% if sitter.application_status == "APPROVED" %}
+      <p>You can now accept pet-sitting jobs from Pawpal customers.</p>
+    {% elif sitter.application_status == "REJECTED" %}
+      <p>Please update your application and resubmit it for review.</p>
+    {% else %}
+      <p>You can't accept jobs yet. We'll email you as soon as the business owner approves your profile — usually within 2–3 working days.</p>
+    {% endif %}
+
+    <div class="sitter-card status-card">
+      <div class="status-heading"><h2>Application status</h2><span class="status-pill status-{{ sitter.application_status|lower }}">{{ sitter.get_application_status_display }}</span></div>
+      <ol class="status-timeline">
+        <li class="complete"><strong>Account created &amp; application submitted</strong><small>{{ sitter.applied_at|date:"j M Y, g:i a" }}</small></li>
+        <li class="complete"><strong>Email verified</strong><small>Verification complete</small></li>
+        <li class="{% if sitter.application_status == 'PENDING' %}current{% elif sitter.application_status == 'APPROVED' or sitter.application_status == 'REJECTED' %}complete{% endif %}"><strong>Under review by Pawpal</strong><small>Business owner review</small></li>
+        <li class="{% if sitter.application_status == 'APPROVED' %}complete{% endif %}"><strong>Approved — start accepting jobs</strong></li>
+      </ol>
+    </div>
+
+    {% if sitter.application_status == "REJECTED" %}
+      <div class="rejection-card">
+        <span class="status-pill status-rejected">Rejected</span>
+        <p>Reason from Pawpal</p>
+        <blockquote>{{ sitter.rejection_reason|default:"Your ID document is blurry — please upload a clearer photo." }}</blockquote>
+        <a href="{% url 'sitting:signup' %}" class="sitter-button">Update &amp; resubmit</a>
+        <a href="mailto:pawpal.sg.demo@gmail.com" class="sitter-outline-button">Contact support</a>
+      </div>
+    {% endif %}
+  </div>
+
+  <aside class="sitter-card sitter-summary">
+    <h2>{{ sitter.first_name }} {{ sitter.last_name }}</h2>
+    <p>{{ sitter.email }}</p>
+    <dl>
+      <dt>Service area</dt><dd>{{ sitter.service_area }}</dd>
+      <dt>Experience</dt><dd>{{ sitter.experience_years }} yrs · {{ sitter.pet_experience|lower }}</dd>
+      <dt>Daily rate</dt><dd>SGD {{ sitter.daily_rate_display }}</dd>
+      <dt>ID document</dt><dd>Uploaded ✓</dd>
+    </dl>
+    <a href="{% url 'sitting:signup' %}">Edit application →</a>
+  </aside>
+</section>
+{% endblock %}

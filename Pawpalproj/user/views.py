@@ -187,6 +187,8 @@ class VerifyOTPView(View):
                     request.session["user_id"] = user.pk
                     request.session["user_type"] = get_user_type(user)
                     request.session["username"] = user.first_name or user.username
+                    if request.session["user_type"] == "sitter":
+                        return redirect("sitting:application_status")
                     return redirect(home_for(request.session["user_type"]))
 
                 # A password-reset OTP leads to the change-password page.
@@ -618,7 +620,7 @@ def home_for(user_type):
         "customer": "/user/home/",
         "staff": "/admin-panel/",
         "owner": "/admin-panel/",
-        "sitter": "/sitting/jobs/",
+        "sitter": "/sitting/application/",
     }.get(user_type, "/")
 
 
