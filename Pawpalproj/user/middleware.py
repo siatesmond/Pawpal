@@ -7,6 +7,7 @@ PROTECTED_PATHS = {
     "/user/profile/address/": ["customer"],
     "/user/pets/": ["customer"],
     "/user/bookings/": ["customer"],
+    "/user/orders/": ["customer"],
     "/user/cart/": ["customer"],
     "/inventory/staff/": ["staff", "owner"],
     "/inventory/stock/": ["staff", "owner"],

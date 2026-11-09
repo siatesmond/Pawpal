@@ -42,6 +42,17 @@ def checkout_totals(subtotal_cents, points_discount_cents=0):
         "points_earned": points_earned(total_cents),
     }
 
+# Payment summary for booking/order detail pages in profile
+def payment_summary(record, subtotal_cents):
+    return {
+        "subtotal_dollars": subtotal_cents / 100,
+        "discount_dollars": record.points_discount_cents / 100,
+        "points_used": record.points_discount_cents,  # 1 point = 1 cent
+        "total_dollars": record.total_cents / 100,
+        "points_earned": points_earned(record.total_cents),
+        "payment": record.payments.order_by("-created_at").first(),  # latest payment
+    }
+
 # Builds checkout form, called by both shop and service-booking checkouts
 # Returns (form, preview_points).
 def bind_checkout_form(request, form_class, customer, points_balance, **form_kwargs):

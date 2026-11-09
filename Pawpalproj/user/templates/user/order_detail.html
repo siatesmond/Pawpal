@@ -1,0 +1,72 @@
+{% extends "user/account_detail_base.html" %}
+{% load static %}
+
+{% block title %}Order #{{ order.pk }} | Pawpal{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'user/css/order_detail.css' %}" />
+{% endblock %}
+
+{% block back_link %}
+<a class="record-back-link" href="{% url 'user:orders' %}">‹ Back to my orders</a>
+{% endblock %}
+
+{% block heading %}Order #{{ order.pk }}{% endblock %}
+{% block subtitle %}Placed on {{ order.created_at|date:"j M Y, g:i A" }}{% endblock %}
+{% block status %}
+<span class="record-status record-status-{{ order.status|lower }}">{{ order.get_status_display }}</span>
+{% endblock %}
+
+{% block sections %}
+    <!-- Products in this order -->
+    <section class="profile-panel">
+      <h2>Items</h2>
+      <ul class="order-items">
+        {% for item in items %}
+          <li class="order-item">
+            {% if item.product.image_url %}
+              <img src="{{ item.product.image_url.url }}" alt="{{ item.product.name }}">
+            {% else %}
+              <div class="order-item-placeholder" aria-hidden="true">{{ item.product.name|first }}</div>
+            {% endif %}
+            <div class="order-item-info">
+              <strong>{{ item.product.name }}</strong>
+              <small>{{ item.quantity }} × SGD {{ item.unit_price_dollars|floatformat:2 }}</small>
+            </div>
+            <strong class="order-item-total">SGD {{ item.line_total_dollars|floatformat:2 }}</strong>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <!-- Delivery or pick-up information -->
+    <section class="profile-panel">
+      <h2>{% if order.pickup_outlet %}Pick-up{% else %}Delivery{% endif %}</h2>
+      <dl class="detail-list">
+        {% if order.pickup_outlet %}
+          <div>
+            <dt>Pick-up outlet</dt>
+            <dd>{{ order.pickup_outlet.name }}{% if order.pickup_outlet.address %}<br><small>{{ order.pickup_outlet.address }}</small>{% endif %}</dd>
+          </div>
+        {% else %}
+          <div>
+            <dt>Deliver to</dt>
+            <dd>
+              {{ order.delivery_line1 }}{% if order.delivery_line2 %}<br>{{ order.delivery_line2 }}{% endif %}
+              {% if order.delivery_postal_code %}<br>Singapore {{ order.delivery_postal_code }}{% endif %}
+            </dd>
+          </div>
+          {% if order.est_delivery_date %}
+            <div>
+              <dt>Estimated delivery</dt>
+              <dd>{{ order.est_delivery_date|date:"D, j M Y" }}</dd>
+            </div>
+          {% endif %}
+        {% endif %}
+      </dl>
+    </section>
+
+    <!-- Payment summary -->
+    {% include "user/_payment_summary.html" %}
+{% endblock %}

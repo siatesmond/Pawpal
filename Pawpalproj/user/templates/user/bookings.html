@@ -1,48 +1,25 @@
-{% extends "base.html" %}
-{% load static tz %}
+{% extends "user/account_list_base.html" %}
 
 {% block title %}My bookings | Pawpal{% endblock %}
+{% block heading %}My bookings{% endblock %}
 
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
-<link rel="stylesheet" href="{% static 'user/css/pets.css' %}" />
-<link rel="stylesheet" href="{% static 'user/css/bookings.css' %}" />
+{% block action %}
+<a class="profile-button profile-button-honey" href="{% url 'service:book' %}">+ Book a service</a>
 {% endblock %}
 
-{% block content %}
-{# TIME_ZONE in settings is UTC, so show booking times in Singapore time #}
-{% timezone "Asia/Singapore" %}
-<div class="profile-layout">
-  {% include "user/_account_sidebar.html" with active_account_page="bookings" %}
+{% block current_title %}Current &amp; upcoming{% endblock %}
+{% block current_rows %}
+  {% for booking in upcoming_bookings %}
+    {% include "user/_booking_row.html" %}
+  {% empty %}
+    <p class="section-note">No upcoming bookings. Book a grooming, daycare or boarding session for your pet.</p>
+  {% endfor %}
+{% endblock %}
 
-  <main class="profile-main">
-    <div class="profile-heading">
-      <h1>My bookings</h1>
-      <a class="profile-button profile-button-honey" href="{% url 'service:book' %}">+ Book a service</a>
-    </div>
-
-    <section class="profile-panel">
-      <h2>Current &amp; upcoming</h2>
-      <div class="booking-list">
-        {% for booking in upcoming_bookings %}
-          {% include "user/_booking_row.html" %}
-        {% empty %}
-          <p class="section-note">No upcoming bookings. Book a grooming, daycare or boarding session for your pet.</p>
-        {% endfor %}
-      </div>
-    </section>
-
-    <section class="profile-panel">
-      <h2>Past &amp; cancelled</h2>
-      <div class="booking-list">
-        {% for booking in past_bookings %}
-          {% include "user/_booking_row.html" %}
-        {% empty %}
-          <p class="section-note">Your completed and cancelled bookings will show here.</p>
-        {% endfor %}
-      </div>
-    </section>
-  </main>
-</div>
-{% endtimezone %}
+{% block past_rows %}
+  {% for booking in past_bookings %}
+    {% include "user/_booking_row.html" %}
+  {% empty %}
+    <p class="section-note">Your completed and cancelled bookings will show here.</p>
+  {% endfor %}
 {% endblock %}

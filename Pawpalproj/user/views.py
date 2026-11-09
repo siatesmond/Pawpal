@@ -8,8 +8,8 @@ from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
-from inventory.models import CartItem, Product
-from payment.services import points_earned
+from inventory.models import CartItem, Order, Product
+from payment.services import payment_summary
 from service.models import Booking
 
 from .forms import (
@@ -371,7 +371,7 @@ class CustomerHomeView(View):
 
 # CUSTOMER PROFILE
 
-# used in BookingListView to filter bookings into current/upcoming vs past
+# used in BookingListView to filter bookings into current/upcoming, ignoring past bookings
 # used in CustomerHomeView to filter upcoming bookings for the dashboard
 def _current_bookings():
     return Q(status__in=Booking.IN_CARE_STATUSES) | Q(
@@ -514,9 +514,6 @@ class BookingDetailView(View):
             pk=booking_id,
             customer=customer,
         )
-        # Get the most recent payment for this booking
-        payment = booking.payments.order_by("-created_at").first()
-
         # Booking updates, with staff and photos prefetched (newest first)
         updates = (
             booking.updates.select_related("staff")
@@ -530,15 +527,70 @@ class BookingDetailView(View):
             {
                 "customer": customer,
                 "booking": booking,
-                "payment": payment,
                 "updates": updates,
-                "price_dollars": booking.price_cents / 100,
-                "discount_dollars": booking.points_discount_cents / 100,
-                "total_dollars": booking.total_cents / 100,
-                "points_earned": points_earned(booking.total_cents),
+                **payment_summary(booking, booking.price_cents), #helper function in services.py to calculate
                 "active_account_page": "bookings",
             },
         )
+
+# CustomerOrders
+class OrderListView(View):
+
+    template_name = "user/orders.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        orders = (
+            Order.objects.filter(customer=customer)
+            .select_related("pickup_outlet")
+            .prefetch_related("items__product")
+            .order_by("-created_at")
+        )
+        current_statuses = [Order.Status.PENDING, Order.Status.CONFIRMED]
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "current_orders": orders.filter(status__in=current_statuses),
+                "past_orders": orders.exclude(status__in=current_statuses),
+                "active_account_page": "orders",
+            },
+        )
+
+
+class OrderDetailView(View):
+
+    template_name = "user/order_detail.html"
+
+    def get(self, request, order_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        order = get_object_or_404(
+            Order.objects.select_related("pickup_outlet", "delivery_address"),
+            pk=order_id,
+            customer=customer,
+        )
+        items = list(order.items.select_related("product"))
+        for item in items:
+            item.unit_price_dollars = item.unit_price_cents / 100
+            item.line_total_dollars = item.unit_price_cents * item.quantity / 100
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "order": order,
+                "items": items,
+                "delivery_fee_dollars": order.delivery_fee_cents / 100,
+                **payment_summary(order, order.subtotal_cents), #helper function in services.py to calculate
+                "active_account_page": "orders",
+            },
+        )
+
 
 class PetListView(View):
     template_name = "user/pets.html"

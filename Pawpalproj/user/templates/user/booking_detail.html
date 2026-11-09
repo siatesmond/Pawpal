@@ -1,31 +1,24 @@
-{% extends "base.html" %}
-{% load static tz %}
+{% extends "user/account_detail_base.html" %}
+{% load static %}
 
 {% block title %}Booking #{{ booking.pk }} | Pawpal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
-<link rel="stylesheet" href="{% static 'user/css/bookings.css' %}" />
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'user/css/booking_detail.css' %}" />
 {% endblock %}
 
-{% block content %}
-{# TIME_ZONE in settings is UTC, so show booking times in Singapore time #}
-{% timezone "Asia/Singapore" %}
-<div class="profile-layout">
-  {% include "user/_account_sidebar.html" with active_account_page="bookings" %}
+{% block back_link %}
+<a class="record-back-link" href="{% url 'user:bookings' %}">‹ Back to my bookings</a>
+{% endblock %}
 
-  <!-- Back to bookings button -->
-  <main class="profile-main">
-    <a class="booking-back-link" href="{% url 'user:bookings' %}">‹ Back to my bookings</a>
+{% block heading %}{{ booking.slot.service.name }}{% endblock %}
+{% block subtitle %}Booking #{{ booking.pk }} · booked on {{ booking.created_at|date:"j M Y" }}{% endblock %}
+{% block status %}
+<span class="record-status record-status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
+{% endblock %}
 
-    <div class="profile-heading">
-      <div>
-        <h1>{{ booking.slot.service.name }}</h1>
-        <p>Booking #{{ booking.pk }} · booked on {{ booking.created_at|date:"j M Y" }}</p>
-      </div>
-      <span class="booking-status booking-status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
-    </div>
-
+{% block sections %}
     <!-- Updates posted by staff, newest first -->
     <section class="profile-panel">
       <h2>Updates from our team</h2>
@@ -34,7 +27,7 @@
           {% for update in updates %}
             <li class="update-item">
               <div class="update-head">
-                <span class="booking-status booking-status-{{ update.new_status|lower }}">{{ update.get_new_status_display }}</span>
+                <span class="record-status record-status-{{ update.new_status|lower }}">{{ update.get_new_status_display }}</span>
                 <time datetime="{{ update.created_at|date:'c' }}">{{ update.created_at|date:"D, j M · g:i A" }}</time>
               </div>
               {% if update.note %}<p class="update-note">{{ update.note }}</p>{% endif %}
@@ -99,36 +92,7 @@
         {% endif %}
       </dl>
     </section>
-
-    <!-- Payment information -->
-    <section class="profile-panel">
-      <h2>Payment</h2>
-      <dl class="detail-list">
-        <div>
-          <dt>Price</dt>
-          <dd>SGD {{ price_dollars|floatformat:2 }}</dd>
-        </div>
-        <div>
-          <dt>Points discount</dt>
-          <dd>{% if booking.points_discount_cents %}− SGD {{ discount_dollars|floatformat:2 }} <small>({{ booking.points_discount_cents }} pts)</small>{% else %}SGD 0.00{% endif %}</dd>
-        </div>
-        <div class="detail-total">
-          <dt>Total paid</dt>
-          <dd>SGD {{ total_dollars|floatformat:2 }}</dd>
-        </div>
-        {% if payment %}
-          <div>
-            <dt>Paid by</dt>
-            <dd>{{ payment.get_method_display }}{% if payment.card_number %} {{ payment.card_number }}{% endif %}</dd>
-          </div>
-        {% endif %}
-        <div>
-          <dt>Points earned</dt>
-          <dd>{{ points_earned }} pts</dd>
-        </div>
-      </dl>
-    </section>
-  </main>
-</div>
-{% endtimezone %}
+    
+    <!-- Payment summary -->
+    {% include "user/_payment_summary.html" with subtotal_label="Price" %}
 {% endblock %}

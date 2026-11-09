@@ -1,0 +1,25 @@
+{% extends "user/account_list_base.html" %}
+
+{% block title %}My orders | Pawpal{% endblock %}
+{% block heading %}My orders{% endblock %}
+
+{% block action %}
+<a class="profile-button profile-button-honey" href="{% url 'inventory:product_list' %}">+ Shop products</a>
+{% endblock %}
+
+{% block current_title %}Current orders{% endblock %}
+{% block current_rows %}
+  {% for order in current_orders %}
+    {% include "user/_order_row.html" %}
+  {% empty %}
+    <p class="section-note">No orders in progress. Browse the shop to pick up treats, food and toys for your pet.</p>
+  {% endfor %}
+{% endblock %}
+
+{% block past_rows %}
+  {% for order in past_orders %}
+    {% include "user/_order_row.html" %}
+  {% empty %}
+    <p class="section-note">Your completed and cancelled orders will show here.</p>
+  {% endfor %}
+{% endblock %}

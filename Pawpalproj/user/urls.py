@@ -3,6 +3,8 @@ from django.urls import path
 from .views import (
     BookingDetailView,
     BookingListView,
+    OrderDetailView,
+    OrderListView,
     CustomerHomeView,
     ForgotPasswordView,
     LoginView,
@@ -40,6 +42,8 @@ urlpatterns = [
     ),
     path("bookings/", BookingListView.as_view(), name="bookings"),
     path("bookings/<int:booking_id>/", BookingDetailView.as_view(), name="booking_detail"),
+    path("orders/", OrderListView.as_view(), name="orders"),
+    path("orders/<int:order_id>/", OrderDetailView.as_view(), name="order_detail"),
     path("pets/", PetListView.as_view(), name="pets"),
     path("pets/add/", AddPetView.as_view(), name="add_pet"),
     path("pets/<int:pet_id>/edit/", EditPetView.as_view(), name="edit_pet"),
