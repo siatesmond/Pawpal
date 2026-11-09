@@ -1,0 +1,27 @@
+{% extends "user/owner_base.html" %}
+
+{% block title %}{{ page_title }} | Pawpal{% endblock %}
+
+{% block content %}
+<header class="staff-page-heading">
+  <div>
+    <h1>{{ page_title }}</h1>
+    <p>Business owner · All outlets</p>
+  </div>
+</header>
+
+<section class="owner-panel owner-table-panel">
+  <div class="owner-table">
+    <div class="owner-table-row owner-table-header">
+      {% for column in columns %}<strong>{{ column }}</strong>{% endfor %}
+    </div>
+    {% for row in rows %}
+      <div class="owner-table-row">
+        {% for value in row %}<span>{{ value }}</span>{% endfor %}
+      </div>
+    {% empty %}
+      <p class="owner-empty">No records found.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

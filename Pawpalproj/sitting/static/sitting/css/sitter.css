@@ -172,6 +172,19 @@
   font: inherit;
   font-size: 10px;
   cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.sitter-button:hover,
+.sitter-outline-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgb(47 42 38 / 14%);
+}
+
+.sitter-button:active,
+.sitter-outline-button:active {
+  transform: translateY(0) scale(0.97);
 }
 
 .sitter-outline-button {
