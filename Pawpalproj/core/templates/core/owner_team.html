@@ -1,0 +1,89 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Team &amp; approvals | Pawpal owner{% endblock %}
+
+{% block content %}
+<header class="owner-team-heading">
+  <div>
+    <h1>Team &amp; approvals</h1>
+    <p>Business owner · All outlets</p>
+  </div>
+  <button class="owner-add-staff" type="button">+ Add staff</button>
+</header>
+
+<div class="owner-team-layout {% if not show_staff_accounts %}owner-team-layout-sitters-only{% endif %}">
+  {% if show_staff_accounts %}
+  <section>
+    <h2 class="owner-section-title">Staff accounts</h2>
+    <div class="owner-panel owner-staff-table">
+      <div class="owner-staff-row owner-staff-header">
+        <strong>Name</strong><strong>Outlet</strong><strong>Role</strong><strong>Status</strong><strong></strong>
+      </div>
+      {% for staff in staff_members %}
+      <div class="owner-staff-row">
+        <strong>{{ staff.first_name }} {{ staff.last_name }}</strong>
+        <span>{{ staff.outlet.name|cut:"Pawpal " }}</span>
+        <span>Staff</span>
+        <span class="owner-staff-active">Active</span>
+        <span class="owner-staff-action">Deactivate</span>
+      </div>
+      {% empty %}
+      <p class="owner-empty">No staff accounts found.</p>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <section>
+    <div class="owner-sitter-column-heading">
+      <h2 class="owner-section-title">Sitter applications</h2>
+      <span class="owner-pending-count">{{ pending_count }} pending</span>
+    </div>
+    <div class="owner-team-sitter-list">
+      {% for sitter in sitters %}
+      <article class="owner-team-sitter-card">
+        <div class="owner-sitter-heading">
+          <div class="owner-sitter-avatar">🐾</div>
+          <div>
+            <h2>{{ sitter.first_name }} {{ sitter.last_name }}</h2>
+            <p>{{ sitter.service_area }} · applied {{ sitter.applied_at|date:"j M Y" }}</p>
+          </div>
+        </div>
+        <p class="owner-sitter-summary">
+          {{ sitter.experience_years }} yrs · {{ sitter.pet_experience|default:"Pet care" }} · SGD {{ sitter.daily_rate_display }} / day
+        </p>
+        {% if sitter.id_document %}
+        <a class="owner-document-link" href="{{ sitter.id_document.url }}" target="_blank" rel="noopener">
+          📄 {{ sitter.id_document.name|cut:"sitting/images/" }} <strong>View</strong>
+        </a>
+        {% else %}
+        <div class="owner-document-link owner-document-missing">No ID document uploaded</div>
+        {% endif %}
+        {% if sitter.application_status == "PENDING" %}
+        <div class="owner-team-sitter-actions">
+          <form method="post" action="{% url 'core:owner_review_sitter' sitter.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve">
+            <input type="hidden" name="return_to" value="{{ sitter_return_url }}">
+            <button type="submit" class="owner-approve-button">Approve</button>
+          </form>
+          <form method="post" action="{% url 'core:owner_review_sitter' sitter.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject">
+            <input type="hidden" name="return_to" value="{{ sitter_return_url }}">
+            <textarea name="rejection_reason" rows="2" required placeholder="Reason for rejection"></textarea>
+            <button type="submit" class="owner-reject-button">Reject...</button>
+          </form>
+        </div>
+        {% elif sitter.rejection_reason %}
+        <p class="owner-rejection-note"><b>Reason:</b> {{ sitter.rejection_reason }}</p>
+        {% endif %}
+      </article>
+      {% empty %}
+      <p class="owner-empty">No sitter applications found.</p>
+      {% endfor %}
+    </div>
+    <p class="owner-sitter-help">Rejecting asks for a reason, which the applicant sees on their status page.</p>
+  </section>
+</div>
+{% endblock %}

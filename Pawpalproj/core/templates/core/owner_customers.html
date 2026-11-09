@@ -1,0 +1,149 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Customers | Pawpal owner{% endblock %}
+
+{% block content %}
+<div class="staff-header" style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+  <div>
+    <h1>Customers</h1>
+    <p>Customer accounts across Pawpal</p>
+  </div>
+  <form class="staff-filters" method="get" style="margin: 0;">
+    <label for="query">Search</label>
+    <input id="query" type="search" name="query" value="{{ query }}" placeholder="Name, email or mobile">
+  </form>
+</div>
+
+<div class="staff-grid">
+  <div class="staff-main-col">
+    <section class="panel">
+      <table class="data-table">
+        <thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>Points</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for customer in customers %}
+          <tr {% if selected_customer.pk == customer.pk %}class="selected-row"{% endif %}>
+            <td>{{ customer.first_name }} {{ customer.last_name }}</td>
+            <td>{{ customer.email }}</td>
+            <td>{{ customer.mobile|default:"—" }}</td>
+            <td>{{ customer.point_balance }}</td>
+            <td>
+              <span class="status-pill owner-customer-status {% if customer.is_verified %}status-approved{% else %}status-pending{% endif %}">
+                {% if customer.is_verified %}Verified{% else %}Not verified{% endif %}
+              </span>
+            </td>
+            <td><a class="view-details-btn" href="{% querystring customer=customer.pk %}">View details</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="empty-row">No customers found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+  <div class="staff-side-col">
+    {% if selected_customer %}
+    <section class="panel detail-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">{{ selected_customer.first_name }} {{ selected_customer.last_name }}</h2>
+        <a href="{% url 'core:owner_edit_customer' selected_customer.pk %}" class="edit-product-btn" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">Edit</a>
+      </div>
+      <div class="detail-card-row">
+        <ul>
+          <li><b>Username:</b> {{ selected_customer.username }}</li>
+          <li><b>Email:</b> {{ selected_customer.email }}</li>
+          <li><b>Mobile:</b> {{ selected_customer.mobile|default:"—" }}</li>
+          <li><b>Points balance:</b> {{ selected_customer.point_balance }}</li>
+          <li><b>Addresses:</b> {{ selected_customer.addresses.count }}</li>
+          <li><b>Account status:</b>
+            <span class="status-pill owner-customer-status {% if selected_customer.is_verified %}status-approved{% else %}status-pending{% endif %}">
+              {% if selected_customer.is_verified %}Verified{% else %}Not verified{% endif %}
+            </span>
+          </li>
+        </ul>
+      </div>
+      <p class="owner-small">{{ selected_customer.pets.count }} pet{{ selected_customer.pets.count|pluralize }} · {{ customer_bookings|length }} booking{{ customer_bookings|length|pluralize }} · {{ customer_orders|length }} order{{ customer_orders|length|pluralize }}</p>
+    </section>
+
+    {# ---------- Adjust points (US-039) ---------- #}
+    <section class="panel detail-card">
+      <h2 style="margin-top: 0;">Adjust points</h2>
+      <form method="post" action="{% url 'core:owner_adjust_points' selected_customer.pk %}">
+        {% csrf_token %}
+        <table width="100%">
+          <tr>
+            <td><label for="points">Points</label></td>
+            <td><input id="points" type="number" name="points" placeholder="e.g. 200 or -200" required></td>
+          </tr>
+          <tr>
+            <td><label for="reason">Reason</label></td>
+            <td><input id="reason" type="text" name="reason" placeholder="e.g. Goodwill for late pick-up" required></td>
+          </tr>
+        </table>
+        <button type="submit" class="owner-btn-dark" style="margin-top: 0.5rem;">Save adjustment</button>
+      </form>
+    </section>
+
+    {# ---------- Pets ---------- #}
+    <section class="panel detail-card">
+      <h2 style="margin-top: 0;">Pets</h2>
+      <table class="owner-table">
+        {% for pet in selected_customer.pets.all %}
+          <tr><td>{{ pet.name }}</td><td>{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %}</td></tr>
+        {% empty %}
+          <tr><td colspan="2" style="text-align: center;">No pets.</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+
+    {# ---------- Bookings ---------- #}
+    <section class="panel detail-card">
+      <h2 style="margin-top: 0;">Bookings</h2>
+      <table class="owner-table">
+        {% for booking in customer_bookings|slice:":5" %}
+          <tr>
+            <td>{{ booking.slot.start_time|date:"j M Y" }}</td>
+            <td>{{ booking.slot.service.name }} · {{ booking.pet.name }}</td>
+            <td>{{ booking.get_status_display }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" style="text-align: center;">No bookings.</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+
+    {# ---------- Orders ---------- #}
+    <section class="panel detail-card">
+      <h2 style="margin-top: 0;">Orders</h2>
+      <table class="owner-table">
+        {% for order in customer_orders|slice:":5" %}
+          <tr>
+            <td>#{{ order.pk }} · {{ order.created_at|date:"j M Y" }}</td>
+            <td>SGD {{ order.total_display }}</td>
+            <td>{{ order.get_status_display }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" style="text-align: center;">No orders.</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+
+    {# ---------- Points history ---------- #}
+    <section class="panel detail-card">
+      <h2 style="margin-top: 0;">Points history</h2>
+      <table class="owner-table">
+        {% for transaction in points_history %}
+          <tr>
+            <td>{{ transaction.created_at|date:"j M Y" }}</td>
+            <td>{{ transaction.get_transaction_type_display }}</td>
+            <td>{% if transaction.points > 0 %}+{% endif %}{{ transaction.points }}</td>
+            <td>{{ transaction.reason }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" style="text-align: center;">No points activity.</td></tr>
+        {% endfor %}
+      </table>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

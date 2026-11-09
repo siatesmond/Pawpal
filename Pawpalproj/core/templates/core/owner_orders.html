@@ -1,0 +1,42 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Orders | Pawpal owner{% endblock %}
+
+{% block content %}
+<div class="staff-page-heading">
+  <h1>Orders &amp; stock</h1>
+  <p>Orders and inventory overview across Pawpal outlets</p>
+</div>
+<section class="owner-panel">
+  <h2>Orders</h2>
+  <div class="owner-table-row owner-table-header">
+    <span>ID</span><span>Customer</span><span>Items</span><span>Status</span>
+  </div>
+  {% for order in orders %}
+  <div class="owner-table-row">
+    <span>#{{ order.pk }}</span>
+    <span>{{ order.customer.first_name }} {{ order.customer.last_name }}</span>
+    <span>{{ order.item_count }}</span>
+    <span>{{ order.get_status_display }}</span>
+  </div>
+  {% empty %}
+  <p class="owner-empty">No orders found.</p>
+  {% endfor %}
+</section>
+<section class="owner-panel" style="margin-top: 18px;">
+  <h2>Stock levels</h2>
+  <div class="owner-table-row owner-table-header">
+    <span>ID</span><span>Product</span><span>Stock</span><span>Low-stock level</span>
+  </div>
+  {% for product in stock_products %}
+  <div class="owner-table-row">
+    <span>#{{ product.pk }}</span>
+    <span>{{ product.name }}</span>
+    <span>{{ product.stock_quantity }}</span>
+    <span>{{ product.low_stock_level }}</span>
+  </div>
+  {% empty %}
+  <p class="owner-empty">No products found.</p>
+  {% endfor %}
+</section>
+{% endblock %}

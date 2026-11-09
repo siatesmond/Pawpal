@@ -1,0 +1,154 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Products | Pawpal owner{% endblock %}
+
+{% block content %}
+
+{# Header: Title, Search/Filters, and Add Product Button #}
+<div class="staff-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <h1>Product Catalog</h1>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <form class="staff-filters" method="get" style="margin: 0;">
+      <!-- Search Product Name -->
+      <div>
+        <label for="query">Search</label>
+        <input id="query" type="search" name="query" value="{{ query }}" placeholder="Product name">
+      </div>
+
+      <!-- Sort by Category dropdown list -->
+      <div>
+        <label for="category">Category</label>
+        <select id="category" name="category" onchange="this.form.submit()">
+          <option value="">All Categories</option>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}" {% if category_id == cat.id|stringformat:"i" %}selected{% endif %}>{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Sort by Brand dropdown list -->
+      <div>
+        <label for="brand">Brand</label>
+        <select id="brand" name="brand" onchange="this.form.submit()">
+          <option value="">All Brands</option>
+          {% for b in brands %}
+          <option value="{{ b.id }}" {% if brand_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Sort by Pet type dropdown list -->
+      <div>
+        <label for="pet_type">Pet Type</label>
+        <select id="pet_type" name="pet_type" onchange="this.form.submit()">
+          <option value="">All Pets</option>
+          {% for value, label in pet_choices %}
+          <option value="{{ value }}" {% if pet_type == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </form>
+
+    <!-- Add New Product btn -->
+    <div>
+      <a href="{% url 'inventory:add_product' %}" class="add-product-btn">
+        + Add Product
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="staff-grid">
+
+  {# Left Column: Products List Table #}
+  <div class="staff-main-col">
+    <section class="panel">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Product</th>
+            <th>Category</th>
+            <th>Brand</th>
+            <th>Pet</th>
+            <th>Stock</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for product in products %}
+          <tr {% if selected_product.pk == product.pk %}class="selected-row"{% endif %}>
+            <td><b>{{ product.pk }}</b></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                {% if product.image_url %}
+                <div class="stock-thumb" style="width: 32px; height: 32px; flex-shrink: 0;">
+                  <img src="{{ product.image_url.url }}" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+                </div>
+                {% endif %}
+                <span>{{ product.name }}</span>
+              </div>
+            </td>
+            <td>{{ product.category.name }}</td>
+            <td>{{ product.brand.name }}</td>
+            <td><span>{{ product.get_pet_type_display }}</span></td>
+            <td>
+              <span class="{% if product.stock_quantity <= product.low_stock_level %}stock-low-text{% endif %}">
+                <b>{{ product.stock_quantity }}</b>
+              </span>
+            </td>
+            <td>
+              <a class="view-details-btn" href="{% querystring product=product.pk %}">View details</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="7" class="empty-row">No products found matching the criteria.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  {# Right Column: Selected Product Detail Panel #}
+  <div class="staff-side-col">
+    {% if selected_product %}
+    <section class="panel detail-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h2 style="margin: 0;">Product #{{ selected_product.pk }}</h2>
+        <!-- Update / Edit Product Button -->
+        <a href="{% url 'inventory:update_product' selected_product.pk %}" class="edit-product-btn" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">
+          Edit
+        </a>
+      </div>
+
+      {% if selected_product.image_url %}
+      <div style="margin-bottom: 1rem; text-align: center;">
+        <img src="{{ selected_product.image_url.url }}" alt="{{ selected_product.name }}" style="max-width: 100%; max-height: 180px; object-fit: contain; border-radius: 6px;">
+      </div>
+      {% endif %}
+
+      <div class="detail-card-row">
+        <ul style="list-style: none; margin: 0; padding: 0; font-size: 13px;">
+          <li><b>Name:</b> {{ selected_product.name }}</li>
+          <li><b>Category:</b> {{ selected_product.category.name }}</li>
+          <li><b>Brand:</b> {{ selected_product.brand.name }}</li>
+          <li><b>Pet Type:</b> {{ selected_product.get_pet_type_display }}</li>
+          <li><b>Price:</b> SGD {{ selected_product.price_dollars|floatformat:2 }}</li>
+          <li><b>Stock Quantity:</b> {{ selected_product.stock_quantity }}</li>
+          <li><b>Status:</b> {% if selected_product.is_active %}Active{% else %}Inactive{% endif %}</li>
+          <li><b>Description:</b></li>
+          <li>{{ selected_product.description|default:"No description provided." }}</li>
+        </ul>
+      </div>
+    </section>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

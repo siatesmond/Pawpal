@@ -107,7 +107,7 @@ class Pet(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} ({self.species})"
+        return f"{self.name} ({self.get_pet_type_display()})"
 
 
 class OTP(models.Model):

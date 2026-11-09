@@ -1,10 +1,14 @@
 from django.urls import path
 
-from .views import SitterApplicationStatusView, SitterSignupView
+from . import views
 
 app_name = "sitting"
 
 urlpatterns = [
-    path("signup/", SitterSignupView.as_view(), name="signup"),
-    path("application/", SitterApplicationStatusView.as_view(), name="application_status"),
+    path("signup/", views.signup, name="signup"),
+    path("application/", views.application_status, name="application_status"),
+    path("jobs/", views.find_jobs, name="sitter_find_jobs"),
+    path("my-jobs/", views.my_jobs, name="sitter_my_jobs"),
+    path("earnings/", views.earnings, name="sitter_earnings"),
+    path("profile/", views.profile, name="sitter_profile"),
 ]

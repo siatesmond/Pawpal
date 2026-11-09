@@ -125,6 +125,95 @@ main {
   font-weight: 500;
 }
 
+.sitter-navbar {
+  display: flex;
+  align-items: center;
+  min-height: 78px;
+  padding: 0 68px;
+  background: #536448;
+  color: #fff;
+}
+
+.sitter-navbar-logo {
+  color: #fff;
+  font-family: "Fraunces", serif;
+  font-size: 31px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.sitter-navbar-role {
+  margin-left: 14px;
+  border-radius: 999px;
+  padding: 8px 13px;
+  background: #aab99f;
+  color: #41513a;
+  font-size: 12px;
+}
+
+.sitter-navbar-links {
+  display: flex;
+  align-items: center;
+  gap: 23px;
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.sitter-navbar-links a,
+.sitter-navbar-links span {
+  color: #fff;
+  text-decoration: none;
+}
+
+.sitter-navbar-links a,
+.sitter-navbar-links span {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.sitter-navbar-links a:hover,
+.sitter-navbar-links span:hover {
+  opacity: 0.78;
+  transform: translateY(-1px);
+}
+
+.sitter-navbar-logout {
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+
+.sitter-navbar-logout:hover {
+  border-color: #fff;
+  opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .sitter-navbar {
+    min-height: 64px;
+    padding: 0 24px;
+  }
+
+  .sitter-navbar-logo {
+    font-size: 24px;
+  }
+
+  .sitter-navbar-role {
+    margin-left: 8px;
+    padding: 6px 9px;
+    font-size: 10px;
+  }
+
+  .sitter-navbar-links {
+    gap: 10px;
+    font-size: 11px;
+  }
+
+  .sitter-navbar-logout {
+    padding: 6px 9px;
+  }
+}
+
 /* top banner (blue section) */
 .top-banner {
   background: #d8e1ed;

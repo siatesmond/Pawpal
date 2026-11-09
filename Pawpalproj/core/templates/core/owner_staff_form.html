@@ -1,0 +1,19 @@
+{% extends "core/owner_base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title }} | Pawpal owner{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
+
+<div class="form-page">
+  <div class="form-page-header">
+    <h1>{{ page_title }}</h1>
+    <p>{{ page_text }}</p>
+  </div>
+
+  <div class="form-card">
+    {% include "inventory/form_template.html" with cancel_url="/admin-panel/staff/" submit_text="Save Staff" form_css_class="product-form" %}
+  </div>
+</div>
+{% endblock %}

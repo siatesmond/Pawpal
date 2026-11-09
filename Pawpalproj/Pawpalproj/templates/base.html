@@ -19,7 +19,11 @@
 </head>
 
 <body>
-  {% include "navbar.html" %}
+  {% if request.session.user_type == "sitter" %}
+    {% include "sitting/sitter_navbar.html" %}
+  {% else %}
+    {% include "navbar.html" %}
+  {% endif %}
 
   {% block top_banner %}{% endblock %}
   

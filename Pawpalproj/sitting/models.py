@@ -121,6 +121,33 @@ class SittingRequest(models.Model):
             ),
         ]
 
+    @property
+    def number_of_days(self):
+        # both the start and end day count, e.g. 20 Nov to 24 Nov = 5 days
+        return (self.end_date - self.start_date).days + 1
+
+    @property
+    def commission_cents(self):
+        # Pawpal keeps commission_rate (10%) of every sitting job (US-051)
+        return int(self.total_price_cents * self.commission_rate)
+
+    @property
+    def sitter_payout_cents(self):
+        # what the sitter receives = job price - Pawpal commission
+        return self.total_price_cents - self.commission_cents
+
+    @property
+    def total_price_display(self):
+        return f"{self.total_price_cents / 100:.2f}"
+
+    @property
+    def commission_display(self):
+        return f"{self.commission_cents / 100:.2f}"
+
+    @property
+    def sitter_payout_display(self):
+        return f"{self.sitter_payout_cents / 100:.2f}"
+
 
 class SittingUpdate(models.Model):
     request = models.ForeignKey(

@@ -1,0 +1,25 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Products | Pawpal owner{% endblock %}
+
+{% block content %}
+<div class="staff-page-heading">
+  <h1>Products</h1>
+  <p>All products available across Pawpal outlets</p>
+</div>
+<section class="owner-panel">
+  <div class="owner-table-row owner-table-header">
+    <span>Product</span><span>Category</span><span>Brand</span><span>Stock</span>
+  </div>
+  {% for product in products %}
+  <div class="owner-table-row">
+    <span>{{ product.name }}</span>
+    <span>{{ product.category.name|default:"—" }}</span>
+    <span>{{ product.brand.name|default:"—" }}</span>
+    <span>{{ product.stock_quantity }}</span>
+  </div>
+  {% empty %}
+  <p class="owner-empty">No products found.</p>
+  {% endfor %}
+</section>
+{% endblock %}

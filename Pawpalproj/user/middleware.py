@@ -12,8 +12,13 @@ PROTECTED_PATHS = {
     "/inventory/staff/": ["staff", "owner"],
     "/inventory/stock/": ["staff", "owner"],
     "/service/book/": ["customer"],
-    "/admin-panel/": ["staff", "owner"],
+    # US-021: only the business owner can open the owner dashboard and accounts
+    "/admin-panel/": ["owner"],
+    "/core/admin-panel/": ["owner"],  # same pages through the old /core/ prefix
     "/sitting/jobs/": ["sitter"],
+    "/sitting/my-jobs/": ["sitter"],
+    "/sitting/earnings/": ["sitter"],
+    "/sitting/profile/": ["sitter"],
     "/sitting/application/": ["sitter"],
 }
 
