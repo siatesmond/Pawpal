@@ -1,9 +1,11 @@
 from datetime import datetime, time, timedelta, date
 from zoneinfo import ZoneInfo
 from decimal import Decimal
+import os
 
 from django.contrib.auth.hashers import make_password
-from django.shortcuts import HttpResponse
+from django.db.models import F, Sum
+from django.shortcuts import HttpResponse, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
 from payment.models import Payment, PointsTransaction
@@ -20,6 +22,8 @@ from core.models import Outlet
 
 SGT = ZoneInfo("Asia/Singapore")
 DEMO_PASSWORD = "Pawpal123!"  # every demo account uses this password
+OWNER_PASSWORD = os.getenv("PAWPAL_OWNER_PASSWORD", DEMO_PASSWORD)
+STAFF_PASSWORD = os.getenv("PAWPAL_STAFF_PASSWORD", DEMO_PASSWORD)
 
 
 def today():
@@ -98,14 +102,23 @@ outlets = [
 business_owners = [
     {
         "username": "owner_lim",
-        "email": "owner@pawpal.sg",
-        "first_name": "Wei Ming",
-        "last_name": "Lim",
+        "email": "pawpal.sg.demo@gmail.com",
+        "first_name": "Grace",
+        "last_name": "Tan",
         "mobile": "91234567",
     },
 ]
 
 staff_members = [
+    {
+        "username": "staff_test",
+        "email": "staff_test@pawpal.local",
+        "first_name": "Staff",
+        "last_name": "Test",
+        "mobile": "90000000",
+        "outlet": "Pawpal Tampines",
+        "password": STAFF_PASSWORD,
+    },
     {
         "username": "staff_sarah",
         "email": "sarah@pawpal.sg",
@@ -1197,6 +1210,7 @@ def loadData(request):
             is_verified=True,
             is_business_owner=True,
         )
+        new_owner.password = make_password(OWNER_PASSWORD)
         new_owner.save()
 
     for staff in staff_members:
@@ -1211,6 +1225,8 @@ def loadData(request):
             is_staff=True,
             outlet=Outlet.objects.get(name=staff["outlet"]),
         )
+        if staff["username"] == "staff_test":
+            new_staff.password = make_password(staff["password"])
         new_staff.save()
 
     for customer in customers:
@@ -1574,6 +1590,106 @@ def loadData(request):
         f"{Product.objects.count()} products, {Order.objects.count()} orders, "
         f"{Booking.objects.count()} bookings, {SittingRequest.objects.count()} sitting requests, "
         f"{Payment.objects.count()} payments, {Review.objects.count()} reviews. "
-        f"All demo accounts use the password: {DEMO_PASSWORD}"
+        "Demo accounts loaded successfully."
     )
     return HttpResponse(summary)
+
+
+# =====================================================================
+# Business owner pages
+# =====================================================================
+
+def owner_dashboard(request):
+    orders = Order.objects.all()
+    bookings = Booking.objects.all()
+    revenue_cents = (
+        orders.filter(status__in=["CONFIRMED", "COMPLETED"]).aggregate(
+            total=Sum("total_cents")
+        )["total"]
+        or 0
+    )
+    return render(
+        request,
+        "core/owner_dashboard.html",
+        {
+            "active_page": "dashboard",
+            "revenue": revenue_cents / 100,
+            "booking_count": bookings.count(),
+            "order_count": orders.count(),
+            "customer_count": Customer.objects.count(),
+            "sitter_count": PetSitter.objects.count(),
+            "low_stock_products": Product.objects.filter(
+                stock_quantity__lte=F("low_stock_level")
+            ).order_by("stock_quantity")[:5],
+            "recent_bookings": bookings.select_related(
+                "customer", "pet", "slot", "slot__service"
+            ).order_by("-created_at")[:6],
+        },
+    )
+
+
+def owner_customers(request):
+    return render(
+        request,
+        "core/owner_list.html",
+        {
+            "active_page": "customers",
+            "page_title": "Customers",
+            "columns": ["Name", "Email", "Mobile", "Points"],
+            "rows": [
+                [
+                    f"{customer.first_name} {customer.last_name}".strip()
+                    or customer.username,
+                    customer.email,
+                    customer.mobile,
+                    customer.point_balance,
+                ]
+                for customer in Customer.objects.order_by("first_name", "last_name")
+            ],
+        },
+    )
+
+
+def owner_sitters(request):
+    return render(
+        request,
+        "core/owner_list.html",
+        {
+            "active_page": "sitters",
+            "page_title": "Pet sitters",
+            "columns": ["Name", "Email", "Service area", "Status"],
+            "rows": [
+                [
+                    f"{sitter.first_name} {sitter.last_name}".strip()
+                    or sitter.username,
+                    sitter.email,
+                    sitter.service_area,
+                    sitter.get_application_status_display(),
+                ]
+                for sitter in PetSitter.objects.order_by("application_status", "first_name")
+            ],
+        },
+    )
+
+
+def owner_staff(request):
+    return render(
+        request,
+        "core/owner_list.html",
+        {
+            "active_page": "staff",
+            "page_title": "Staff",
+            "columns": ["Name", "Email", "Mobile", "Outlet"],
+            "rows": [
+                [
+                    f"{staff.first_name} {staff.last_name}".strip() or staff.username,
+                    staff.email,
+                    staff.mobile,
+                    staff.outlet.name,
+                ]
+                for staff in Staff.objects.select_related("outlet").order_by(
+                    "first_name", "last_name"
+                )
+            ],
+        },
+    )

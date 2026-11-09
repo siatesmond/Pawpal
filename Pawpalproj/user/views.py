@@ -618,7 +618,7 @@ def home_for(user_type):
     """Where each type of user lands after logging in."""
     return {
         "customer": "/user/home/",
-        "staff": "/admin-panel/",
+        "staff": "/inventory/staff/bookings/",
         "owner": "/admin-panel/",
         "sitter": "/sitting/application/",
     }.get(user_type, "/")
