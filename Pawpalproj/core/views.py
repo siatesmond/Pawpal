@@ -1595,6 +1595,56 @@ def loadData(request):
     return HttpResponse(summary)
 
 
+def load_staff_owner_data(request):
+    """Create or update only the demo business owner and staff accounts."""
+    owner_password = os.getenv("PAWPAL_OWNER_PASSWORD", DEMO_PASSWORD)
+    staff_password = os.getenv("PAWPAL_STAFF_PASSWORD", DEMO_PASSWORD)
+
+    outlet = Outlet.objects.filter(is_active=True).first()
+    if outlet is None:
+        outlet = Outlet.objects.create(
+            name="Pawpal Tampines",
+            address="10 Tampines Central 1, #01-15",
+            postal_code="529536",
+            phone="61234501",
+            opening_time=outlet_time("09:00"),
+            closing_time=outlet_time("21:00"),
+            is_active=True,
+        )
+
+    owner = BusinessOwner.objects.filter(email="pawpal.sg.demo@gmail.com").first()
+    if owner is None:
+        owner = BusinessOwner(username="owner_lim")
+    owner.email = "pawpal.sg.demo@gmail.com"
+    owner.first_name = "Grace"
+    owner.last_name = "Tan"
+    owner.mobile = "91234567"
+    owner.password = make_password(owner_password)
+    owner.is_verified = True
+    owner.is_active = True
+    owner.is_business_owner = True
+    owner.save()
+
+    staff = Staff.objects.filter(email="staff_test@pawpal.local").first()
+    if staff is None:
+        staff = Staff(username="staff_test")
+    staff.email = "staff_test@pawpal.local"
+    staff.first_name = "Staff"
+    staff.last_name = "Test"
+    staff.mobile = "90000000"
+    staff.password = make_password(staff_password)
+    staff.is_verified = True
+    staff.is_active = True
+    staff.is_staff = True
+    staff.outlet = outlet
+    staff.save()
+
+    return HttpResponse(
+        "Staff and business owner demo accounts loaded successfully. "
+        "Existing application data was not changed."
+    )
+
+
 # =====================================================================
 # Business owner pages
 # =====================================================================
