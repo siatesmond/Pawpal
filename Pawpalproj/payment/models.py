@@ -84,6 +84,7 @@ class PointsTransaction(models.Model):
         EARNED = "EARNED", "Earned"
         REDEEMED = "REDEEMED", "Redeemed"
         REFUNDED = "REFUNDED", "Refunded"
+        ADJUSTED = "ADJUSTED", "Adjusted by owner"  # US-039: add or deduct with a reason
 
     customer = models.ForeignKey(
         "user.Customer", on_delete=models.CASCADE, related_name="points_transactions"
@@ -106,6 +107,8 @@ class PointsTransaction(models.Model):
                 condition=(
                     Q(transaction_type__in=["EARNED", "REFUNDED"], points__gt=0)
                     | Q(transaction_type="REDEEMED", points__lt=0)
+                    # an owner adjustment can add (+) or deduct (-), but not 0
+                    | (Q(transaction_type="ADJUSTED") & ~Q(points=0))
                 ),
                 name="points_sign_matches_type",
             ),

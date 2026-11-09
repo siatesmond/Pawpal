@@ -1,0 +1,43 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Staff | Pawpal owner{% endblock %}
+
+{% block content %}
+<header class="owner-team-heading">
+  <div>
+    <h1>Staff</h1>
+    <p>Business owner · All outlets</p>
+  </div>
+  <a class="owner-add-staff" href="{% url 'core:owner_add_staff' %}">+ Add staff</a>
+</header>
+
+<section>
+  <h2 class="owner-section-title">Staff accounts</h2>
+  <div class="owner-panel owner-staff-table">
+    <div class="owner-staff-row owner-staff-header">
+      <strong>Name</strong><strong>Outlet</strong><strong>Role</strong><strong>Status</strong><strong></strong>
+    </div>
+    {% for staff in staff_members %}
+    <div class="owner-staff-row">
+      <strong>{{ staff.first_name }} {{ staff.last_name }}</strong>
+      <span>{{ staff.outlet.name|cut:"Pawpal " }}</span>
+      <span>Staff</span>
+      <span class="{% if staff.is_active %}owner-staff-active{% else %}owner-staff-inactive{% endif %}">
+        {% if staff.is_active %}Active{% else %}Deactivated{% endif %}
+      </span>
+      <form method="post" action="{% url 'core:owner_toggle_staff' staff.pk %}">
+        {% csrf_token %}
+        <a class="owner-link" href="{% url 'core:owner_edit_staff' staff.pk %}">Edit</a>
+        &nbsp;
+        <button type="submit" class="owner-staff-action owner-staff-action-button"
+                {% if staff.is_active %}onclick="return confirm('Deactivate this staff member? They will not be able to log in.');"{% endif %}>
+          {% if staff.is_active %}Deactivate{% else %}Reactivate{% endif %}
+        </button>
+      </form>
+    </div>
+    {% empty %}
+    <p class="owner-empty">No staff accounts found.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

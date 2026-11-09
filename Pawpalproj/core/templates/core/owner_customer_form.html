@@ -1,0 +1,27 @@
+{% extends "core/owner_base.html" %}
+{% load static %}
+
+{% block title %}Edit customer | Pawpal owner{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
+
+<div class="form-page">
+  <div class="form-page-header">
+    <h1>Edit customer profile</h1>
+    <p>Update the account details below.</p>
+  </div>
+
+  <div class="form-card">
+    <div class="product-info">
+      <div>
+        <h2>{{ customer.first_name }} {{ customer.last_name }}</h2>
+        <p>Customer ID: {{ customer.pk }}</p>
+      </div>
+    </div>
+    <hr>
+
+    {% include "inventory/form_template.html" with cancel_url=customer_cancel_url submit_text="Save Changes" form_css_class="product-form" %}
+  </div>
+</div>
+{% endblock %}

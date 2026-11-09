@@ -1,11 +1,14 @@
-from datetime import datetime, time, timedelta, date
-from zoneinfo import ZoneInfo
-from decimal import Decimal
+import csv
 import os
+from datetime import date, datetime, time, timedelta
+from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from django.contrib.auth.hashers import make_password
-from django.db.models import F, Sum
-from django.shortcuts import HttpResponse, render
+from django.db.models import Count, F, Q, Sum
+from django.contrib import messages
+from django.core.mail import send_mail
+from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
 from payment.models import Payment, PointsTransaction
@@ -15,6 +18,7 @@ from sitting.models import PetSitter, SittingRequest, SittingUpdate
 from user.models import Address, BusinessOwner, Customer, Pet, Staff, User
 
 from core.models import Outlet
+from .forms import OwnerCustomerForm, OwnerStaffEditForm, OwnerStaffForm
 
 # =====================================================================
 # Helpers
@@ -983,6 +987,15 @@ booking_updates = [
 # Mock data – pet sitting
 # =====================================================================
 
+# Map position of each owner's home, used by the sitter "Distance" filter (US-048)
+owner_coordinates = {
+    "amy_tan": ("1.353600", "103.945000"),     # Tampines
+    "jason_lee": ("1.333100", "103.742400"),   # Jurong East
+    "nur_aisyah": ("1.351700", "103.848600"),  # Bishan
+    "kumar_r": ("1.311700", "103.795800"),     # Holland Grove
+    "chloe_ng": ("1.436900", "103.786000"),    # Woodlands
+}
+
 sitting_requests = [
     {
         "ref": "R1",
@@ -1062,6 +1075,71 @@ sitting_requests = [
         "owner_feedback": "",
         "days_ago": 2,
     },
+    {
+        "ref": "R7",
+        "owner": "amy_tan",
+        "sitter": None,
+        "pets": ["Mochi"],
+        "start_day": 20,
+        "days": 4,
+        "status": "open",
+        "care_requirements": "Morning and evening meals. Daily photo update requested.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 0,
+    },
+    {
+        "ref": "R8",
+        "owner": "jason_lee",
+        "sitter": "sitter_grace",
+        "pets": ["Bobby"],
+        "start_day": 28,
+        "days": 3,
+        "status": "accepted",
+        "care_requirements": "Two walks daily and fresh water.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 1,
+    },
+    {
+        "ref": "R9",
+        "owner": "nur_aisyah",
+        "sitter": "sitter_grace",
+        "pets": ["Kopi"],
+        "start_day": -1,
+        "days": 3,
+        "status": "in_progress",
+        "care_requirements": "Keep the litter box clean and feed at 8am and 7pm.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 2,
+    },
+    {
+        "ref": "R10",
+        "owner": "chloe_ng",
+        "sitter": "sitter_grace",
+        "pets": ["Coco"],
+        "start_day": -18,
+        "days": 2,
+        "status": "completed",
+        "care_requirements": "Coco is nervous around strangers. Give her quiet time.",
+        "owner_rating": 5,
+        "owner_feedback": "Grace sent clear updates and took great care of Coco.",
+        "days_ago": 22,
+    },
+    {
+        "ref": "R11",
+        "owner": "kumar_r",
+        "sitter": None,
+        "pets": ["Milo"],
+        "start_day": 35,
+        "days": 5,
+        "status": "open",
+        "care_requirements": "Give joint supplements with breakfast and take short walks.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 0,
+    },
 ]
 
 sitting_updates = [
@@ -1088,6 +1166,24 @@ sitting_updates = [
         "sitter": "sitter_hafiz",
         "new_status": "",
         "note": "Day 2: Ate all his food and took his supplement.",
+    },
+    {
+        "request": "R9",
+        "sitter": "sitter_grace",
+        "new_status": "in_progress",
+        "note": "Kopi settled in well and finished dinner.",
+    },
+    {
+        "request": "R9",
+        "sitter": "sitter_grace",
+        "new_status": "",
+        "note": "Litter box cleaned and morning meal given.",
+    },
+    {
+        "request": "R10",
+        "sitter": "sitter_grace",
+        "new_status": "completed",
+        "note": "Coco was calm and happy at pick-up.",
     },
 ]
 
@@ -1476,6 +1572,8 @@ def loadData(request):
             start_date=start_date,
             end_date=start_date + timedelta(days=request_data["days"] - 1),
             location=f"{address.line1} {address.line2}, Singapore {address.postal_code}",
+            latitude=owner_coordinates.get(request_data["owner"], (None, None))[0],
+            longitude=owner_coordinates.get(request_data["owner"], (None, None))[1],
             care_requirements=request_data["care_requirements"],
             status=request_data["status"],
             total_price_cents=daily_rate * request_data["days"],
@@ -1649,97 +1747,612 @@ def load_staff_owner_data(request):
 # Business owner pages
 # =====================================================================
 
-def owner_dashboard(request):
-    orders = Order.objects.all()
-    bookings = Booking.objects.all()
-    revenue_cents = (
-        orders.filter(status__in=["CONFIRMED", "COMPLETED"]).aggregate(
-            total=Sum("total_cents")
-        )["total"]
-        or 0
+
+PAID_STATUSES = ["CONFIRMED", "COMPLETED"]  # orders that count as revenue
+
+# bookings that count as revenue: confirmed, pet in care (checked in /
+# in progress / ready for pick-up) or completed. Not pending or cancelled.
+PAID_BOOKING_STATUSES = [
+    Booking.Status.CONFIRMED,
+    *Booking.IN_CARE_STATUSES,
+    Booking.Status.COMPLETED,
+]
+
+
+def money(cents):
+    # 4892000 -> "48,920.00"
+    return f"{cents / 100:,.2f}"
+
+
+def percent_change(now, before):
+    # e.g. 110 vs 100 -> 10 (%). None when there is nothing to compare with.
+    if not before:
+        return None
+    return round((now - before) * 100 / before)
+
+
+def revenue_for_period(start_date, end_date, outlet=None):
+    """Add up revenue for one date range, split by stream (US-033, US-034).
+
+    Services and products are linked to an outlet; delivery orders and
+    pet sitting are not, so they are left out when one outlet is chosen.
+    """
+    bookings = Booking.objects.filter(
+        status__in=PAID_BOOKING_STATUSES,
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date,
     )
+    orders = Order.objects.filter(
+        status__in=PAID_STATUSES,
+        created_at__date__gte=start_date,
+        created_at__date__lte=end_date,
+    )
+    sittings = SittingRequest.objects.filter(
+        status=SittingRequest.Status.COMPLETED,
+        end_date__gte=start_date,
+        end_date__lte=end_date,
+    )
+    if outlet is not None:
+        bookings = bookings.filter(slot__outlet=outlet)
+        orders = orders.filter(pickup_outlet=outlet)
+        sittings = sittings.none()
+
+    services = 0
+    for booking in bookings:
+        services += booking.total_cents
+
+    products = 0
+    delivery = 0
+    for order in orders:
+        products += order.subtotal_cents - order.points_discount_cents
+        delivery += order.delivery_fee_cents
+
+    commission = 0
+    sitting_sales = 0
+    for sitting in sittings:
+        commission += sitting.commission_cents  # Pawpal keeps 10%
+        sitting_sales += sitting.total_price_cents
+
+    # booking volume = every booking made in the range that was not cancelled
+    booking_count = Booking.objects.filter(
+        created_at__date__gte=start_date, created_at__date__lte=end_date
+    ).exclude(status="CANCELLED")
+    if outlet is not None:
+        booking_count = booking_count.filter(slot__outlet=outlet)
+
+    return {
+        "services": services,
+        "products": products,
+        "delivery": delivery,
+        "commission": commission,
+        "sitting_sales": sitting_sales,
+        "total": services + products + delivery + commission,
+        "booking_count": booking_count.count(),
+    }
+
+
+def owner_dashboard(request):
+    # ---------- Filters: date range + outlet (US-033 to US-037) ----------
+    today_date = today()
+    try:
+        start = date.fromisoformat(request.GET.get("start", ""))
+    except ValueError:
+        start = today_date.replace(day=1)  # default: this month so far
+    try:
+        end = date.fromisoformat(request.GET.get("end", ""))
+    except ValueError:
+        end = today_date
+    if start > end:
+        start, end = end, start
+        messages.info(request, "Start date was after end date, so they were swapped.")
+
+    outlet = None
+    outlet_id = request.GET.get("outlet", "")
+    if outlet_id.isdigit():
+        outlet = Outlet.objects.filter(pk=outlet_id).first()
+
+    # ---------- This period vs the period just before (same length) ----------
+    current = revenue_for_period(start, end, outlet)
+    number_of_days = (end - start).days + 1
+    previous_end = start - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=number_of_days - 1)
+    previous = revenue_for_period(previous_start, previous_end, outlet)
+
+    # Revenue breakdown table: one row per stream
+    breakdown = []
+    streams = [
+        ("services", "Service bookings"),
+        ("products", "Product sales"),
+        ("delivery", "Delivery fees"),
+        ("commission", "Pet sitting commission (10%)"),
+    ]
+    for key, label in streams:
+        share = round(current[key] * 100 / current["total"]) if current["total"] else 0
+        breakdown.append({
+            "label": label,
+            "amount": money(current[key]),
+            "share": share,
+            "change": percent_change(current[key], previous[key]),
+        })
+
+    # ---------- Revenue by outlet (US-033 #2) ----------
+    outlet_rows = []
+    for each_outlet in Outlet.objects.filter(is_active=True).order_by("name"):
+        outlet_revenue = revenue_for_period(start, end, each_outlet)
+        outlet_rows.append({
+            "name": each_outlet.name,
+            "amount": money(outlet_revenue["total"]),
+            "bookings": outlet_revenue["booking_count"],
+        })
+
+    # ---------- Bookings by service and outlet (US-035 #1) ----------
+    period_bookings = (
+        Booking.objects.filter(created_at__date__gte=start, created_at__date__lte=end)
+        .exclude(status="CANCELLED")
+        .select_related("slot__service", "slot__outlet")
+    )
+    if outlet is not None:
+        period_bookings = period_bookings.filter(slot__outlet=outlet)
+
+    booking_volume = {}  # {(service, outlet): count}
+    service_counts = {}  # {service: count}
+    for booking in period_bookings:
+        key = (booking.slot.service.name, booking.slot.outlet.name)
+        booking_volume[key] = booking_volume.get(key, 0) + 1
+        service_name = booking.slot.service.name
+        service_counts[service_name] = service_counts.get(service_name, 0) + 1
+
+    booking_volume_rows = []
+    for (service_name, outlet_name), count in booking_volume.items():
+        booking_volume_rows.append({"service": service_name, "outlet": outlet_name, "count": count})
+    booking_volume_rows.sort(key=lambda row: row["count"], reverse=True)
+
+    top_services = sorted(service_counts.items(), key=lambda item: item[1], reverse=True)[:3]
+
+    # ---------- Top-selling products (US-035 #2) ----------
+    period_items = OrderItem.objects.filter(
+        order__status__in=PAID_STATUSES,
+        order__created_at__date__gte=start,
+        order__created_at__date__lte=end,
+    ).select_related("product")
+    if outlet is not None:
+        period_items = period_items.filter(order__pickup_outlet=outlet)
+
+    product_counts = {}  # {product name: quantity sold}
+    for item in period_items:
+        product_counts[item.product.name] = product_counts.get(item.product.name, 0) + item.quantity
+    top_products = sorted(product_counts.items(), key=lambda item: item[1], reverse=True)[:3]
+
+    # ---------- New vs returning customers (US-036 #1) ----------
+    active_customer_ids = set()
+    for booking in period_bookings:
+        active_customer_ids.add(booking.customer_id)
+    for order in Order.objects.filter(created_at__date__gte=start, created_at__date__lte=end):
+        active_customer_ids.add(order.customer_id)
+
+    new_customers = 0
+    returning_customers = 0
+    for customer in Customer.objects.filter(pk__in=active_customer_ids):
+        if customer.date_joined.date() >= start:
+            new_customers += 1  # joined during this period
+        else:
+            returning_customers += 1  # joined earlier and came back
+    active_total = new_customers + returning_customers
+    returning_percent = round(returning_customers * 100 / active_total) if active_total else 0
+
+    # ---------- Points issued and redeemed (US-036 #2) ----------
+    points_issued = 0
+    points_redeemed = 0
+    for transaction in PointsTransaction.objects.filter(
+        created_at__date__gte=start, created_at__date__lte=end
+    ):
+        if transaction.transaction_type == "EARNED":
+            points_issued += transaction.points
+        elif transaction.transaction_type == "REDEEMED":
+            points_redeemed += -transaction.points  # stored as a negative number
+
+    # ---------- Pet sitting commission per job (US-034 #2, #3) ----------
+    sitting_jobs = (
+        SittingRequest.objects.filter(
+            status=SittingRequest.Status.COMPLETED,
+            end_date__gte=start,
+            end_date__lte=end,
+        )
+        .select_related("owner", "sitter")
+        .order_by("-end_date")
+    )
+    paid_to_sitters = 0
+    for job in sitting_jobs:
+        paid_to_sitters += job.sitter_payout_cents
+
+    # ---------- Export CSV with the same filters (US-037) ----------
+    if request.GET.get("export") == "csv":
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="pawpal-report-{start}-to-{end}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(["Pawpal report", f"{start} to {end}", outlet.name if outlet else "All outlets"])
+        writer.writerow([])
+        writer.writerow(["Revenue stream", "Revenue (SGD)", "Share (%)", "Change vs previous period (%)"])
+        for row in breakdown:
+            writer.writerow([row["label"], row["amount"], row["share"], row["change"] if row["change"] is not None else ""])
+        total_change = percent_change(current["total"], previous["total"])
+        writer.writerow(["Total", money(current["total"]), 100, total_change if total_change is not None else ""])
+        writer.writerow([])
+        writer.writerow(["Outlet", "Revenue (SGD)", "Bookings"])
+        for row in outlet_rows:
+            writer.writerow([row["name"], row["amount"], row["bookings"]])
+        writer.writerow([])
+        writer.writerow(["Service", "Outlet", "Bookings"])
+        for row in booking_volume_rows:
+            writer.writerow([row["service"], row["outlet"], row["count"]])
+        writer.writerow([])
+        writer.writerow(["Top product", "Quantity sold"])
+        for name, quantity in top_products:
+            writer.writerow([name, quantity])
+        writer.writerow([])
+        writer.writerow(["New customers", new_customers, "Returning customers", returning_customers])
+        writer.writerow(["Points issued", points_issued, "Points redeemed", points_redeemed])
+        writer.writerow([])
+        writer.writerow(["Sitting job end date", "Owner", "Sitter", "Job price", "Commission (10%)", "Paid to sitter"])
+        for job in sitting_jobs:
+            writer.writerow([job.end_date, job.owner.first_name, job.sitter.first_name, job.total_price_display, job.commission_display, job.sitter_payout_display])
+        return response
+
+    # ---------- Stacked bar chart: last 6 months (US-033 #3) ----------
+    chart = []
+    for months_back in range(5, -1, -1):
+        total_months = end.year * 12 + (end.month - 1) - months_back
+        month_start = date(total_months // 12, total_months % 12 + 1, 1)
+        next_month = date(month_start.year + (month_start.month // 12), month_start.month % 12 + 1, 1)
+        month_end = next_month - timedelta(days=1)
+        month_revenue = revenue_for_period(month_start, month_end, outlet)
+        chart.append({"label": month_start.strftime("%b"), "revenue": month_revenue})
+
+    highest = 1
+    for bar in chart:
+        highest = max(highest, bar["revenue"]["total"])
+    for bar in chart:
+        # pixel height of each coloured part of the bar (tallest bar = 180px)
+        bar["services_px"] = int(bar["revenue"]["services"] * 180 / highest)
+        bar["products_px"] = int(bar["revenue"]["products"] * 180 / highest)
+        bar["delivery_px"] = int(bar["revenue"]["delivery"] * 180 / highest)
+        bar["commission_px"] = int(bar["revenue"]["commission"] * 180 / highest)
+        bar["total"] = money(bar["revenue"]["total"])
+
+    # greeting in Singapore time
+    hour = datetime.now(SGT).hour
+    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
+
+    context = {
+        "active_page": "dashboard",
+        "greeting": greeting,
+        "start": start,
+        "end": end,
+        "outlets": Outlet.objects.filter(is_active=True).order_by("name"),
+        "selected_outlet": outlet,
+        "total_revenue": money(current["total"]),
+        "revenue_change": percent_change(current["total"], previous["total"]),
+        "booking_count": current["booking_count"],
+        "booking_change": current["booking_count"] - previous["booking_count"],
+        "commission": money(current["commission"]),
+        "sitting_sales": money(current["sitting_sales"]),
+        "new_customers": new_customers,
+        "returning_customers": returning_customers,
+        "returning_percent": returning_percent,
+        "breakdown": breakdown,
+        "outlet_rows": outlet_rows,
+        "booking_volume_rows": booking_volume_rows,
+        "top_services": top_services,
+        "top_products": top_products,
+        "points_issued": points_issued,
+        "points_redeemed": points_redeemed,
+        "sitting_jobs": sitting_jobs,
+        "paid_to_sitters": money(paid_to_sitters),
+        "chart": chart,
+        # US-029: products at or below their low-stock level
+        "low_stock_products": Product.objects.filter(
+            stock_quantity__lte=F("low_stock_level")
+        ).order_by("stock_quantity")[:5],
+    }
+    return render(request, "core/owner_dashboard.html", context)
+
+
+def owner_bookings(request):
+    bookings = Booking.objects.select_related(
+        "customer", "pet", "slot", "slot__service"
+    ).order_by("-slot__start_time")
     return render(
         request,
-        "core/owner_dashboard.html",
+        "core/owner_bookings.html",
+        {"active_page": "bookings", "bookings": bookings},
+    )
+
+
+def owner_orders(request):
+    orders = (
+        Order.objects.select_related("customer", "pickup_outlet")
+        .annotate(item_count=Count("items"))
+        .order_by("-created_at")
+    )
+    stock_products = Product.objects.order_by("stock_quantity")
+    return render(
+        request,
+        "core/owner_orders.html",
         {
-            "active_page": "dashboard",
-            "revenue": revenue_cents / 100,
-            "booking_count": bookings.count(),
-            "order_count": orders.count(),
-            "customer_count": Customer.objects.count(),
-            "sitter_count": PetSitter.objects.count(),
-            "low_stock_products": Product.objects.filter(
-                stock_quantity__lte=F("low_stock_level")
-            ).order_by("stock_quantity")[:5],
-            "recent_bookings": bookings.select_related(
-                "customer", "pet", "slot", "slot__service"
-            ).order_by("-created_at")[:6],
+            "active_page": "orders",
+            "orders": orders,
+            "stock_products": stock_products,
         },
     )
 
 
-def owner_customers(request):
+def owner_products(request):
+    products = Product.objects.select_related("category", "brand").order_by("-id")
     return render(
         request,
-        "core/owner_list.html",
+        "core/owner_products.html",
+        {"active_page": "products", "products": products},
+    )
+
+
+def owner_customers(request):
+    query = request.GET.get("query", "").strip()
+    customers = Customer.objects.all()
+    if query:
+        customers = customers.filter(
+            Q(first_name__icontains=query)
+            | Q(last_name__icontains=query)
+            | Q(username__icontains=query)
+            | Q(email__icontains=query)
+            | Q(mobile__icontains=query)
+        )
+
+    selected_id = request.GET.get("customer", "")
+    if not selected_id.isdigit():
+        first_customer = customers.first()
+        selected_id = first_customer.pk if first_customer else None
+    selected_customer = (
+        Customer.objects.prefetch_related("pets", "addresses")
+        .filter(pk=selected_id)
+        .first()
+        if selected_id
+        else None
+    )
+
+    # US-038: the selected customer's pets, bookings, orders and points history
+    customer_bookings = []
+    customer_orders = []
+    points_history = []
+    if selected_customer is not None:
+        customer_bookings = (
+            Booking.objects.filter(customer=selected_customer)
+            .select_related("pet", "slot__service", "slot__outlet")
+            .order_by("-created_at")
+        )
+        customer_orders = Order.objects.filter(customer=selected_customer).order_by("-created_at")
+        points_history = PointsTransaction.objects.filter(customer=selected_customer).order_by("-created_at")[:8]
+
+    return render(
+        request,
+        "core/owner_customers.html",
         {
             "active_page": "customers",
-            "page_title": "Customers",
-            "columns": ["Name", "Email", "Mobile", "Points"],
-            "rows": [
-                [
-                    f"{customer.first_name} {customer.last_name}".strip()
-                    or customer.username,
-                    customer.email,
-                    customer.mobile,
-                    customer.point_balance,
-                ]
-                for customer in Customer.objects.order_by("first_name", "last_name")
-            ],
+            "customers": customers.order_by("first_name", "last_name"),
+            "selected_customer": selected_customer,
+            "customer_bookings": customer_bookings,
+            "customer_orders": customer_orders,
+            "points_history": points_history,
+            "query": query,
+        },
+    )
+
+
+def owner_adjust_points(request, pk):
+    # US-039: add or deduct points with a reason; it shows in the points history
+    back_to_customer = f"/admin-panel/customers/?customer={pk}"
+    if request.method != "POST":
+        return redirect(back_to_customer)
+
+    try:
+        customer = Customer.objects.get(pk=pk)
+    except Customer.DoesNotExist:
+        messages.error(request, "Customer not found.")
+        return redirect("core:owner_customers")
+
+    reason = request.POST.get("reason", "").strip()
+    try:
+        points = int(request.POST.get("points", ""))
+    except ValueError:
+        points = 0
+
+    if points == 0:
+        messages.error(request, "Enter a number of points to add (e.g. 200) or deduct (e.g. -200).")
+    elif not reason:
+        messages.error(request, "A reason is required for every points adjustment.")
+    elif customer.point_balance + points < 0:
+        messages.error(request, f"Cannot deduct {-points} points. The customer only has {customer.point_balance}.")
+    else:
+        PointsTransaction(
+            customer=customer,
+            points=points,
+            transaction_type=PointsTransaction.Type.ADJUSTED,
+            reason=reason,
+        ).save()
+        customer.point_balance += points
+        customer.save()
+        messages.success(request, f"{points:+d} points saved. New balance: {customer.point_balance}.")
+
+    return redirect(back_to_customer)
+
+
+def owner_edit_customer(request, pk):
+    customer = get_object_or_404(Customer, pk=pk)
+    if request.method == "POST":
+        form = OwnerCustomerForm(request.POST, instance=customer)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Customer profile updated successfully.")
+            return redirect(f"/admin-panel/customers/?customer={customer.pk}")
+    else:
+        form = OwnerCustomerForm(instance=customer)
+    return render(
+        request,
+        "core/owner_customer_form.html",
+        {
+            "active_page": "customers",
+            "form": form,
+            "customer": customer,
+            "customer_cancel_url": f"/admin-panel/customers/?customer={customer.pk}",
         },
     )
 
 
 def owner_sitters(request):
+    sitters = PetSitter.objects.order_by("application_status", "first_name")
     return render(
         request,
-        "core/owner_list.html",
+        "core/owner_sitters_team.html",
         {
             "active_page": "sitters",
-            "page_title": "Pet sitters",
-            "columns": ["Name", "Email", "Service area", "Status"],
-            "rows": [
-                [
-                    f"{sitter.first_name} {sitter.last_name}".strip()
-                    or sitter.username,
-                    sitter.email,
-                    sitter.service_area,
-                    sitter.get_application_status_display(),
-                ]
-                for sitter in PetSitter.objects.order_by("application_status", "first_name")
-            ],
+            "sitters": sitters,
+            "pending_sitters": sitters.filter(
+                application_status=PetSitter.Status.PENDING
+            ),
+            "pending_count": sitters.filter(
+                application_status=PetSitter.Status.PENDING
+            ).count(),
         },
     )
+
+
+def owner_review_sitter(request, pk):
+    sitter = get_object_or_404(PetSitter, pk=pk)
+    if request.method != "POST":
+        return_to = request.POST.get("return_to", "/admin-panel/pet-sitters/")
+        return redirect(f"{return_to}?sitter={sitter.pk}")
+
+    action = request.POST.get("action")
+    owner = get_object_or_404(BusinessOwner, pk=request.session["user_id"])
+    if action == "approve":
+        sitter.application_status = PetSitter.Status.APPROVED
+        sitter.rejection_reason = ""
+        sitter.reviewed_by = owner
+        sitter.save(
+            update_fields=[
+                "application_status",
+                "rejection_reason",
+                "reviewed_by",
+            ]
+        )
+        # US-046 #2: tell the applicant by email
+        send_mail(
+            "Pawpal: your pet sitter application is approved",
+            f"Hi {sitter.first_name}, your application was approved. "
+            "Log in to Pawpal to start accepting sitting jobs.",
+            None,
+            [sitter.email],
+            fail_silently=True,
+        )
+        messages.success(request, "Pet sitter application approved. The applicant has been emailed.")
+    elif action == "reject":
+        reason = request.POST.get("rejection_reason", "").strip()
+        if not reason:
+            messages.error(request, "A rejection reason is required.")
+        else:
+            sitter.application_status = PetSitter.Status.REJECTED
+            sitter.rejection_reason = reason
+            sitter.reviewed_by = owner
+            sitter.save(
+                update_fields=[
+                    "application_status",
+                    "rejection_reason",
+                    "reviewed_by",
+                ]
+            )
+            send_mail(
+                "Pawpal: update on your pet sitter application",
+                f"Hi {sitter.first_name}, your application was not approved.\n"
+                f"Reason: {reason}\n"
+                "You can update and resubmit it from your application page.",
+                None,
+                [sitter.email],
+                fail_silently=True,
+            )
+            messages.success(request, "Pet sitter application rejected. The applicant has been emailed.")
+    else:
+        messages.error(request, "Invalid sitter review action.")
+    return redirect(f"/admin-panel/pet-sitters/?sitter={sitter.pk}")
 
 
 def owner_staff(request):
     return render(
         request,
-        "core/owner_list.html",
+        "core/owner_staff.html",
         {
             "active_page": "staff",
-            "page_title": "Staff",
-            "columns": ["Name", "Email", "Mobile", "Outlet"],
-            "rows": [
-                [
-                    f"{staff.first_name} {staff.last_name}".strip() or staff.username,
-                    staff.email,
-                    staff.mobile,
-                    staff.outlet.name,
-                ]
-                for staff in Staff.objects.select_related("outlet").order_by(
-                    "first_name", "last_name"
-                )
-            ],
+            "staff_members": Staff.objects.select_related("outlet").order_by(
+                "first_name", "last_name"
+            ),
+        },
+    )
+
+
+def owner_toggle_staff(request, pk):
+    if request.method != "POST":
+        return redirect("core:owner_staff")
+    staff = get_object_or_404(Staff, pk=pk)
+    staff.is_active = not staff.is_active
+    staff.save(update_fields=["is_active"])
+    action = "activated" if staff.is_active else "deactivated"
+    messages.success(request, f"{staff.first_name or staff.username} was {action}.")
+    return redirect("core:owner_staff")
+
+
+def owner_add_staff(request):
+    if request.method == "POST":
+        form = OwnerStaffForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Staff account created successfully.")
+            return redirect("core:owner_staff")
+    else:
+        form = OwnerStaffForm()
+    return render(
+        request,
+        "core/owner_staff_form.html",
+        {
+            "active_page": "staff",
+            "form": form,
+            "page_title": "Add staff account",
+            "page_text": "Fill out the details below to create a staff account.",
+        },
+    )
+
+
+def owner_edit_staff(request, pk):
+    # US-040: edit details and assign the staff member to an outlet
+    try:
+        staff = Staff.objects.get(pk=pk)
+    except Staff.DoesNotExist:
+        messages.error(request, "Staff member not found.")
+        return redirect("core:owner_staff")
+
+    if request.method == "POST":
+        form = OwnerStaffEditForm(request.POST, instance=staff)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"{staff.first_name or staff.username} was updated.")
+            return redirect("core:owner_staff")
+    else:
+        form = OwnerStaffEditForm(instance=staff)
+
+    return render(
+        request,
+        "core/owner_staff_form.html",
+        {
+            "active_page": "staff",
+            "form": form,
+            "page_title": f"Edit {staff.first_name} {staff.last_name}",
+            "page_text": "Update the details or move this staff member to another outlet.",
         },
     )

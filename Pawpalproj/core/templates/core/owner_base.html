@@ -19,7 +19,7 @@
     <p class="owner-role">Business owner · All outlets</p>
     <nav class="owner-nav">
       <a href="{% url 'core:owner_dashboard' %}" {% if active_page == "dashboard" %}class="active"{% endif %}>Dashboard</a>
-      <a href="{% url 'inventory:staff_bookings' %}" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>
+      <a href="{% url 'core:owner_bookings' %}" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>
       <a href="{% url 'inventory:staff_orders_stock' %}" {% if active_page == "orders" %}class="active"{% endif %}>Orders</a>
       <a href="{% url 'inventory:staff_products' %}" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
       <a href="{% url 'core:owner_customers' %}" {% if active_page == "customers" %}class="active"{% endif %}>Customers</a>

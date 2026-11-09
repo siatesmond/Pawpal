@@ -23,18 +23,34 @@
     <div class="sitter-card status-card">
       <div class="status-heading"><h2>Application status</h2><span class="status-pill status-{{ sitter.application_status|lower }}">{{ sitter.get_application_status_display }}</span></div>
       <ol class="status-timeline">
-        <li class="complete"><strong>Account created &amp; application submitted</strong><small>{{ sitter.applied_at|date:"j M Y, g:i a" }}</small></li>
-        <li class="complete"><strong>Email verified</strong><small>Verification complete</small></li>
-        <li class="{% if sitter.application_status == 'PENDING' %}current{% elif sitter.application_status == 'APPROVED' or sitter.application_status == 'REJECTED' %}complete{% endif %}"><strong>Under review by Pawpal</strong><small>Business owner review</small></li>
-        <li class="{% if sitter.application_status == 'APPROVED' %}complete{% endif %}"><strong>Approved — start accepting jobs</strong></li>
+        <li class="complete">
+          <span class="timeline-marker">✓</span>
+          <div><strong>Account created &amp; application submitted</strong><small>{{ sitter.applied_at|date:"j M Y, g:i a" }}</small></div>
+        </li>
+        <li class="complete">
+          <span class="timeline-marker">✓</span>
+          <div><strong>Email verified</strong><small>Verification complete</small></div>
+        </li>
+        <li class="{% if sitter.application_status == 'PENDING' %}current{% else %}complete{% endif %}">
+          <span class="timeline-marker">{% if sitter.application_status == "PENDING" %}•{% else %}✓{% endif %}</span>
+          <div><strong>Under review by Pawpal</strong><small>Business owner review</small></div>
+        </li>
+        <li class="{% if sitter.application_status == 'APPROVED' %}complete{% elif sitter.application_status == 'REJECTED' %}rejected{% endif %}">
+          <span class="timeline-marker">{% if sitter.application_status == "APPROVED" %}✓{% elif sitter.application_status == "REJECTED" %}!{% else %}•{% endif %}</span>
+          <div><strong>Approved — start accepting jobs</strong></div>
+        </li>
       </ol>
     </div>
+
+    {% if sitter.application_status == "APPROVED" %}
+      <a href="{% url 'sitting:sitter_find_jobs' %}" class="sitter-button application-find-jobs-button">Find Jobs</a>
+    {% endif %}
 
     {% if sitter.application_status == "REJECTED" %}
       <div class="rejection-card">
         <span class="status-pill status-rejected">Rejected</span>
         <p>Reason from Pawpal</p>
-        <blockquote>{{ sitter.rejection_reason|default:"Your ID document is blurry — please upload a clearer photo." }}</blockquote>
+        <blockquote>{{ sitter.rejection_reason }}</blockquote>
         <a href="{% url 'sitting:signup' %}" class="sitter-button">Update &amp; resubmit</a>
         <a href="mailto:pawpal.sg.demo@gmail.com" class="sitter-outline-button">Contact support</a>
       </div>

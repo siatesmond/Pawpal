@@ -560,7 +560,11 @@ def staff_orders_stock(request):
 
     return render(
         request,
-        "inventory/staff_orders_stock.html",
+        (
+            "core/owner_orders_stock.html"
+            if request.session.get("user_type") == "owner"
+            else "inventory/staff_orders_stock.html"
+        ),
         {
             "active_page": "orders",
             "orders": orders,
@@ -600,7 +604,12 @@ def update_stock(request, pk):
         form = StockForm(instance=product)
 
     return render(
-        request, "inventory/staff_update_stock.html", 
+        request,
+        (
+            "core/owner_update_stock.html"
+            if request.session.get("user_type") == "owner"
+            else "inventory/staff_update_stock.html"
+        ),
         {
             "form": form, 
             "product": product, 
@@ -660,7 +669,11 @@ def staff_products(request):
 
     return render(
         request,
-        "inventory/staff_products.html",
+        (
+            "core/owner_products_catalog.html"
+            if request.session.get("user_type") == "owner"
+            else "inventory/staff_products.html"
+        ),
         {
             "active_page": "products",
             "products": products,
@@ -710,7 +723,11 @@ def product_form(request, pk=None):
 
     return render(
         request,
-        "inventory/staff_product_form.html",
+        (
+            "core/owner_product_form.html"
+            if request.session.get("user_type") == "owner"
+            else "inventory/staff_product_form.html"
+        ),
         {
             "form": form,
             "product": product,

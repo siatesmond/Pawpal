@@ -107,6 +107,11 @@ class Order(models.Model):
     def __str__(self):
         return f"Order {self.pk}"
 
+    @property
+    def total_display(self):
+        # 4890 cents -> "48.90"
+        return f"{self.total_cents / 100:.2f}"
+
 
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")

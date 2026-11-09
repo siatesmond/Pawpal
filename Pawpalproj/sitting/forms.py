@@ -8,6 +8,16 @@ from user.models import User
 
 from .models import PetSitter
 
+# Pet experience options shown as chips on sign-up (S1a) and profile (S6)
+PET_EXPERIENCE_CHOICES = [
+    ("Dogs", "Dogs"),
+    ("Cats", "Cats"),
+    ("Small pets", "Small pets"),
+    ("Senior pets", "Senior pets"),
+    ("Medication", "Medication"),
+    ("Puppies & kittens", "Puppies & kittens"),
+]
+
 
 class SitterRegistrationForm(forms.Form):
     full_name = forms.CharField(max_length=61)
@@ -21,11 +31,7 @@ class SitterRegistrationForm(forms.Form):
         min_value=Decimal("0.01"), max_digits=8, decimal_places=2
     )
     pet_experience = forms.MultipleChoiceField(
-        choices=[
-            ("Dogs", "Dogs"),
-            ("Cats", "Cats"),
-            ("Small animals", "Small animals"),
-        ],
+        choices=PET_EXPERIENCE_CHOICES,
         widget=forms.CheckboxSelectMultiple,
     )
     bio = forms.CharField(widget=forms.Textarea, max_length=2000)
