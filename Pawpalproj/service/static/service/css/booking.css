@@ -1,0 +1,642 @@
+/* Booking flow (service/book) — builds on the colours in base.css */
+.booking-page {
+  --card: #fff;
+  --line: #e4ded1;
+  --muted: #8c887d;
+  --faint: #c9c4b8;
+  --full-bg: #ebe7de;
+  --green-dark: #3d4b34;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------- layout ---------- */
+.booking-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 28px 0;
+}
+
+.booking-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 34px;
+  align-items: start;
+}
+
+.booking-title {
+  margin: 0 0 32px;
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 38px;
+  color: var(--green);
+}
+
+.booking-section {
+  margin-bottom: 28px;
+}
+
+.booking-section h2,
+.times h2 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Option buttons (pets, services, dates, times): reset browser button styles */
+.chip,
+.service-card,
+.cal-day,
+.slot {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+
+.chip:focus-visible,
+.service-card:focus-visible,
+.cal-day:focus-visible,
+.slot:focus-visible {
+  outline: none;
+}
+
+/* ---------- pet chips ---------- */
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.chip {
+  position: relative;
+  cursor: pointer;
+}
+
+.chip span,
+.chip-add {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e5e0d4;
+  font-size: 12px;
+}
+
+.chip-add {
+  background: #fff;
+}
+
+.chip-add:hover {
+  background: #f6f2ea;
+}
+
+.chip.is-selected span {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ---------- service cards ---------- */
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.service-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+}
+
+.service-card-body {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  transition: border-color 0.15s;
+}
+
+.service-card:hover .service-card-body {
+  border-color: #b9b4a8;
+}
+
+.service-card.is-selected .service-card-body {
+  border: 2px solid var(--green);
+  padding: 15px;
+}
+
+.service-card.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.service-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: #e5e0d4;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.service-card strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.service-card small {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+/* ---------- selects & inputs ---------- */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  align-items: end;
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.field-row.has-three {
+  grid-template-columns: 1fr 1fr 0.6fr auto;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.field select,
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.field select:focus,
+.field input:focus {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+.field-error {
+  color: #9b3d2e;
+}
+
+/* ---------- calendar + times ---------- */
+.schedule {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.calendar-card {
+  padding: 20px 18px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+}
+
+.cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+
+.cal-head strong {
+  font-weight: 500;
+}
+
+.cal-nav {
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.cal-nav:hover:not(:disabled) {
+  background: #f1ede4;
+}
+
+.cal-nav:disabled {
+  color: var(--faint);
+  cursor: default;
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  row-gap: 8px;
+  text-align: center;
+}
+
+.cal-dow {
+  padding-bottom: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.cal-day {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.cal-day span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cal-day:hover:not(:disabled) span {
+  background: #f1ede4;
+}
+
+.cal-day.is-today span {
+  box-shadow: inset 0 0 0 1px #b9b4a8;
+}
+
+.cal-day.is-selected span {
+  background: var(--green);
+  color: #fff;
+  font-weight: 600;
+}
+
+.cal-day:disabled span {
+  color: var(--faint);
+  cursor: default;
+}
+
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  position: relative;
+  width: 100%;
+  cursor: pointer;
+}
+
+.slot span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+
+.slot strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.slot small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.slot:hover:not(:disabled) span {
+  border-color: #b9b4a8;
+}
+
+.slot.is-selected span {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+
+.slot.is-selected span small {
+  color: #e2e6dc;
+}
+
+.slot:disabled span {
+  border-color: transparent;
+  background: var(--full-bg);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* Keyboard focus ring for the option buttons */
+.chip:focus-visible span,
+.service-card:focus-visible .service-card-body,
+.cal-day:focus-visible span,
+.slot:focus-visible span {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.slot-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.slot-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--card);
+}
+
+.swatch-selected {
+  border-color: var(--green);
+  background: var(--green);
+}
+
+.swatch-full {
+  border-color: #d9d4c8;
+  background: #d9d4c8;
+}
+
+/* ---------- summary card ---------- */
+.summary-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+}
+
+.summary-card h2 {
+  margin: 0 0 18px;
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  font-size: 21px;
+  color: var(--green);
+}
+
+.summary-rows {
+  margin: 0;
+}
+
+.summary-rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 12px;
+}
+
+.summary-rows dt {
+  color: var(--muted);
+}
+
+.summary-rows dd {
+  margin: 0;
+  text-align: right;
+}
+
+.summary-prices {
+  margin-bottom: 16px;
+}
+
+.summary-total {
+  margin-top: 6px;
+}
+
+.summary-rows .summary-total dt,
+.summary-rows .summary-total dd {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Small button: the dropdowns' "Update" */
+.small-btn {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border: 1px solid var(--green);
+  border-radius: 8px;
+  background: var(--green);
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.small-btn:hover {
+  background: #263120;
+  color: #fff;
+}
+
+.small-btn:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 1px;
+}
+
+.pay-btn,
+.outline-btn {
+  display: inline-block;
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.pay-btn:hover:not(:disabled) {
+  background: #deaa52;
+}
+
+.pay-btn:disabled {
+  background: #e9dfc9;
+  color: #a39e92;
+  cursor: not-allowed;
+}
+
+.outline-btn {
+  border: 1px solid var(--green);
+  background: transparent;
+  color: var(--green);
+}
+
+.outline-btn:hover {
+  background: #f1ede4;
+}
+
+.fine-print {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+/* ---------- success ---------- */
+.success-card {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 32px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  text-align: center;
+}
+
+.success-card .booking-title {
+  margin-bottom: 8px;
+}
+
+.success-card .summary-rows {
+  margin: 24px 0 0;
+  text-align: left;
+}
+
+.success-check {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 16px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 24px;
+}
+
+.success-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 960px) {
+  .booking-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .schedule {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .booking-page {
+    padding: 28px 16px 0;
+  }
+
+  .booking-title {
+    font-size: 30px;
+  }
+
+  .service-grid,
+  .field-row,
+  .field-row.has-three {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .slot-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .success-actions {
+    flex-direction: column;
+  }
+}
+
+.slot-grid > .muted {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+/* dot under days that have open TimeSlots */
+.cal-day.has-slots span {
+  position: relative;
+  font-weight: 600;
+}
+
+.cal-day.has-slots span::after,
+.cal-dot {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
+.cal-day.has-slots span::after {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.cal-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.cal-dot {
+  display: inline-block;
+}
