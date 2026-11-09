@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Become a Pawpal sitter{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="sitter-hero">
+  <div>
+    <p class="sitter-eyebrow">PET SITTING WITH PAWPAL</p>
+    <h1>{% if edit_mode %}Update your Pawpal sitter application{% else %}Become a Pawpal sitter{% endif %}</h1>
+    <p>Choose jobs near you, set your own rate and keep 90% of every booking — Pawpal's 10% covers secure payment, verified customers and support.</p>
+  </div>
+  <div class="sitter-illustration">Illustration — sitter walking a dog</div>
+</section>
+
+<section class="sitter-layout">
+  <div class="sitter-card">
+    <h2>{% if edit_mode %}Edit your sitter application{% else %}Create your sitter account{% endif %}</h2>
+    <p class="sitter-help">This creates your Pawpal login and sends your application to our team in one step.</p>
+    <form method="post" enctype="multipart/form-data" class="sitter-form" novalidate>
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="sitter-fields">
+        {% for field in form %}
+          {% if field.name != "terms" and field.name != "pet_experience" and field.name != "bio" and field.name != "id_document" %}
+            <label>{{ field.label }} {{ field }}{{ field.errors }}</label>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <fieldset class="sitter-fieldset">
+        <legend>Pets you can care for</legend>
+        {{ form.pet_experience }}
+        {{ form.pet_experience.errors }}
+      </fieldset>
+      <label class="sitter-wide-field">{{ form.bio.label }} {{ form.bio }}{{ form.bio.errors }}</label>
+      <div class="sitter-upload">
+        <label>{{ form.id_document.label }} {{ form.id_document }}</label>
+        {% if form.initial.id_document or form.instance.id_document %}
+          <p class="sitter-current-document">
+            Current document:
+            <a href="{{ form.initial.id_document.url }}" target="_blank" rel="noopener">
+              {{ form.initial.id_document.name|default:"Uploaded document" }}
+            </a>
+          </p>
+          <small>Leave this field empty to keep the current document.</small>
+        {% else %}
+          <small>NRIC / passport, PDF or image, max 5 MB</small>
+        {% endif %}
+        {{ form.id_document.errors }}
+      </div>
+      <label class="sitter-terms">{{ form.terms }} {{ form.terms.label }}{{ form.terms.errors }}</label>
+      <button type="submit" class="sitter-button">{% if edit_mode %}Update &amp; resubmit{% else %}Create account &amp; apply{% endif %}</button>
+    </form>
+    <p class="sitter-login-note">{% if edit_mode %}Your updated application will be reviewed again.{% else %}We'll send a verification email. Already have a Pawpal account? <a href="{% url 'user:login' %}">Log in →</a>{% endif %}</p>
+  </div>
+
+  <aside class="sitter-aside">
+    <div class="sitter-card">
+      <h2>How it works</h2>
+      <ol>
+        <li><strong>Create account &amp; apply</strong><small>Fill in this form and add your ID</small></li>
+        <li><strong>Verify your email</strong><small>Enter the code we send you</small></li>
+        <li><strong>We review your application</strong><small>Business owner approves in 2–3 working days</small></li>
+        <li><strong>Start accepting jobs</strong><small>See nearby requests on the map</small></li>
+      </ol>
+    </div>
+    <div class="sitter-note"><strong>Already a Pawpal customer?</strong><br>Sitter accounts are separate from customer accounts — please sign up with a different email.</div>
+    <div class="sitter-earnings"><strong>How earnings work</strong><br>Job SGD 120 → Pawpal 10% SGD 12 → You SGD 108</div>
+  </aside>
+</section>
+{% endblock %}

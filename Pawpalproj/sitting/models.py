@@ -10,6 +10,9 @@ from django.db.models import Q
 from user.models import BusinessOwner, Customer, Pet, User
 
 IMAGE_TYPES = FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"])
+DOCUMENT_TYPES = FileExtensionValidator(
+    allowed_extensions=["jpg", "jpeg", "png", "pdf"]
+)
 
 sitting_images = FileSystemStorage(
     location=settings.BASE_DIR / "sitting" / "static" / "sitting" / "images",
@@ -47,7 +50,7 @@ class PetSitter(User):
     pet_experience = models.CharField(max_length=100, blank=True)
     daily_rate_cents = models.PositiveIntegerField()
     id_document = models.FileField(
-        storage=sitting_images, validators=[IMAGE_TYPES], blank=True
+        storage=sitting_images, validators=[DOCUMENT_TYPES], blank=True
     )
     application_status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.PENDING
@@ -61,6 +64,10 @@ class PetSitter(User):
         related_name="reviewed_sitters",
     )
     applied_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def daily_rate_display(self):
+        return f"{self.daily_rate_cents / 100:.2f}"
 
 
 class SittingRequest(models.Model):

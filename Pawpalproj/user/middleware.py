@@ -12,6 +12,7 @@ PROTECTED_PATHS = {
     "/service/book/": ["customer"],
     "/admin-panel/": ["staff", "owner"],
     "/sitting/jobs/": ["sitter"],
+    "/sitting/application/": ["sitter"],
 }
 
 
