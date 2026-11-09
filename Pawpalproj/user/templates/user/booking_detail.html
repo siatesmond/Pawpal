@@ -26,6 +26,45 @@
       <span class="booking-status booking-status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
     </div>
 
+    <!-- Updates posted by staff, newest first -->
+    <section class="profile-panel">
+      <h2>Updates from our team</h2>
+      {% if updates %}
+        <ol class="update-timeline">
+          {% for update in updates %}
+            <li class="update-item">
+              <div class="update-head">
+                <span class="booking-status booking-status-{{ update.new_status|lower }}">{{ update.get_new_status_display }}</span>
+                <time datetime="{{ update.created_at|date:'c' }}">{{ update.created_at|date:"D, j M · g:i A" }}</time>
+              </div>
+              {% if update.note %}<p class="update-note">{{ update.note }}</p>{% endif %}
+
+              {% if update.photos.all or update.photo %}
+                <div class="update-photos">
+                  {% for photo in update.photos.all %}
+                    <a href="{{ photo.photo.url }}" target="_blank" rel="noopener">
+                      <img src="{{ photo.photo.url }}" alt="Photo of {{ booking.pet.name }} from {{ update.created_at|date:'j M' }}">
+                    </a>
+                  {% endfor %}
+                  {% if update.photo %}
+                    <a href="{{ update.photo.url }}" target="_blank" rel="noopener">
+                      <img src="{{ update.photo.url }}" alt="Photo of {{ booking.pet.name }} from {{ update.created_at|date:'j M' }}">
+                    </a>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if update.staff %}
+                <small class="update-by">Posted by {{ update.staff.first_name|default:update.staff.username }}</small>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="section-note">No updates yet. Our team will post updates and photos of {{ booking.pet.name }} here during the visit.</p>
+      {% endif %}
+    </section>
+
     <!-- Booking information -->
     <section class="profile-panel">
       <h2>Booking details</h2>

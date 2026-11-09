@@ -517,6 +517,13 @@ class BookingDetailView(View):
         # Get the most recent payment for this booking
         payment = booking.payments.order_by("-created_at").first()
 
+        # Booking updates, with staff and photos prefetched (newest first)
+        updates = (
+            booking.updates.select_related("staff")
+            .prefetch_related("photos")
+            .order_by("-created_at")
+        )
+
         return render(
             request,
             self.template_name,
@@ -524,6 +531,7 @@ class BookingDetailView(View):
                 "customer": customer,
                 "booking": booking,
                 "payment": payment,
+                "updates": updates,
                 "price_dollars": booking.price_cents / 100,
                 "discount_dollars": booking.points_discount_cents / 100,
                 "total_dollars": booking.total_cents / 100,
