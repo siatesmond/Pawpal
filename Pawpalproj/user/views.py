@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
+from django.db.models import Q
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -345,7 +346,6 @@ class LogoutView(View):
         request.session.flush()
         return redirect("/user/login/")
 
-
 class CustomerHomeView(View):
     """customer home. The middleware has already checked the login."""
 
@@ -355,10 +355,7 @@ class CustomerHomeView(View):
         customer = Customer.objects.get(pk=request.session["user_id"])
 
         upcoming = (
-            Booking.objects.filter(
-                customer=customer, slot__start_time__gte=timezone.now()
-            )
-            .exclude(status="CANCELLED")
+            Booking.objects.filter(_current_bookings(), customer=customer)
             .select_related("pet", "slot__service", "slot__outlet")
             .order_by("slot__start_time")
         )
@@ -372,6 +369,13 @@ class CustomerHomeView(View):
 
 
 # CUSTOMER PROFILE
+
+# used in BookingListView to filter bookings into current/upcoming vs past
+# used in CustomerHomeView to filter upcoming bookings for the dashboard
+def _current_bookings():
+    return Q(status__in=Booking.IN_CARE_STATUSES) | Q(
+        status__in=Booking.BOOKED_STATUSES, slot__start_time__gte=timezone.now()
+    )
 
 class CustomerProfileView(View):
     template_name = "user/profile.html"
@@ -467,6 +471,36 @@ class AddAddressView(View):
 
 
 # CUSTOMER PET PROFILES
+
+# Customer bookings
+class BookingListView(View):
+
+    template_name = "user/bookings.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        bookings = (
+            Booking.objects.filter(customer=customer)
+            .select_related("pet", "slot__service", "slot__outlet")
+        )
+        current_bookings = _current_bookings()
+        upcoming_bookings = list(bookings.filter(current_bookings).order_by("slot__start_time"))
+
+        # Completed and Cancelled statuses
+        past_bookings = list(bookings.exclude(current_bookings).order_by("-slot__start_time"))
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "upcoming_bookings": upcoming_bookings,
+                "past_bookings": past_bookings  ,
+                "active_account_page": "bookings",
+            },
+        )
+
 
 class PetListView(View):
     template_name = "user/pets.html"

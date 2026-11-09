@@ -1,0 +1,72 @@
+/* My bookings page (user/bookings.html). Layout and buttons come from profile.css */
+
+.booking-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.booking-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid #e2dcd1;
+  border-radius: 12px;
+  background: var(--nav-bg);
+}
+
+.booking-row.is-cancelled {
+  opacity: 0.65;
+}
+
+.booking-info h3 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.booking-info p {
+  margin: 2px 0 0;
+  color: #7a716a;
+  font-size: 13px;
+}
+
+.booking-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+}
+
+/* status pill */
+.booking-status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.booking-status-pending { background: #fbf0d9; color: #a8761c; }
+.booking-status-confirmed { background: #e3eedc; color: #3f7a3a; }
+.booking-status-checked_in { background: #e6e0f3; color: #5b4a8a; }
+.booking-status-in_progress { background: #fde7d2; color: #b45f1c; }
+.booking-status-ready_for_pickup { background: #d6efe9; color: #1f7a66; }
+.booking-status-completed { background: #dce6f1; color: #3b5a7a; }
+.booking-status-cancelled { background: #f3dedb; color: #9b3d2e; }
+
+@media (max-width: 600px) {
+  .booking-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .booking-side {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
