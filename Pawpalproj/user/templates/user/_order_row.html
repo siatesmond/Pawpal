@@ -1,0 +1,23 @@
+{# order card used by both sections in user/orders.html (same layout as _booking_row.html) #}
+<article class="record-row{% if order.status == 'CANCELLED' %} is-cancelled{% endif %}">
+  <!-- Order information -->
+  <div class="record-info">
+    <h3>Order #{{ order.pk }}</h3>
+    {% with items=order.items.all %}
+      <p>
+        {{ items|length }} item{{ items|length|pluralize }} ·
+        {% for item in items|slice:":2" %}{{ item.product.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        {% if items|length > 2 %} +{{ items|length|add:"-2" }} more{% endif %}
+      </p>
+    {% endwith %}
+    <p>
+      Placed {{ order.created_at|date:"D, j M Y" }} ·
+      {% if order.pickup_outlet %}Pick-up at {{ order.pickup_outlet.name }}{% else %}Delivery{% endif %}
+    </p>
+  </div>
+
+  <div class="record-side">
+    <span class="record-status record-status-{{ order.status|lower }}">{{ order.get_status_display }}</span>
+    <a class="record-details-link" href="{% url 'user:order_detail' order.pk %}">View details</a>
+  </div>
+</article>

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/pets.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}" />
+{% endblock %}
+
+{% block content %}
+{# TIME_ZONE in settings is UTC, so show dates in Singapore time #}
+{% timezone "Asia/Singapore" %}
+<!-- Booking/Order base template -->
+<div class="profile-layout">
+  {% include "user/_account_sidebar.html" %}
+
+  <main class="profile-main">
+    <div class="profile-heading">
+      <h1>{% block heading %}{% endblock %}</h1>
+      {% block action %}{% endblock %}
+    </div>
+
+    <section class="profile-panel">
+      <h2>{% block current_title %}{% endblock %}</h2>
+      <div class="record-list">
+        {% block current_rows %}{% endblock %}
+      </div>
+    </section>
+
+    <section class="profile-panel">
+      <h2>{% block past_title %}Past &amp; cancelled{% endblock %}</h2>
+      <div class="record-list">
+        {% block past_rows %}{% endblock %}
+      </div>
+    </section>
+  </main>
+</div>
+{% endtimezone %}
+{% endblock %}

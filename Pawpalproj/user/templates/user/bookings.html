@@ -1,0 +1,25 @@
+{% extends "user/account_list_base.html" %}
+
+{% block title %}My bookings | Pawpal{% endblock %}
+{% block heading %}My bookings{% endblock %}
+
+{% block action %}
+<a class="profile-button profile-button-honey" href="{% url 'service:book' %}">+ Book a service</a>
+{% endblock %}
+
+{% block current_title %}Current &amp; upcoming{% endblock %}
+{% block current_rows %}
+  {% for booking in upcoming_bookings %}
+    {% include "user/_booking_row.html" %}
+  {% empty %}
+    <p class="section-note">No upcoming bookings. Book a grooming, daycare or boarding session for your pet.</p>
+  {% endfor %}
+{% endblock %}
+
+{% block past_rows %}
+  {% for booking in past_bookings %}
+    {% include "user/_booking_row.html" %}
+  {% empty %}
+    <p class="section-note">Your completed and cancelled bookings will show here.</p>
+  {% endfor %}
+{% endblock %}

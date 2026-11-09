@@ -230,6 +230,21 @@
   color: #1d4ed8;
 }
 
+.status-pill.status-checked_in {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-pill.status-in_progress {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.status-pill.status-ready_for_pickup {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
 .status-pill.status-completed {
   background: #dcfce7;
   color: #15803d;

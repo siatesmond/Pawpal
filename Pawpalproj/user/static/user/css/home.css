@@ -98,6 +98,9 @@
 
 .status-confirmed { color: #3f7a3a; }
 .status-pending { color: #a8761c; }
+.status-checked_in { color: #5b4a8a; }
+.status-in_progress { color: #b45f1c; }
+.status-ready_for_pickup { color: #1f7a66; }
 
 .pet-grid {
   display: grid;

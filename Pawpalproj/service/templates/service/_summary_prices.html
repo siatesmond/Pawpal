@@ -1,0 +1,6 @@
+<dl class="summary-rows summary-prices">
+  <div class="summary-total">
+    <dt>Price{% if summary.nights and summary.nights > 1 %} ({{ summary.nights }} nights){% endif %}</dt>
+    <dd>{% if summary.price_dollars is not None %}SGD {{ summary.price_dollars|floatformat:2 }}{% else %}—{% endif %}</dd>
+  </div>
+</dl>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}" />
+{% endblock %}
+
+{% block content %}
+{# TIME_ZONE in settings is UTC, so show dates in Singapore time #}
+{% timezone "Asia/Singapore" %}
+<div class="profile-layout">
+  {% include "user/_account_sidebar.html" %}
+
+  <main class="profile-main">
+    {% block back_link %}{% endblock %}
+
+    <div class="profile-heading">
+      <div>
+        <h1>{% block heading %}{% endblock %}</h1>
+        <p>{% block subtitle %}{% endblock %}</p>
+      </div>
+      {% block status %}{% endblock %}
+    </div>
+
+    {% block sections %}{% endblock %}
+  </main>
+</div>
+{% endtimezone %}
+{% endblock %}

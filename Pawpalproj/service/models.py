@@ -79,8 +79,16 @@ class Booking(models.Model):
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
         CONFIRMED = "CONFIRMED", "Confirmed"
+        CHECKED_IN = "CHECKED_IN", "Checked in"
+        IN_PROGRESS = "IN_PROGRESS", "In progress"
+        READY_FOR_PICKUP = "READY_FOR_PICKUP", "Ready for pickup"
         COMPLETED = "COMPLETED", "Completed"
         CANCELLED = "CANCELLED", "Cancelled"
+
+    # Not started yet
+    BOOKED_STATUSES = (Status.PENDING, Status.CONFIRMED)
+    # When pet is in care (checked in, in progress, ready for pickup)
+    IN_CARE_STATUSES = (Status.CHECKED_IN, Status.IN_PROGRESS, Status.READY_FOR_PICKUP)
 
     customer = models.ForeignKey(
         "user.Customer",

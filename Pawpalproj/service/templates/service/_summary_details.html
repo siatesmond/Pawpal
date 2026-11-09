@@ -1,0 +1,24 @@
+<dl class="summary-rows">
+  <div>
+    <dt>Pet</dt>
+    <dd>{% if summary.pet %}{{ summary.pet.name }}{% if summary.pet.breed %} ({{ summary.pet.breed }}){% endif %}{% else %}—{% endif %}</dd>
+  </div>
+  <div>
+    <dt>Service</dt>
+    <dd>{{ summary.service.name|default:"—" }}</dd>
+  </div>
+  <div>
+    <dt>Outlet</dt>
+    <dd>{{ summary.outlet.name|default:"—" }}</dd>
+  </div>
+  <div>
+    <dt>{% if summary.check_out %}Check-in{% else %}Date &amp; time{% endif %}</dt>
+    <dd>{{ summary.when|default:"Choose a time" }}</dd>
+  </div>
+  {% if summary.check_out %}
+    <div>
+      <dt>Check-out</dt>
+      <dd>{{ summary.check_out }}</dd>
+    </div>
+  {% endif %}
+</dl>

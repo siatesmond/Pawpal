@@ -1,0 +1,40 @@
+/* Booking progress bar (service/_steps.html), shared by the booking and checkout pages */
+.steps-band {
+  background: #fbf9f5;
+  border-top: 1px solid #e6e1d6;
+}
+
+.steps {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 22px 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  list-style: none;
+  flex-wrap: wrap;
+}
+
+.step {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #ece7dc;
+  color: #77746a;
+  font-size: 12px;
+}
+
+.step.is-active {
+  background: var(--green);
+  color: #fff;
+}
+
+.step-sep {
+  width: 18px;
+  border-top: 1px dashed #b9b4a8;
+}
+
+@media (max-width: 600px) {
+  .steps {
+    padding: 16px;
+  }
+}

@@ -1,0 +1,9 @@
+<div class="steps-band">
+  <ol class="steps" aria-label="Booking progress">
+    <li class="step{% if step >= 1 %} is-active{% endif %}"{% if step == 1 %} aria-current="step"{% endif %}>1&nbsp; Pet &amp; service</li>
+    <li class="step-sep" aria-hidden="true"></li>
+    <li class="step{% if step >= 2 %} is-active{% endif %}"{% if step == 2 %} aria-current="step"{% endif %}>2&nbsp; Date &amp; time</li>
+    <li class="step-sep" aria-hidden="true"></li>
+    <li class="step{% if step >= 3 %} is-active{% endif %}"{% if step == 3 %} aria-current="step"{% endif %}>3&nbsp; Checkout</li>
+  </ol>
+</div>

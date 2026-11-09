@@ -1,0 +1,156 @@
+
+/* Used by booking_detail and order_detail */
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.record-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 18px;
+  padding: 16px;
+  border: 1px solid #e2dcd1;
+  border-radius: 12px;
+  background: var(--nav-bg);
+}
+
+.record-row.is-cancelled {
+  opacity: 0.65;
+}
+
+.record-info h3 {
+  margin: 0 0 4px;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.record-info p {
+  margin: 2px 0 0;
+  color: #7a716a;
+  font-size: 13px;
+}
+
+.record-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  text-align: right;
+}
+
+/* "View details" button on each booking / order row */
+.record-details-link {
+  padding: 6px 14px;
+  border: 1px solid var(--green);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.record-details-link:hover {
+  background: var(--green);
+  color: #fff;
+}
+
+/* Booking / Order details pages */
+.record-back-link {
+  align-self: flex-start;
+  color: #7a716a;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.record-back-link:hover {
+  color: var(--green);
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.detail-list > div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #efe9de;
+}
+
+.detail-list > div:last-child {
+  border-bottom: none;
+}
+
+.detail-list dt {
+  color: #7a716a;
+  font-size: 13px;
+}
+
+.detail-list dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.detail-list small {
+  color: #7a716a;
+  font-size: 12px;
+}
+
+.detail-total dt,
+.detail-total dd {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* status pill */
+.record-status {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.record-status-pending { background: #fbf0d9; color: #a8761c; }
+.record-status-confirmed { background: #e3eedc; color: #3f7a3a; }
+.record-status-checked_in { background: #e6e0f3; color: #5b4a8a; }
+.record-status-in_progress { background: #fde7d2; color: #b45f1c; }
+.record-status-ready_for_pickup { background: #d6efe9; color: #1f7a66; }
+.record-status-completed { background: #dce6f1; color: #3b5a7a; }
+.record-status-cancelled { background: #f3dedb; color: #9b3d2e; }
+
+
+/* Cancel section on the booking / order details pages */
+.cancel-panel .profile-button-row {
+  margin-top: 4px;
+}
+
+.cancel-button {
+  border-color: #9b3d2e;
+  background: #9b3d2e;
+  color: #fff;
+}
+
+.cancel-button:hover {
+  background: #7f3022;
+}
+
+.cancel-link {
+  border-color: #9b3d2e;
+  color: #9b3d2e;
+}
+
+.cancel-link:hover {
+  border-color: #9b3d2e;
+  background: #f3dedb;
+  color: #9b3d2e;
+}

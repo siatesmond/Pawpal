@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Checkout | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/staff.css' %}">
+<link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
+{% block checkout_css %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+<div class="form-page checkout-page">
+    <div class="form-page-header">
+        <h1>Checkout</h1>
+        <p>{{ checkout_intro|default:"Provide your order and payment details" }}</p>
+    </div>
+
+    <!-- Layout for the checkout form and summary -->
+     <!-- Shared form template -->
+    <div class="checkout-layout">
+        <div class="form-card checkout-form-card">
+            {% include "payment/form_template.html" with form_css_class="checkout-form" form_id="checkout-form" hide_submit=True %}
+        </div>
+
+        <section class="checkout-summary">
+            <h2>{{ summary_title|default:"Order summary" }}</h2>
+            <!-- checkout.html and book_checkout.html changes this -->
+            {% block summary_items %}{% endblock %}
+            {% include "payment/_checkout_totals.html" %}
+            <button type="submit" form="checkout-form" name="action" value="place_order" class="save-btn checkout-pay-btn">
+                {{ submit_text|default:"Place Order" }}
+            </button>
+            {% if back_url %}
+                <a href="{{ back_url }}" class="checkout-back-link">‹ {{ back_text|default:"Back" }}</a>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

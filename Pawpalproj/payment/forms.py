@@ -1,65 +1,17 @@
+from datetime import date
+
 from django import forms
 from django.core.validators import MaxValueValidator, RegexValidator
-from django.db.models import Sum
 
 from core.models import Outlet
 from user.models import Address
 
 from payment.models import Payment
+from payment.services import get_points_balance, points_limit_message
 
-class CheckoutForm(forms.Form):
-    delivery_method = forms.ChoiceField(
-        choices=(
-            ("delivery", "Delivery"),
-            ("pickup", "Pick-up"),
-        ),
-        label="Order method",
-        widget=forms.RadioSelect,
-        initial="delivery",
-    )
-    delivery_address = forms.ModelChoiceField(
-        queryset=Address.objects.none(),
-        required=False,
-        empty_label="Select a delivery address",
-        label="Delivery address",
-    )
-    use_new_address = forms.BooleanField(
-        required=False,
-        label="Use a new address",
-    )
-    new_address_label = forms.CharField(
-        required=False,
-        max_length=50,
-        label="Address label",
-        widget=forms.TextInput(attrs={"placeholder": "e.g. Home"}),
-    )
-    new_address_line1 = forms.CharField(
-        required=False,
-        label="Address line 1",
-    )
-    new_address_line2 = forms.CharField(
-        required=False,
-        label="Address line 2",
-    )
-    new_address_postal_code = forms.CharField(
-        required=False,
-        max_length=6,
-        label="Postal code",
-    )
-    save_address = forms.BooleanField(
-        required=False,
-        label="Save this address to my profile",
-    )
-    new_address_is_default = forms.BooleanField(
-        required=False,
-        label="Set as my default address",
-    )
-    pickup_outlet = forms.ModelChoiceField(
-        queryset=Outlet.objects.filter(is_active=True),
-        required=False,
-        empty_label="Select an outlet",
-        label="Pick-up outlet",
-    )
+# Points redemption and card fields are shared between the shop and service-booking checkouts
+# both checkout forms inherit this
+class PaymentDetailsForm(forms.Form):
     
     # Points Redemption Field
     points_to_redeem = forms.IntegerField(
@@ -122,9 +74,7 @@ class CheckoutForm(forms.Form):
 
         # Use the balance passed in by the view to avoid a duplicate query
         if points_balance is None:
-            points_balance = (
-                customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
-            )
+            points_balance = get_points_balance(customer)
         self.max_points = points_balance
         
         self.fields["points_to_redeem"].label = (
@@ -140,13 +90,90 @@ class CheckoutForm(forms.Form):
             points_field.validators.append(
                 MaxValueValidator(  # blocks exceeding the balance
                     self.max_points,
-                    message=f"You only have {self.max_points} points available.",
+                    message=points_limit_message(self.max_points),
                 )
             )
             points_field.widget.attrs.update({
                 "max": str(self.max_points),
                 "placeholder": f"Max {self.max_points}",
             })
+
+    # Validate that the card has not expired
+    def clean_expiry(self):
+        expiry = self.cleaned_data["expiry"]
+        month, year = expiry.split("/")
+        today = date.today()
+        if (2000 + int(year), int(month)) < (today.year, today.month):
+            raise forms.ValidationError("This card has expired.")
+        return expiry
+
+# Inherits PaymentDetailsForm and adds delivery / pick-up fields for the shop products checkout
+class CheckoutForm(PaymentDetailsForm):
+
+    # Show delivery fields before the inherited points + card fields
+    field_order = [
+        "delivery_method", "delivery_address", "use_new_address",
+        "new_address_label", "new_address_line1", "new_address_line2",
+        "new_address_postal_code", "save_address", "new_address_is_default",
+        "pickup_outlet",
+    ]
+
+    delivery_method = forms.ChoiceField(
+        choices=(
+            ("delivery", "Delivery"),
+            ("pickup", "Pick-up"),
+        ),
+        label="Order method",
+        widget=forms.RadioSelect,
+        initial="delivery",
+    )
+    delivery_address = forms.ModelChoiceField(
+        queryset=Address.objects.none(),
+        required=False,
+        empty_label="Select a delivery address",
+        label="Delivery address",
+    )
+    use_new_address = forms.BooleanField(
+        required=False,
+        label="Use a new address",
+    )
+    new_address_label = forms.CharField(
+        required=False,
+        max_length=50,
+        label="Address label",
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Home"}),
+    )
+    new_address_line1 = forms.CharField(
+        required=False,
+        label="Address line 1",
+    )
+    new_address_line2 = forms.CharField(
+        required=False,
+        label="Address line 2",
+    )
+    new_address_postal_code = forms.CharField(
+        required=False,
+        max_length=6,
+        label="Postal code",
+    )
+    save_address = forms.BooleanField(
+        required=False,
+        label="Save this address to my profile",
+    )
+    new_address_is_default = forms.BooleanField(
+        required=False,
+        label="Set as my default address",
+    )
+    pickup_outlet = forms.ModelChoiceField(
+        queryset=Outlet.objects.filter(is_active=True),
+        required=False,
+        empty_label="Select an outlet",
+        label="Pick-up outlet",
+    )
+
+    # Populate the delivery address queryset and pre-select the default address
+    def __init__(self, customer, *args, **kwargs):
+        super().__init__(customer, *args, **kwargs)
 
         # Queryset of customer addresses
         addresses = customer.addresses.all()

@@ -1,0 +1,16 @@
+<div class="checkout-summary-total">
+    <span>Subtotal</span>
+    <strong>SGD {{ subtotal_dollars|floatformat:2 }}</strong>
+</div>
+<div class="checkout-summary-total">
+    <span>Points discount</span>
+    <strong>{% if points_discount_dollars %}− {% endif %}SGD {{ points_discount_dollars|floatformat:2 }}</strong>
+</div>
+<div class="checkout-summary-total">
+    <span>Total to pay</span>
+    <strong>SGD {{ total_dollars|floatformat:2 }}</strong>
+</div>
+<div class="checkout-summary-total checkout-points-earned">
+    <span>Points earned</span>
+    <strong>{{ points_earned }}</strong>
+</div>
