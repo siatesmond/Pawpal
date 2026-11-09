@@ -1,0 +1,362 @@
+.sitter-hero {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  align-items: center;
+  gap: 48px;
+  padding: 48px max(48px, calc((100vw - 1100px) / 2));
+  background: #dce6f1;
+}
+
+.sitter-hero h1,
+.sitter-card h2,
+.status-layout h1 {
+  margin: 0;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+}
+
+.sitter-hero h1 {
+  font-size: 34px;
+}
+
+.sitter-hero p:not(.sitter-eyebrow) {
+  max-width: 600px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sitter-eyebrow {
+  margin: 0 0 10px;
+  color: var(--green);
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.sitter-illustration {
+  display: grid;
+  min-height: 140px;
+  place-items: center;
+  border-radius: 12px;
+  background: #ded8cd;
+  color: #8d867d;
+  font-size: 10px;
+}
+
+.sitter-layout,
+.status-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(260px, .7fr);
+  gap: 20px;
+  max-width: 1100px;
+  margin: 28px auto 50px;
+}
+
+.sitter-card,
+.sitter-note,
+.sitter-earnings,
+.rejection-card {
+  border-radius: 12px;
+  background: #fff;
+  padding: 20px;
+}
+
+.sitter-card h2 {
+  font-size: 20px;
+}
+
+.sitter-help,
+.sitter-login-note,
+.sitter-summary p {
+  color: #7a716a;
+  font-size: 10px;
+}
+
+.sitter-form {
+  margin-top: 16px;
+}
+
+.sitter-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.sitter-form label,
+.sitter-fieldset {
+  color: #3b3a33;
+  font-size: 10px;
+}
+
+.sitter-form input:not([type="checkbox"]),
+.sitter-form textarea,
+.sitter-form select {
+  display: block;
+  width: 100%;
+  margin-top: 5px;
+  border: 1px solid #ded8cd;
+  border-radius: 7px;
+  padding: 9px;
+  background: #fff;
+  font: inherit;
+}
+
+.sitter-form textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.sitter-fieldset,
+.sitter-wide-field,
+.sitter-upload,
+.sitter-terms {
+  margin-top: 12px;
+}
+
+.sitter-fieldset {
+  border: 0;
+  padding: 0;
+}
+
+.sitter-fieldset ul {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sitter-fieldset li label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #ece7dc;
+}
+
+.sitter-upload {
+  display: block;
+  border: 1px dashed #c9c0b5;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.sitter-upload small {
+  display: block;
+  color: #7a716a;
+}
+
+.sitter-current-document {
+  margin: 8px 0 4px;
+  color: #596356;
+  font-size: 10px;
+}
+
+.sitter-current-document a {
+  color: var(--green);
+  text-decoration: underline;
+  overflow-wrap: anywhere;
+}
+
+.sitter-terms {
+  display: block;
+}
+
+.sitter-button,
+.sitter-outline-button {
+  display: inline-block;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.sitter-button:hover,
+.sitter-outline-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgb(47 42 38 / 14%);
+}
+
+.sitter-button:active,
+.sitter-outline-button:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.sitter-outline-button {
+  margin-left: 8px;
+  border: 1px solid var(--text);
+  background: transparent;
+  color: var(--text);
+}
+
+.sitter-login-note a,
+.sitter-summary a {
+  color: var(--green);
+  text-decoration: underline;
+}
+
+.sitter-aside > * + * {
+  margin-top: 12px;
+}
+
+.sitter-aside ol {
+  margin-top: 14px;
+  padding-left: 20px;
+  color: #596356;
+  font-size: 10px;
+}
+
+.sitter-aside li {
+  margin-bottom: 12px;
+}
+
+.sitter-aside small {
+  display: block;
+  color: #7a716a;
+}
+
+.sitter-note {
+  background: #ece7dc;
+  color: #596356;
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.sitter-earnings {
+  background: #dce6f1;
+  color: #596356;
+  font-size: 10px;
+  line-height: 1.8;
+}
+
+.sitter-status-banner {
+  padding: 10px max(48px, calc((100vw - 1100px) / 2));
+  background: #f0ede5;
+  color: #5b8d63;
+  font-size: 10px;
+}
+
+.status-layout h1 {
+  font-size: 32px;
+}
+
+.status-layout > div > p {
+  max-width: 650px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.status-card,
+.rejection-card {
+  margin-top: 20px;
+}
+
+.status-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.status-heading h2 {
+  font-size: 20px;
+}
+
+.status-pill {
+  border-radius: 999px;
+  padding: 6px 12px;
+  background: #e8a43a;
+  color: #fff;
+  font-size: 10px;
+}
+
+.status-approved {
+  background: #5b8d63;
+}
+
+.status-rejected {
+  background: #c85c4e;
+}
+
+.status-timeline {
+  margin-top: 16px;
+  padding-left: 20px;
+  font-size: 11px;
+}
+
+.status-timeline li {
+  margin: 14px 0;
+  color: #aaa398;
+}
+
+.status-timeline li.complete,
+.status-timeline li.current {
+  color: var(--text);
+}
+
+.status-timeline small {
+  display: block;
+  color: #8d867d;
+}
+
+.sitter-summary h2 {
+  font-size: 16px;
+}
+
+.sitter-summary dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 20px 0;
+  font-size: 10px;
+}
+
+.sitter-summary dt {
+  color: #8d867d;
+}
+
+.sitter-summary dd {
+  margin: 0;
+  text-align: right;
+}
+
+.rejection-card {
+  border: 1px solid #c85c4e;
+}
+
+.rejection-card p {
+  margin-bottom: 4px;
+  color: #8d867d;
+  font-size: 10px;
+}
+
+.rejection-card blockquote {
+  margin: 0 0 12px;
+  border-radius: 8px;
+  padding: 12px;
+  background: #ece7dc;
+  font-size: 11px;
+}
+
+@media (max-width: 700px) {
+  .sitter-hero,
+  .sitter-layout,
+  .status-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sitter-hero,
+  .sitter-layout,
+  .status-layout {
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .sitter-fields {
+    grid-template-columns: 1fr;
+  }
+}
