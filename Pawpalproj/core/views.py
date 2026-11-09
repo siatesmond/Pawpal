@@ -1748,7 +1748,15 @@ def load_staff_owner_data(request):
 # =====================================================================
 
 
-PAID_STATUSES = ["CONFIRMED", "COMPLETED"]  # bookings / orders that count as revenue
+PAID_STATUSES = ["CONFIRMED", "COMPLETED"]  # orders that count as revenue
+
+# bookings that count as revenue: confirmed, pet in care (checked in /
+# in progress / ready for pick-up) or completed. Not pending or cancelled.
+PAID_BOOKING_STATUSES = [
+    Booking.Status.CONFIRMED,
+    *Booking.IN_CARE_STATUSES,
+    Booking.Status.COMPLETED,
+]
 
 
 def money(cents):
@@ -1770,7 +1778,7 @@ def revenue_for_period(start_date, end_date, outlet=None):
     pet sitting are not, so they are left out when one outlet is chosen.
     """
     bookings = Booking.objects.filter(
-        status__in=PAID_STATUSES,
+        status__in=PAID_BOOKING_STATUSES,
         created_at__date__gte=start_date,
         created_at__date__lte=end_date,
     )
