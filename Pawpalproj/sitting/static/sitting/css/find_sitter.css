@@ -1,0 +1,351 @@
+/* Customer "Find a pet sitter" pages.
+   Reuses the cards, pills and buttons from sitter.css. */
+
+.find-hero {
+  background: #dce6f1;
+  padding: 56px 24px;
+}
+
+.find-hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.find-hero h1 {
+  margin: 8px 0;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 44px;
+  font-weight: 500;
+}
+
+.find-hero p {
+  margin: 0;
+  color: #5d5750;
+}
+
+.find-layout {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* keep the form fields inside the narrow left card */
+.find-layout aside .grid-2 > *,
+.find-layout aside .field {
+  min-width: 0;
+}
+
+.find-layout aside input,
+.find-layout aside select,
+.find-layout aside textarea {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Dates: one rounded box with From → To */
+.find-dates {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.find-dates:focus-within {
+  border-color: var(--green);
+}
+
+.find-date {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.find-date span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* the date input itself has no box: the outer box is the border */
+.find-layout aside .find-date input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.find-layout aside .find-date input:focus {
+  outline: none;
+}
+
+/* calendar icon: smaller and olive instead of black (Chrome / Safari) */
+.find-date input::-webkit-calendar-picker-indicator {
+  margin-left: 2px;
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.find-date-arrow {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  padding: 0 8px;
+  background: var(--cream);
+  color: var(--muted);
+}
+
+.field-label .pill {
+  margin-left: 6px;
+}
+
+.find-title {
+  margin: 0;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.find-estimate {
+  display: flex;
+  justify-content: space-between;
+  border-radius: 10px;
+  background: var(--sand);
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+.find-sitter-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+}
+
+.find-sitter-info h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  font-family: "Fraunces", serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.find-sitter-info p {
+  margin: 2px 0;
+}
+
+.find-sitter-actions {
+  display: grid;
+  justify-items: end;
+  gap: 6px;
+}
+
+.find-btn-honey {
+  border: 0;
+  background: var(--honey);
+  color: var(--ink);
+}
+
+.find-open-request {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+}
+
+.find-open-request .link {
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.find-request-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 14px;
+  align-items: center;
+  margin-top: 10px;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+
+/* progress line on the request detail page */
+.request-steps {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.request-steps li {
+  flex: 1;
+  border-top: 4px solid var(--line);
+  padding-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.request-steps li.done {
+  border-color: var(--green);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.update-photo {
+  max-width: 220px;
+  border-radius: 10px;
+}
+
+@media (max-width: 860px) {
+  .find-layout,
+  .find-sitter-card {
+    grid-template-columns: 1fr;
+  }
+
+  .find-sitter-actions {
+    justify-items: start;
+  }
+
+  .find-hero h1 {
+    font-size: 32px;
+  }
+}
+
+/* Star picker for reviews
+   The 5 radio buttons are in the order 5,4,3,2,1 and shown right-to-left,
+   so "~" (every later sibling) can light up all stars up to the one picked. */
+.star-picker {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.star-picker input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.star-picker label {
+  color: #cfc8bb;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.star-picker input:checked ~ label,
+.star-picker label:hover,
+.star-picker label:hover ~ label {
+  color: #e0a43a; /* a deeper honey so it shows on the blue card */
+}
+
+.star-picker label:hover {
+  transform: scale(1.1);
+}
+
+.star-picker input:focus-visible + label {
+  outline: 2px solid var(--green);
+  border-radius: 4px;
+}
+
+.review-error {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.review-error ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Request detail page: more breathing room */
+.request-page {
+  padding-bottom: 72px;
+}
+
+.request-back {
+  display: inline-block;
+  margin-bottom: 20px;
+}
+
+.request-page .sitter-head {
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+.request-page .sitter-head h1 {
+  margin: 0 0 10px;
+}
+
+.request-page .sitter-head p {
+  margin: 0;
+}
+
+/* progress line: space above the cards */
+.request-page .request-steps {
+  gap: 12px;
+  margin-bottom: 44px;
+}
+
+.request-page .request-steps li {
+  padding-top: 12px;
+}
+
+.request-page .sitter-cols {
+  gap: 36px;
+}
+
+.request-page .sitter-stack {
+  gap: 28px;
+}
+
+.request-page .s-card {
+  gap: 20px;
+  padding: 30px 32px;
+}
+
+.request-page .s-card h2 {
+  margin: 0;
+}
+
+.request-page .s-card p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.request-page .timeline {
+  gap: 18px;
+}
+
+.request-page .earn-table td {
+  padding: 16px 8px;
+  vertical-align: top;
+}
+
+.request-cancel {
+  padding-left: 32px;
+}

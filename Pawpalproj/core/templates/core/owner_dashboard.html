@@ -3,7 +3,7 @@
 {% block title %}Business owner dashboard | Pawpal{% endblock %}
 
 {% block content %}
-{# ---------- Heading + filters (date range, outlet) + Export CSV ---------- #}
+{# Heading + filters (date range, outlet) + Export CSV #}
 <header class="owner-dash-head">
   <div>
     <h1>{{ greeting }}, {{ request.session.username }}</h1>
@@ -21,12 +21,12 @@
       </select>
     </label>
     <button type="submit" class="owner-btn-outline">Apply</button>
-    {# same filters + export=csv downloads the report (US-037) #}
+    {# same filters + export=csv downloads the report #}
     <button type="submit" name="export" value="csv" class="owner-btn-dark">Export CSV</button>
   </form>
 </header>
 
-{# ---------- Four summary cards ---------- #}
+{# Four summary cards #}
 <section class="owner-metrics">
   <article>
     <span>Total revenue</span>
@@ -50,7 +50,7 @@
   </article>
 </section>
 
-{# ---------- Revenue by stream chart + low stock ---------- #}
+{# Revenue by stream chart + low stock #}
 <section class="owner-dashboard-grid">
   <article class="owner-panel">
     <div class="owner-panel-head">
@@ -91,7 +91,7 @@
   </article>
 </section>
 
-{# ---------- Revenue breakdown + top services & products ---------- #}
+{# Revenue breakdown + top services & products #}
 <section class="owner-dashboard-grid">
   <article class="owner-panel">
     <h2>Revenue breakdown · {{ start|date:"j M" }} – {{ end|date:"j M Y" }}</h2>
@@ -124,7 +124,7 @@
   </article>
 </section>
 
-{# ---------- Revenue by outlet + booking volume (US-033 #2, US-035 #1) ---------- #}
+{# Revenue by outlet + booking volume #}
 <section class="owner-dashboard-grid">
   <article class="owner-panel">
     <h2>Bookings by service &amp; outlet</h2>
@@ -156,7 +156,7 @@
   </article>
 </section>
 
-{# ---------- Pet sitting commission per job (US-034) ---------- #}
+{# Pet sitting commission per job #}
 <section class="owner-panel">
   <div class="owner-panel-head">
     <h2>Pet sitting commission</h2>

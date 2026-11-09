@@ -143,6 +143,14 @@ def loadData(request):
 
 # Views
 
+# Owner pages use the owner sidebar, staff pages use the staff sidebar.
+# The page templates are shared, they just extend whichever base we pass in.
+def base_template_for(request):
+    if request.session.get("user_type") == "owner":
+        return "core/owner_base.html"
+    return "inventory/staff_base.html"
+
+
 def bookings(request):
     # Optimize query with select_related for customer, pet, slot, and outlet
     bookings = Booking.objects.select_related(
@@ -204,6 +212,7 @@ def bookings(request):
         request,
         "inventory/staff_bookings.html",
         {
+            "base_template": base_template_for(request),
             "active_page": "bookings",
             "bookings": bookings,
             "outlets": outlets,
@@ -266,6 +275,8 @@ def update_booking(request, pk=None):
         request,
         "inventory/staff_update_booking.html",
         {
+            "base_template": base_template_for(request),
+            "active_page": "bookings",
             "form": form,
             "booking": booking,
             "action_title": f"Update Booking #{booking.pk}",
@@ -410,6 +421,9 @@ def product_detail(request, product_id):
 
 
 # Orders and Stock (Staff)
+
+
+
 def staff_orders_stock(request):
 
     # Read the options from the query string
@@ -472,12 +486,9 @@ def staff_orders_stock(request):
 
     return render(
         request,
-        (
-            "core/owner_orders_stock.html"
-            if request.session.get("user_type") == "owner"
-            else "inventory/staff_orders_stock.html"
-        ),
+        "inventory/staff_orders_stock.html",
         {
+            "base_template": base_template_for(request),
             "active_page": "orders",
             "orders": orders,
             "selected": selected,
@@ -517,12 +528,9 @@ def update_stock(request, pk):
 
     return render(
         request,
-        (
-            "core/owner_update_stock.html"
-            if request.session.get("user_type") == "owner"
-            else "inventory/staff_update_stock.html"
-        ),
+        "inventory/staff_update_stock.html",
         {
+            "base_template": base_template_for(request),
             "form": form, 
             "product": product, 
             "action_title": action_title,
@@ -581,12 +589,9 @@ def staff_products(request):
 
     return render(
         request,
-        (
-            "core/owner_products_catalog.html"
-            if request.session.get("user_type") == "owner"
-            else "inventory/staff_products.html"
-        ),
+        "inventory/staff_products.html",
         {
+            "base_template": base_template_for(request),
             "active_page": "products",
             "products": products,
             "selected_product": selected_product,
@@ -635,12 +640,9 @@ def product_form(request, pk=None):
 
     return render(
         request,
-        (
-            "core/owner_product_form.html"
-            if request.session.get("user_type") == "owner"
-            else "inventory/staff_product_form.html"
-        ),
+        "inventory/staff_product_form.html",
         {
+            "base_template": base_template_for(request),
             "form": form,
             "product": product,
             "action_title": action_title,

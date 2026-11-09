@@ -8,7 +8,7 @@
 <section class="sitter">
   <div class="sitter-head">
     <div><h1>Earnings</h1><p>Your payouts after Pawpal’s 10% commission</p></div>
-    {# US-051: choose the month to see; download it as CSV #}
+    {# Choose the month to see; download it as CSV #}
     <form method="get" class="actions">
       <input type="month" name="month" value="{{ month_value }}" onchange="this.form.submit()">
       <a href="?month={{ month_value }}&download=csv" class="btn btn-outline">Download statement</a>

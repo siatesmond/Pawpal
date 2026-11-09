@@ -32,11 +32,19 @@
         {% endif %}
       </nav>
     </div>
-  </aside>
-  
-  <!-- need to add account and logout button -->
 
-  <!-- need to add account and logout button -->
+    {# Account and log out at the bottom of the sidebar #}
+    <div>
+      <div class="staff-user">
+        <span class="staff-avatar">{{ request.session.username|first|upper }}</span>
+        <div>
+          <strong>{{ request.session.username }}</strong>
+          <span>{% if request.session.user_type == "owner" %}Business owner{% else %}Staff{% endif %}</span>
+        </div>
+      </div>
+      <a class="staff-logout" href="{% url 'user:logout' %}">Log out</a>
+    </div>
+  </aside>
 
   <main class="staff-main">
     {% if messages %}

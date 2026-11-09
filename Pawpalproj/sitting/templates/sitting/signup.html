@@ -27,7 +27,7 @@
       <div class="sitter-fields">
         {% for field in form %}
           {% if field.name != "terms" and field.name != "pet_experience" and field.name != "bio" and field.name != "id_document" %}
-            <label>{{ field.label }} {{ field }}{{ field.errors }}</label>
+            <label>{{ field.label }} {{ field }}{% if field.help_text %}<small class="sitter-help">{{ field.help_text }}</small>{% endif %}{{ field.errors }}</label>
           {% endif %}
         {% endfor %}
       </div>

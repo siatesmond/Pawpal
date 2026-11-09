@@ -79,7 +79,7 @@
 
 .cart-item-controls {
   display: flex;
-  align-items: center;
+  align-items: flex-end; /* line up the bottoms: price sits level with the quantity box */
   gap: 14px;
   color: #6f6b60;
   font-size: 13px;
@@ -147,6 +147,11 @@
 .cart-item-controls strong {
   color: var(--green);
   font-size: 15px;
+  /* same width for every price ("SGD 7.90" and "SGD 19.80"),
+     so the Quantity boxes on each row start in the same place */
+  min-width: 96px;
+  text-align: right;
+  line-height: 46px; /* = height of the quantity box, so the price is centred beside it */
 }
 
 .cart-total {

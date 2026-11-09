@@ -12,9 +12,6 @@ urlpatterns = [
         name="load_staff_owner_data",
     ),
     path("admin-panel/", views.owner_dashboard, name="owner_dashboard"),
-    path("admin-panel/bookings/", views.owner_bookings, name="owner_bookings"),
-    path("admin-panel/orders/", views.owner_orders, name="owner_orders"),
-    path("admin-panel/products/", views.owner_products, name="owner_products"),
     path("admin-panel/customers/", views.owner_customers, name="owner_customers"),
     path(
         "admin-panel/customers/<int:pk>/edit/",

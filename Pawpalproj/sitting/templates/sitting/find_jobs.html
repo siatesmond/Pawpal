@@ -16,7 +16,7 @@
   </div>
 
   <div class="sitter-cols side-left">
-    {# ---------- Filters (US-048: distance and date) ---------- #}
+    {# Filters #}
     <aside class="sitter-stack">
       <form method="get" class="s-card">
         <div class="s-card-head"><h2>Filters</h2><a href="{% url 'sitting:sitter_find_jobs' %}" class="link">Reset</a></div>
@@ -68,7 +68,7 @@
       </div>
     </aside>
 
-    {# ---------- Request list ---------- #}
+    {# Request list #}
     <div class="sitter-stack">
       <div class="toolbar">
         <div><strong>{{ jobs|length }} open request{{ jobs|length|pluralize }}</strong><span class="muted small">Matching your filters</span></div>
@@ -88,7 +88,7 @@
       </div>
 
       {% if map_centre %}
-        {# ---------- Map: my service area + one pin per request (US-048) ---------- #}
+        {# Map: my service area + one pin per request #}
         {# Leaflet draws the map, OpenStreetMap supplies the map pictures (free, no key) #}
         <div id="jobs-map" style="height: 320px; border-radius: 16px; z-index: 0;"></div>
         {{ map_pins|json_script:"map-pins" }}
@@ -164,7 +164,7 @@
               <strong>{% for pet in job.pet_list %}{{ pet.name }}{% if pet.breed %} ({{ pet.breed }}){% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</strong>
               <p>{{ job.care_requirements|default:"Pet care requested by the owner." }}</p>
 
-              {# US-048: see the pet profile, medical and behaviour notes before accepting #}
+              {# See the pet profile, medical and behaviour notes before accepting #}
               <details>
                 <summary class="link small">View pet profile, medical &amp; behaviour notes →</summary>
                 {% for pet in job.pet_list %}

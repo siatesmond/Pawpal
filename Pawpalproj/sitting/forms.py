@@ -2,13 +2,16 @@ from decimal import Decimal
 
 from django import forms
 from django.contrib.auth.hashers import make_password
-from django.core.validators import FileExtensionValidator
+from django.core.validators import FileExtensionValidator, RegexValidator
 
 from user.models import User
 
-from .models import PetSitter
+from review.models import Review
 
-# Pet experience options shown as chips on sign-up (S1a) and profile (S6)
+from .models import PetSitter
+from .onemap import look_up_postal_code
+
+# Pet experience options shown as chips on sign-up and profile
 PET_EXPERIENCE_CHOICES = [
     ("Dogs", "Dogs"),
     ("Cats", "Cats"),
@@ -23,7 +26,14 @@ class SitterRegistrationForm(forms.Form):
     full_name = forms.CharField(max_length=61)
     mobile = forms.CharField(max_length=20)
     email = forms.EmailField()
-    service_area = forms.CharField(max_length=100)
+    # Only the postal code is asked; the map position and area name come from OneMap
+    postal_code = forms.CharField(
+        max_length=6,
+        label="Home postal code",
+        help_text="Used to match you with nearby pet owners. Owners only see your area, not your postal code.",
+        validators=[RegexValidator(r"^\d{6}$", "Enter a 6-digit Singapore postal code.")],
+        widget=forms.TextInput(attrs={"inputmode": "numeric", "placeholder": "e.g. 529536"}),
+    )
     password = forms.CharField(min_length=8, widget=forms.PasswordInput)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
     experience_years = forms.IntegerField(min_value=0, max_value=80)
@@ -55,7 +65,7 @@ class SitterRegistrationForm(forms.Form):
                     "full_name": f"{sitter.first_name} {sitter.last_name}".strip(),
                     "mobile": sitter.mobile,
                     "email": sitter.email,
-                    "service_area": sitter.service_area,
+                    "postal_code": sitter.postal_code,
                     "experience_years": sitter.experience_years,
                     "daily_rate": sitter.daily_rate_cents / 100,
                     "pet_experience": sitter.pet_experience.split(", "),
@@ -80,6 +90,14 @@ class SitterRegistrationForm(forms.Form):
         if not mobile.replace("+", "").replace(" ", "").isdigit():
             raise forms.ValidationError("Enter a valid mobile number.")
         return mobile
+
+    def clean_postal_code(self):
+        postal_code = self.cleaned_data["postal_code"]
+        place = look_up_postal_code(postal_code)
+        if place == {}:
+            raise forms.ValidationError("We couldn't find this postal code. Please check it.")
+        self.place = place  # None if OneMap could not be reached; we still save the postal code
+        return postal_code
 
     def clean_id_document(self):
         document = self.cleaned_data.get("id_document")
@@ -122,7 +140,13 @@ class SitterRegistrationForm(forms.Form):
                 mobile=self.cleaned_data["mobile"],
             )
 
-        sitter.service_area = self.cleaned_data["service_area"]
+        sitter.postal_code = self.cleaned_data["postal_code"]
+        if self.place:
+            sitter.latitude = self.place["latitude"]
+            sitter.longitude = self.place["longitude"]
+            sitter.service_area = self.place["area"]
+        elif not sitter.service_area:
+            sitter.service_area = "Singapore"  # OneMap was down; the next save fills in the real area
         sitter.experience_years = self.cleaned_data["experience_years"]
         sitter.daily_rate_cents = int(self.cleaned_data["daily_rate"] * 100)
         sitter.pet_experience = ", ".join(self.cleaned_data["pet_experience"])
@@ -133,3 +157,30 @@ class SitterRegistrationForm(forms.Form):
         sitter.rejection_reason = ""
         sitter.save()
         return sitter
+
+
+class SitterReviewForm(forms.ModelForm):
+    # 1-5 star rating, optional comment and optional photo
+    RATING_CHOICES = [(5, "5"), (4, "4"), (3, "3"), (2, "2"), (1, "1")]
+
+    rating = forms.TypedChoiceField(
+        choices=RATING_CHOICES,
+        coerce=int,
+        widget=forms.RadioSelect,  # shown as clickable stars in the template
+        error_messages={"required": "Choose a rating from 1 to 5 stars."},
+    )
+
+    class Meta:
+        model = Review
+        fields = ["rating", "comment", "photo"]
+        labels = {"comment": "Comment (optional)", "photo": "Photo (optional)"}
+        widgets = {
+            "comment": forms.Textarea(attrs={"rows": 3, "placeholder": "How was the sitter? e.g. sent daily photos, followed the feeding plan..."}),
+        }
+
+    def clean_photo(self):
+        photo = self.cleaned_data.get("photo")
+        # only check new uploads (an old photo kept when editing is already saved)
+        if photo and hasattr(photo, "size") and getattr(photo, "content_type", None) and photo.size > 5 * 1024 * 1024:
+            raise forms.ValidationError("The photo must be 5 MB or smaller.")
+        return photo

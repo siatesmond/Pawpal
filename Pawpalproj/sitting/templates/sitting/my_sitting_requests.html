@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My sitting requests | Pawpal{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="sitter">
+  <div class="sitter-head">
+    <div><h1>My sitting requests</h1><p>Track every pet sitting request you have made</p></div>
+    <a href="{% url 'sitting:find_sitter' %}" class="btn btn-dark">+ New request</a>
+  </div>
+
+  <div class="s-card">
+    <table class="earn-table" width="100%">
+      <thead><tr><th>Dates</th><th>Pets</th><th>Sitter</th><th class="num">Price</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+        {% for job in requests_list %}
+          <tr>
+            <td>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }}</td>
+            <td>{{ job.pets.all|join:", " }}</td>
+            <td>{% if job.sitter %}{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.{% else %}Open to all sitters{% endif %}</td>
+            <td class="num">SGD {{ job.total_price_display }}</td>
+            <td><span class="pill pill-sm {% if job.status == 'completed' %}pill-success{% elif job.status == 'pending' %}pill-honey{% else %}pill-outline{% endif %}">{{ job.get_status_display }}</span></td>
+            <td><a href="{% url 'sitting:request_detail' job.pk %}{% if job.status == 'completed' %}#review{% endif %}" class="link small">{% if job.status == "pending" %}Confirm &amp; pay{% elif job.status == "completed" %}Review sitter{% else %}View{% endif %}</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="6" style="text-align: center;">No sitting requests yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

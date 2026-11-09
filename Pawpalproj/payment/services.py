@@ -99,12 +99,13 @@ def bind_checkout_form(request, form_class, customer, points_balance, **form_kwa
 
 
 # Create and save the payment and any points transactions (earned or redeemed) for an order or booking
-def record_payment(customer, form, *, amount_cents, points_redeemed, label, order=None, booking=None):
+def record_payment(customer, form, *, amount_cents, points_redeemed, label, order=None, booking=None, sitting_request=None):
 
     payment = Payment.objects.create(
         customer=customer,
         order=order,
         booking=booking,
+        sitting_request=sitting_request,  # pet sitting payment
         amount_cents=amount_cents,
         method=form.cleaned_data["payment_method"],
         card_number=f"**** {form.cleaned_data['card_number'][-4:]}",  # only keep the last 4 digits

@@ -427,3 +427,91 @@ main {
   background: #d6d2c8;
   color: #77746a;
 }
+
+/* Navbar user chip: avatar + name + points, opens a menu.
+   Uses <details>/<summary>, so it opens on click with no JavaScript. */
+.user-chip {
+  position: relative;
+}
+
+.user-chip summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e2dcd1;
+  border-radius: 999px;
+  background: #fff;
+  padding: 4px 12px 4px 4px;
+  cursor: pointer;
+  list-style: none; /* hide the default ▶ triangle */
+}
+
+.user-chip summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-chip summary:hover,
+.user-chip[open] summary {
+  border-color: var(--green);
+}
+
+.user-chip-avatar {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #ded8cd;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.user-chip-text {
+  display: grid;
+  line-height: 1.2;
+}
+
+.user-chip-text strong {
+  color: #2f2a26;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.user-chip-text small {
+  color: #7a716a;
+  font-size: 9px;
+}
+
+.user-chip-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  display: grid;
+  min-width: 180px;
+  border: 1px solid #e2dcd1;
+  border-radius: 12px;
+  background: #fff;
+  padding: 6px;
+  box-shadow: 0 10px 24px rgb(47 42 38 / 12%);
+}
+
+.user-chip-menu a {
+  border-radius: 8px;
+  padding: 8px 10px;
+  color: #2f2a26;
+  font-size: 12px;
+}
+
+.user-chip-menu a:hover {
+  background: #f7f4ec;
+  text-decoration: none;
+  transform: none;
+}
+
+.user-chip-menu .user-chip-logout {
+  margin-top: 4px;
+  border-top: 1px solid #eeeae2;
+  color: #c0533f;
+}

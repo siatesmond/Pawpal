@@ -63,6 +63,8 @@ class BookingTestBase(TestCase):
 
     def card(self, **overrides):
         data = {
+            # the Place Booking button sends action=place_order; without it checkout only re-shows the page
+            "action": "place_order",
             "payment_method": "CARD", "card_number": "4111111111111111",
             "expiry": "12/99", "cvv": "123",
         }
@@ -137,7 +139,7 @@ class BookingFlowTests(BookingTestBase):
         self.client.post("/service/book/", self.choice())
         response = self.client.get("/service/book/checkout/")
         self.assertTemplateUsed(response, "payment/checkout_base.html")
-        self.assertTemplateUsed(response, "payment/form_template.html")
+        self.assertTemplateUsed(response, "form_template.html")
         self.assertContains(response, "Booking summary")
         self.assertContains(response, "Place Booking")
         self.assertContains(response, "3&nbsp; Checkout")
