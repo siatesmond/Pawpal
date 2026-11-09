@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My profile | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+{% endblock %}
+
+{% block content %}
+<div class="profile-layout">
+  {% include "user/_account_sidebar.html" with active_account_page="profile" %}
+
+  <main class="profile-main" id="profile">
+    <div class="profile-heading">
+      <h1>My profile</h1>
+      <p>Member since {{ customer.date_joined|date:"M Y" }}</p>
+    </div>
+
+    <section class="profile-panel">
+      <h2>Personal details</h2>
+      <form method="post">
+        {% csrf_token %}
+        <div class="profile-form-layout">
+          <div class="profile-fields">
+            {{ form }}
+            <div class="verification-note">
+              <span class="verified">✓ Verified</span>
+            </div>
+          </div>
+        </div>
+        <div class="profile-button-row">
+          <button class="profile-button profile-button-dark" type="submit">Save changes</button>
+          <button class="profile-button profile-button-outline" type="reset">Cancel</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="profile-panel" id="addresses">
+      <div class="profile-section-heading">
+        <h2>Saved addresses</h2>
+        <a class="profile-button profile-button-outline" href="{% url 'user:add_address' %}">+ Add address</a>
+      </div>
+
+      {% for address in customer.addresses.all %}
+        <div class="address-row">
+          <div class="address-copy">
+            <strong>{{ address.line1 }}{% if address.line2 %}, {{ address.line2 }}{% endif %}</strong>
+            <span>{{ address.postal_code }}</span>
+          </div>
+          <div class="address-actions">
+            <a href="{% url 'user:edit_address' address.id %}">Edit</a>
+            <a class="address-remove" href="#addresses">Remove</a>
+          </div>
+        </div>
+      {% empty %}
+        <p class="section-note">No saved addresses yet.</p>
+      {% endfor %}
+      <p class="section-note">Addresses are used for shop deliveries and pet-sitting requests.</p>
+    </section>
+
+    <section class="profile-panel">
+      <h2>Change password</h2>
+      <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="change_password">
+        <div class="password-fields">{{ password_form }}</div>
+        <p class="reset-copy">
+          Forgot your current password?
+          <a href="{% url 'user:forgot_password' %}">Reset it with a code sent to your email</a>
+        </p>
+        <button class="profile-button profile-button-dark" type="submit">Update password</button>
+      </form>
+    </section>
+  </main>
+</div>
+{% endblock %}

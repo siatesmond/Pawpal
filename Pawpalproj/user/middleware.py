@@ -3,6 +3,8 @@ from django.shortcuts import redirect
 # URL prefix -> which user types may open it
 PROTECTED_PATHS = {
     "/user/home/": ["customer"],
+    "/user/profile/": ["customer"],
+    "/user/profile/address/": ["customer"],
     "/user/pets/": ["customer"],
     "/user/cart/": ["customer"],
     "/inventory/staff/": ["staff", "owner"],

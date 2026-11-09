@@ -1,0 +1,374 @@
+.profile-button-honey {
+  background: var(--gold);
+  color: var(--text);
+}
+
+.profile-button-honey:hover {
+  background: #e0a957;
+}
+
+.pet-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.pet-summary-card {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  min-height: 68px;
+  padding: 10px 14px;
+  border: 1px solid #e2dcd1;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.pet-avatar,
+.pet-photo-preview {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 50%;
+  background: #ded8cd;
+  color: #9c8f87;
+  object-fit: cover;
+}
+
+.pet-avatar-empty {
+  font-size: 18px;
+}
+
+.pet-summary-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.pet-summary-info h2 {
+  margin: 0 0 4px;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 26px;
+  font-weight: 500;
+}
+
+.pet-summary-info p,
+.pet-summary-info span {
+  margin: 0;
+  color: #7a716a;
+  font-size: 13px;
+}
+
+.pet-summary-actions {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.pet-book-button {
+  padding: 9px 22px;
+  border-radius: 999px;
+  background: #aabd9e;
+  color: #273326;
+}
+
+.pet-summary-actions a {
+  transition: color 0.18s ease, transform 0.18s ease;
+}
+
+.pet-summary-actions a:hover {
+  color: var(--green);
+  transform: translateY(-1px);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pet-summary-actions .pet-book-button:hover {
+  background: #91a986;
+  text-decoration: none;
+}
+
+.pet-empty-panel {
+  scroll-margin-top: 24px;
+  animation: pet-form-appear 0.45s ease-out both;
+}
+
+@keyframes pet-form-appear {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pet-form-panel {
+  margin-top: 0;
+}
+
+.pet-empty-panel h2 {
+  margin-bottom: 0;
+}
+
+.pet-empty-panel .profile-button {
+  margin-top: 18px;
+}
+
+.pet-form-panel h2 {
+  margin-bottom: 14px;
+}
+
+.pet-form-panel > h2 {
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 28px;
+  font-weight: 500;
+}
+
+.pet-form .pet-photo-preview {
+  width: 74px;
+  height: 74px;
+}
+
+.pet-form {
+  display: grid;
+  gap: 14px;
+}
+
+.pet-form-top {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.pet-photo-control {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pet-photo-control label {
+  color: var(--green);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pet-photo-control input[type="file"] {
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+}
+
+.pet-form-fields,
+.pet-two-column,
+.pet-three-column {
+  display: grid;
+  gap: 8px;
+}
+
+.pet-two-column {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.pet-three-column {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.pet-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pet-field label,
+.species-field legend {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.pet-field input,
+.pet-field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid #e2dcd1;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.pet-field input {
+  min-height: 44px;
+}
+
+.pet-field textarea {
+  min-height: 88px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.pet-field input:focus,
+.pet-field textarea:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+}
+
+.species-field {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.species-field legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-size: 13px;
+}
+
+.species-options {
+  display: flex;
+  gap: 8px;
+}
+
+.species-option {
+  position: relative;
+  cursor: pointer;
+}
+
+.species-option input[type="radio"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  border: 0;
+  opacity: 0;
+}
+
+.species-option span {
+  display: inline-block;
+  min-width: 92px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  background: #efeae0;
+  text-align: center;
+  font-size: 18px;
+}
+
+.species-option input:checked + span {
+  background: var(--green);
+  color: #f7f4ec;
+}
+
+.species-option:hover span {
+  background: #dfe7d9;
+}
+
+.species-option input:checked + span:hover {
+  background: #607452;
+}
+
+.species-option input:focus-visible + span {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.pet-medical-section {
+  padding-top: 20px;
+  border-top: 1px solid #e2dcd1;
+}
+
+.pet-behaviour-section {
+  margin-top: 0;
+}
+
+.pet-vaccination-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 1fr);
+  align-items: end;
+  gap: 16px;
+}
+
+.pet-vaccination-row p {
+  margin: 0 0 14px;
+  color: #7a716a;
+  font-size: 12px;
+}
+
+.pet-medical-section h3 {
+  margin: 0 0 14px;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.pet-behaviour-section h3 {
+  margin: 0 0 14px;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+
+.pet-form-actions {
+  display: flex;
+  gap: 8px;
+}
+
+
+
+.pet-delete-button:hover {
+  border-color: #c0584b;
+  color: #c0584b;
+}
+
+.pet-form .errorlist {
+  margin: 0;
+  padding: 0;
+  color: #c0584b;
+  font-size: 13px;
+  list-style: none;
+}
+
+@media (max-width: 900px) {
+  .pet-card-grid,
+  .pet-three-column {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 650px) {
+  .pet-form-top {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-vaccination-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pet-summary-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}

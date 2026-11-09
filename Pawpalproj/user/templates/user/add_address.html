@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Add address | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+{% endblock %}
+
+{% block content %}
+<main class="address-page">
+  <section class="profile-panel address-form-panel">
+    <h1>{% if edit_mode %}Edit address{% else %}Add address{% endif %}</h1>
+    <p class="address-form-intro">Save an address for shop deliveries and pet-sitting requests.</p>
+
+    <form method="post" class="address-form">
+      {% csrf_token %}
+      {{ form }}
+      <div class="profile-button-row">
+        <button class="profile-button profile-button-dark" type="submit">
+          {% if edit_mode %}Save changes{% else %}Save address{% endif %}
+        </button>
+        <a class="profile-button profile-button-outline" href="{% url 'user:profile' %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+</main>
+{% endblock %}
