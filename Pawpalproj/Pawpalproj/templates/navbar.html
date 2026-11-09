@@ -1,7 +1,7 @@
 <header class="navbar">
   <nav class="nav-container">
     <ul class="nav-links">
-      <li><a href="#">Services</a></li>
+      <li><a href="{% url 'service:book' %}">Services</a></li>
       <li><a href="#">Shop</a></li>
       <li><a href="#">Pet Sitting</a></li>
       <li><a href="#">How It Works</a></li>
@@ -12,6 +12,7 @@
 
     <div class="nav-buttons">
       <a href="/user/cart">Cart</a>
+      <a href="{% url 'service:book' %}" class="signup-btn">Book now</a>
       {% if request.session.user_id %}
         {# logged in: read the name we stored in the session at login #}
         {% if request.session.user_type == "customer" %}
@@ -19,7 +20,7 @@
         {% else %}
           <span>Hi, {{ request.session.username }}</span>
         {% endif %}
-        <a href="/user/logout" class="signup-btn">Log out</a>
+        <a href="/user/logout">Log out</a>
       {% else %}
         <a href="/user/login">Log in</a>
         <a href="/user/register" class="signup-btn">Sign up</a>
