@@ -245,6 +245,16 @@
   color: #0f766e;
 }
 
+.status-pill.status-packed {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill.status-out_for_delivery {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
 .status-pill.status-completed {
   background: #dcfce7;
   color: #15803d;
@@ -492,4 +502,28 @@ button.update-action-delete {
   margin: 0;
   color: #9b3d2e;
   font-size: 13px;
+}
+
+/* Order status form in the order detail panel (staff_orders_stock.html) */
+.order-status-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.order-status-form label {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.order-status-form select {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
 }

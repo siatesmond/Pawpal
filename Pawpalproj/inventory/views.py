@@ -554,6 +554,12 @@ def staff_orders_stock(request):
             .first()
         )
 
+    # Statuses staff can pick for the selected order (pick-up and delivery have different ones)
+    status_options = []
+    if selected:
+        allowed = Order.PICKUP_STATUSES if selected.pickup_outlet_id else Order.DELIVERY_STATUSES
+        status_options = [(value, label) for value, label in Order.Status.choices if value in allowed]
+
     # stock panel: lowest stock first
     low_count = Product.objects.filter(stock_quantity__lte=F("low_stock_level")).count()
     stock_products = Product.objects.order_by("stock_quantity")
@@ -576,8 +582,41 @@ def staff_orders_stock(request):
             "status_choices": Order.Status.choices,
             "low_count": low_count,
             "stock_products": stock_products,
+            "status_options": status_options,
         },
     )
+
+# Staff orders page with this order selected in the detail panel
+def _staff_order_url(order):
+    return f"{reverse('inventory:staff_orders_stock')}?order={order.pk}"
+
+
+# Staff change an order's status from the order detail panel 
+def update_order_status(request, pk):
+    if request.method != "POST":
+        return redirect("inventory:staff_orders_stock")
+
+    order = get_object_or_404(Order, pk=pk)
+
+    # Completed/Cancelled orders statuses cannot be changed anymore
+    if order.status not in Order.ACTIVE_STATUSES:
+        messages.error(request, f"Order #{order.pk} is already {order.get_status_display().lower()}.")
+        return redirect(_staff_order_url(order))
+
+    new_status = request.POST.get("new_status", "")
+
+    # Pick-up and delivery orders have different statuses (also stops made-up values)
+    allowed_statuses = Order.PICKUP_STATUSES if order.pickup_outlet_id else Order.DELIVERY_STATUSES
+    if new_status not in allowed_statuses:
+        messages.error(request, f"That status can't be used for order #{order.pk}.")
+        return redirect(_staff_order_url(order))
+
+    order.status = new_status
+    order.save(update_fields=["status"])
+    messages.success(request, f"Order #{order.pk} is now {order.get_status_display()}.")
+
+    # so that the order is selected in the detail panel after the status update
+    return redirect(_staff_order_url(order))
 
 # Update a specific product's stock quantity 
 def update_stock(request, pk):

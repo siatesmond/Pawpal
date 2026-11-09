@@ -125,6 +125,8 @@
 .record-status-checked_in { background: #e6e0f3; color: #5b4a8a; }
 .record-status-in_progress { background: #fde7d2; color: #b45f1c; }
 .record-status-ready_for_pickup { background: #d6efe9; color: #1f7a66; }
+.record-status-packed { background: #efe6d6; color: #8a5a1c; }
+.record-status-out_for_delivery { background: #dde9f7; color: #2f5f96; }
 .record-status-completed { background: #dce6f1; color: #3b5a7a; }
 .record-status-cancelled { background: #f3dedb; color: #9b3d2e; }
 

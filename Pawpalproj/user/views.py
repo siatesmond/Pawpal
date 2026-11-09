@@ -604,7 +604,7 @@ class OrderListView(View):
             .prefetch_related("items__product")
             .order_by("-created_at")
         )
-        current_statuses = [Order.Status.PENDING, Order.Status.CONFIRMED]
+        current_statuses = Order.ACTIVE_STATUSES  # pending, confirmed, packed, ready for pickup, out for delivery
 
         return render(
             request,

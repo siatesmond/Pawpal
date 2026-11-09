@@ -167,6 +167,19 @@
 
               </ul>
           </div>
+          {# Update the order status - only show for active orders #}
+          {% if selected.status != "COMPLETED" and selected.status != "CANCELLED" %}
+            <form method="post" action="{% url 'inventory:update_order_status' selected.pk %}" class="order-status-form">
+              {% csrf_token %}
+              <label for="order-status">Update status</label>
+              <select id="order-status" name="new_status">
+                {% for value, label in status_options %}
+                  <option value="{{ value }}" {% if value == selected.status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="save-btn">Save</button>
+            </form>
+          {% endif %}
 
           {# Delivery or pick-up information #}
           <div class="detail-card-row-no-border">
