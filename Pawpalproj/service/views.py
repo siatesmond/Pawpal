@@ -147,7 +147,7 @@ def _validate_selection(customer, pet_id, service_id, outlet_id, slot_id, nights
         "price_cents": price_cents,
     }, None
 
-
+# Get the query-string parameters that recreate a selection on the booking page
 def _selection_params(source):
     """Query-string params that recreate a selection on the booking page."""
     keys = ["pet", "service", "outlet", "date", "slot", "nights"]
@@ -399,8 +399,9 @@ def book_checkout(request):
     points_balance = get_points_balance(customer)
     form, preview_points = bind_checkout_form(request, PaymentDetailsForm, customer, points_balance)
 
-    # preview_points is None only for "Place booking"
-    if preview_points is None and form.is_valid():
+    # Place booking button clicked
+    placing_order = request.POST.get("action") == "place_order"
+    if placing_order and form.is_valid():
         with transaction.atomic():
             # Lock the slot row (only if it still has space) so two customers can't take the last slot
             slot = (

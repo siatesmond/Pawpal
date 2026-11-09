@@ -18,11 +18,15 @@ def get_points_balance(customer):
 
 
 # Calculate the discount in cents for a given subtotal and points to redeem.
-# 1 point = 1 cent (ensures that customer don't redeem more than the points balance or the amount being paid)
+# 1 point = 1 cent 
 def calculate_points_discount(subtotal_cents, points_to_redeem, points_balance):
     if not points_to_redeem or points_to_redeem <= 0:
         return 0
-    return min(points_to_redeem, points_balance, subtotal_cents)
+    return min(points_to_redeem, points_balance, subtotal_cents) # discount cannot exceed subtotal or points balance
+
+# Error shown when a customer inputs more points than they have
+def points_limit_message(points_balance):
+    return f"You only have {points_balance} points available."
 
 # Calculate the points earned for the total payable in cents
 def points_earned(total_cents):
@@ -38,21 +42,21 @@ def checkout_totals(subtotal_cents, points_discount_cents=0):
         "points_earned": points_earned(total_cents),
     }
 
-
+# Builds checkout form, called by both shop and service-booking checkouts
+# Returns (form, preview_points).
 def bind_checkout_form(request, form_class, customer, points_balance, **form_kwargs):
-    """Build the checkout form for this request.
 
-    Returns (form, preview_points):
-      - GET: empty form, preview_points = 0
-      - POST "Apply points": unbound form pre-filled with what was typed, so
-        fields not filled in yet don't show "This field is required";
-        preview_points is the number typed in the points box
-      - POST "Place order": bound form, ready for form.is_valid();
-        preview_points = None
-    """
+    # GET Empty form when the page is first loaded
     if request.method != "POST":
-        return form_class(customer, points_balance=points_balance, **form_kwargs), 0
+        preview_points = 0 
+        return form_class(customer, points_balance=points_balance, **form_kwargs), preview_points
 
+    # Place order / Place booking was clicked: bound form, so the view can call is_valid()
+    if request.POST.get("action") == "place_order":
+        preview_points = 0  # not previewing; the view works out the real discount after validating
+        return form_class(customer, request.POST, points_balance=points_balance, **form_kwargs), preview_points
+
+    # Apply points button was clicked, re-render the page with the discount applied
     if request.POST.get("action") == "preview_points":
         form = form_class(
             customer, initial=request.POST.dict(), points_balance=points_balance, **form_kwargs
@@ -61,9 +65,22 @@ def bind_checkout_form(request, form_class, customer, points_balance, **form_kwa
             preview_points = int(request.POST.get("points_to_redeem") or 0)
         except (TypeError, ValueError):
             preview_points = 0
+
+        # Points field is validated on preview, the rest waits for "Place order" button to be clciked
+        # More than available points: show the error, but the summary still previews the discount capped at balance
+        error = None
+        if preview_points < 0:
+            error = "Enter 0 or more points."
+        elif preview_points > points_balance:
+            error = points_limit_message(points_balance)
+        if error:
+            form.cleaned_data = {}  # an unbound form has no cleaned_data, which add_error() needs
+            form.add_error("points_to_redeem", error)
         return form, preview_points
 
-    return form_class(customer, request.POST, points_balance=points_balance, **form_kwargs), None
+    # Any other POST (no recognised button): just show the page again, nothing saved
+    preview_points = 0
+    return form_class(customer, points_balance=points_balance, **form_kwargs), preview_points
 
 
 # Create and save the payment and any points transactions (earned or redeemed) for an order or booking

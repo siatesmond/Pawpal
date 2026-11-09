@@ -7,7 +7,7 @@ from core.models import Outlet
 from user.models import Address
 
 from payment.models import Payment
-from payment.services import get_points_balance
+from payment.services import get_points_balance, points_limit_message
 
 # Points redemption and card fields are shared between the shop and service-booking checkouts
 # both checkout forms inherit this
@@ -90,7 +90,7 @@ class PaymentDetailsForm(forms.Form):
             points_field.validators.append(
                 MaxValueValidator(  # blocks exceeding the balance
                     self.max_points,
-                    message=f"You only have {self.max_points} points available.",
+                    message=points_limit_message(self.max_points),
                 )
             )
             points_field.widget.attrs.update({
@@ -109,7 +109,6 @@ class PaymentDetailsForm(forms.Form):
 
 # Inherits PaymentDetailsForm and adds delivery / pick-up fields for the shop products checkout
 class CheckoutForm(PaymentDetailsForm):
-    """Shop checkout: delivery / pick-up details, then the shared points + card fields."""
 
     # Show delivery fields before the inherited points + card fields
     field_order = [

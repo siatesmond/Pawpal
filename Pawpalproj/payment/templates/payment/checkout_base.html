@@ -1,13 +1,5 @@
 {% extends "base.html" %}
 {% load static %}
-  <!-- Shared checkout page for the shop products and for book service.
-  Child templates fill in:
-    {% block summary_items %}  what is being paid for (cart products / booking details)
-  and pass in the context:
-    form, subtotal_dollars, points_discount_dollars, total_dollars, points_earned
-    (see payment.services.checkout_totals), plus optional checkout_intro,
-    summary_title, submit_text, back_url, back_text. -->
-
 
 {% block title %}Checkout | Pawpal{% endblock %}
 
@@ -36,7 +28,7 @@
             <!-- checkout.html and book_checkout.html changes this -->
             {% block summary_items %}{% endblock %}
             {% include "payment/_checkout_totals.html" %}
-            <button type="submit" form="checkout-form" class="save-btn checkout-pay-btn">
+            <button type="submit" form="checkout-form" name="action" value="place_order" class="save-btn checkout-pay-btn">
                 {{ submit_text|default:"Place Order" }}
             </button>
             {% if back_url %}

@@ -27,9 +27,10 @@ def checkout(request):
     points_balance = get_points_balance(customer)
     form, preview_points = bind_checkout_form(request, CheckoutForm, customer, points_balance)
 
-    # preview_points is None only for "Place order"
-    if preview_points is None and form.is_valid():
-        with transaction.atomic():
+    # Place order button clicked
+    placing_order = request.POST.get("action") == "place_order"
+    if placing_order and form.is_valid():
+        with transaction.atomic(): # all or nothing
             # Lock the cart rows while the order is created
             cart_items = list(
                 CartItem.objects.select_for_update()
@@ -40,6 +41,7 @@ def checkout(request):
                 messages.error(request, "Your cart is empty.")
                 return redirect("user:customer_cart")
 
+            # Stock check: if any product's quantity exceeds its stock, show an error
             short = next((i for i in cart_items if i.quantity > i.product.stock_quantity), None)
             if short:
                 form.add_error(
@@ -47,6 +49,7 @@ def checkout(request):
                     f"Stock for {short.product.name} is insufficient, please reduce the quantity.",
                 )
             else:
+                # All checks passed, create the order and record the payment
                 order = _create_order(customer, form, cart_items)
                 record_payment(
                     customer, form,
@@ -59,9 +62,13 @@ def checkout(request):
                 request.session["checkout_order_id"] = order.pk
                 return redirect("payment:checkout_success")
 
-    # GET, "Apply points", or a failed "Place order"
+    # Display the checkout page:
+    # If the user clicked "Apply points", preview_points is set to the requested amount (capped at balance) and the summary shows the discount, but nothing is saved yet.
+    # Place order clicked but failed validation
+    # Place order pressed by short of stock
     cart_items = list(CartItem.objects.select_related("product").filter(customer=customer))
     subtotal_cents = sum(item.product.price_cents * item.quantity for item in cart_items)
+
     discount_cents = calculate_points_discount(subtotal_cents, preview_points, points_balance)
 
     return render(request, "payment/checkout.html", {
@@ -77,9 +84,7 @@ def _create_order(customer, form, cart_items):
     subtotal_cents = sum(item.product.price_cents * item.quantity for item in cart_items)
 
     # Re-check the balance inside the transaction so points can't be spent twice
-    discount_cents = calculate_points_discount(
-        subtotal_cents, data.get("points_to_redeem") or 0, get_points_balance(customer)
-    )
+    discount_cents = calculate_points_discount(subtotal_cents, data.get("points_to_redeem") or 0, get_points_balance(customer))
 
     method = data["delivery_method"]
     delivery_address = None
