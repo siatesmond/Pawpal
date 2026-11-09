@@ -9,6 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
 from inventory.models import CartItem, Product
+from payment.services import points_earned
 from service.models import Booking
 
 from .forms import (
@@ -501,6 +502,35 @@ class BookingListView(View):
             },
         )
 
+class BookingDetailView(View):
+
+    template_name = "user/booking_detail.html"
+
+    def get(self, request, booking_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        booking = get_object_or_404(
+            Booking.objects.select_related("pet", "slot__service", "slot__outlet"),
+            pk=booking_id,
+            customer=customer,
+        )
+        # Get the most recent payment for this booking
+        payment = booking.payments.order_by("-created_at").first()
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "booking": booking,
+                "payment": payment,
+                "price_dollars": booking.price_cents / 100,
+                "discount_dollars": booking.points_discount_cents / 100,
+                "total_dollars": booking.total_cents / 100,
+                "points_earned": points_earned(booking.total_cents),
+                "active_account_page": "bookings",
+            },
+        )
 
 class PetListView(View):
     template_name = "user/pets.html"

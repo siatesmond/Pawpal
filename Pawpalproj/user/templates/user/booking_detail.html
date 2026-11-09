@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}Booking #{{ booking.pk }} | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/bookings.css' %}" />
+{% endblock %}
+
+{% block content %}
+{# TIME_ZONE in settings is UTC, so show booking times in Singapore time #}
+{% timezone "Asia/Singapore" %}
+<div class="profile-layout">
+  {% include "user/_account_sidebar.html" with active_account_page="bookings" %}
+
+  <!-- Back to bookings button -->
+  <main class="profile-main">
+    <a class="booking-back-link" href="{% url 'user:bookings' %}">‹ Back to my bookings</a>
+
+    <div class="profile-heading">
+      <div>
+        <h1>{{ booking.slot.service.name }}</h1>
+        <p>Booking #{{ booking.pk }} · booked on {{ booking.created_at|date:"j M Y" }}</p>
+      </div>
+      <span class="booking-status booking-status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
+    </div>
+
+    <!-- Booking information -->
+    <section class="profile-panel">
+      <h2>Booking details</h2>
+      <dl class="detail-list">
+        <div>
+          <dt>Pet</dt>
+          <dd>{{ booking.pet.name }}{% if booking.pet.breed %} ({{ booking.pet.breed }}){% endif %}</dd>
+        </div>
+        <div>
+          <dt>Service</dt>
+          <dd>{{ booking.slot.service.name }}</dd>
+        </div>
+        <div>
+          <dt>Outlet</dt>
+          <dd>{{ booking.slot.outlet.name }}{% if booking.slot.outlet.address %}<br><small>{{ booking.slot.outlet.address }}</small>{% endif %}</dd>
+        </div>
+        <div>
+          <dt>{% if booking.check_out_date %}Check-in{% else %}Date &amp; time{% endif %}</dt>
+          <dd>{{ booking.slot.start_time|date:"D, j M Y · g:i A" }}</dd>
+        </div>
+        {% if booking.check_out_date %}
+          <div>
+            <dt>Check-out</dt>
+            <dd>{{ booking.check_out_date|date:"D, j M Y" }}</dd>
+          </div>
+        {% endif %}
+        {% if booking.cancelled_at %}
+          <div>
+            <dt>Cancelled on</dt>
+            <dd>{{ booking.cancelled_at|date:"D, j M Y · g:i A" }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+    </section>
+
+    <!-- Payment information -->
+    <section class="profile-panel">
+      <h2>Payment</h2>
+      <dl class="detail-list">
+        <div>
+          <dt>Price</dt>
+          <dd>SGD {{ price_dollars|floatformat:2 }}</dd>
+        </div>
+        <div>
+          <dt>Points discount</dt>
+          <dd>{% if booking.points_discount_cents %}− SGD {{ discount_dollars|floatformat:2 }} <small>({{ booking.points_discount_cents }} pts)</small>{% else %}SGD 0.00{% endif %}</dd>
+        </div>
+        <div class="detail-total">
+          <dt>Total paid</dt>
+          <dd>SGD {{ total_dollars|floatformat:2 }}</dd>
+        </div>
+        {% if payment %}
+          <div>
+            <dt>Paid by</dt>
+            <dd>{{ payment.get_method_display }}{% if payment.card_number %} {{ payment.card_number }}{% endif %}</dd>
+          </div>
+        {% endif %}
+        <div>
+          <dt>Points earned</dt>
+          <dd>{{ points_earned }} pts</dd>
+        </div>
+      </dl>
+    </section>
+  </main>
+</div>
+{% endtimezone %}
+{% endblock %}

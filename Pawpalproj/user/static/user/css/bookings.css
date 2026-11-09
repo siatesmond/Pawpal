@@ -42,6 +42,76 @@
   text-align: right;
 }
 
+/* "View details" button on each booking card */
+.booking-details-link {
+  padding: 6px 14px;
+  border: 1px solid var(--green);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.booking-details-link:hover {
+  background: var(--green);
+  color: #fff;
+}
+
+/* ---------- booking details page ---------- */
+.booking-back-link {
+  align-self: flex-start;
+  color: #7a716a;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.booking-back-link:hover {
+  color: var(--green);
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.detail-list > div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid #efe9de;
+}
+
+.detail-list > div:last-child {
+  border-bottom: none;
+}
+
+.detail-list dt {
+  color: #7a716a;
+  font-size: 13px;
+}
+
+.detail-list dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.detail-list small {
+  color: #7a716a;
+  font-size: 12px;
+}
+
+.detail-total dt,
+.detail-total dd {
+  color: var(--green);
+  font-weight: 600;
+}
+
 /* status pill */
 .booking-status {
   padding: 4px 10px;
@@ -59,6 +129,11 @@
 .booking-status-cancelled { background: #f3dedb; color: #9b3d2e; }
 
 @media (max-width: 600px) {
+  .detail-list > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
   .booking-row {
     grid-template-columns: minmax(0, 1fr);
   }
