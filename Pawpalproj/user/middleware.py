@@ -1,5 +1,7 @@
 from django.shortcuts import redirect
 
+from .models import User
+
 # URL prefix -> which user types may open it
 PROTECTED_PATHS = {
     "/user/home/": ["customer"],
@@ -14,6 +16,7 @@ PROTECTED_PATHS = {
     "/service/book/": ["customer"],
     "/admin-panel/": ["staff", "owner"],
     "/sitting/jobs/": ["sitter"],
+    "/sitting/application/": ["sitter"],
 }
 
 
@@ -26,8 +29,16 @@ def login_required_middleware(get_response):
             if request.path.startswith(prefix):
                 if "user_id" not in request.session:
                     return redirect("/user/login/")  # not logged in
-                if request.session.get("user_type") not in allowed_types:
-                    return redirect("/")  # logged in, wrong role
+                user = User.objects.filter(
+                    pk=request.session.get("user_id"),
+                    is_active=True,
+                ).first()
+                actual_type = get_user_type(user) if user else None
+                if actual_type not in allowed_types:
+                    request.session.flush()
+                    return redirect("/user/login/")
+                if request.session.get("user_type") != actual_type:
+                    request.session["user_type"] = actual_type
                 break
 
         response = get_response(request)
@@ -36,3 +47,18 @@ def login_required_middleware(get_response):
         return response
 
     return middleware
+
+
+def get_user_type(user):
+    """Return the role represented by the user's multi-table child row."""
+    if user is None:
+        return None
+    if hasattr(user, "customer"):
+        return "customer"
+    if hasattr(user, "staff"):
+        return "staff"
+    if hasattr(user, "businessowner"):
+        return "owner"
+    if hasattr(user, "petsitter"):
+        return "sitter"
+    return None

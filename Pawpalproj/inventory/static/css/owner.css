@@ -1,0 +1,261 @@
+.owner-body {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f6f3ec;
+}
+
+.owner-sidebar {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 16px 20px;
+  background: #4a5a3f;
+  color: #f3efe4;
+}
+
+.owner-logo {
+  margin: 0;
+  font-family: "Fraunces", serif;
+  font-size: 26px;
+  font-weight: 600;
+}
+
+.owner-role {
+  margin: 4px 0 28px;
+  color: #d7ddce;
+  font-size: 10px;
+}
+
+.owner-nav a {
+  display: block;
+  margin-bottom: 3px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #f3efe4;
+  font-size: 11px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    background-color 0.18s ease, color 0.18s ease;
+}
+
+.owner-nav a:hover,
+.owner-nav a.active {
+  background: #aab59a;
+  color: #2f3a27;
+}
+
+.owner-nav a:hover {
+  transform: translateX(4px);
+  box-shadow: 0 4px 10px rgb(34 45 29 / 18%);
+}
+
+.owner-nav a:active,
+.owner-quick-links a:active,
+.owner-logout:active {
+  transform: scale(0.97);
+}
+
+.owner-logout {
+  margin-top: auto;
+  padding: 12px;
+  color: #d7ddce;
+  font-size: 11px;
+  transition: transform 0.18s ease, color 0.18s ease;
+}
+
+.owner-logout:hover {
+  color: #fff;
+  transform: translateX(4px);
+}
+
+.owner-main {
+  min-width: 0;
+  padding: 28px 42px 44px;
+}
+
+.owner-topbar {
+  margin-bottom: 22px;
+  color: #77766d;
+  font-size: 11px;
+  text-align: right;
+}
+
+.staff-topbar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 18px;
+  margin-bottom: 20px;
+  color: #77766d;
+  font-size: 11px;
+}
+
+.staff-topbar a {
+  color: var(--green);
+}
+
+.staff-page-heading h1 {
+  margin: 0;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 34px;
+  font-weight: 500;
+}
+
+.staff-page-heading p {
+  margin: 5px 0 20px;
+  color: #77766d;
+  font-size: 11px;
+}
+
+.owner-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.owner-metrics article,
+.owner-panel {
+  border: 1px solid #e1ddd2;
+  border-radius: 12px;
+  background: #fff;
+  padding: 18px;
+}
+
+.owner-metrics span,
+.owner-metrics small {
+  display: block;
+  color: #77766d;
+  font-size: 10px;
+}
+
+.owner-metrics strong {
+  display: block;
+  margin: 8px 0 4px;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 25px;
+  font-weight: 500;
+}
+
+.owner-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.owner-panel h2 {
+  margin: 0 0 14px;
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.owner-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr auto;
+  gap: 12px;
+  border-top: 1px solid #eeeae2;
+  padding: 12px 0;
+  color: #4b4a43;
+  font-size: 11px;
+}
+
+.owner-row strong {
+  color: var(--green);
+  font-weight: 500;
+}
+
+.owner-empty {
+  color: #89877e;
+  font-size: 11px;
+}
+
+.owner-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.owner-quick-links a {
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: #e2e9dc;
+  color: var(--green);
+  font-size: 11px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.owner-quick-links a:hover {
+  background: #cbd9c1;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 12px rgb(47 42 38 / 14%);
+}
+
+.owner-table-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  border-top: 1px solid #eeeae2;
+  padding: 13px 0;
+  color: #4b4a43;
+  font-size: 11px;
+}
+
+.owner-table-header {
+  border-top: 0;
+  padding-top: 0;
+  color: #77766d;
+  font-size: 10px;
+}
+
+@media (max-width: 800px) {
+  .owner-body {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+
+  .owner-main {
+    padding: 24px;
+  }
+
+  .owner-metrics,
+  .owner-dashboard-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .owner-body {
+    display: block;
+  }
+
+  .owner-sidebar {
+    padding: 16px;
+  }
+
+  .owner-nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+  }
+
+  .owner-nav a {
+    white-space: nowrap;
+  }
+
+  .owner-logout {
+    margin-top: 8px;
+  }
+
+  .owner-metrics,
+  .owner-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .owner-table {
+    overflow-x: auto;
+    min-width: 600px;
+  }
+}
