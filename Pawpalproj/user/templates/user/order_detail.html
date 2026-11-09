@@ -69,4 +69,7 @@
 
     <!-- Payment summary -->
     {% include "user/_payment_summary.html" %}
+
+    {% url 'user:order_cancel' order.pk as cancel_url %}
+    {% include "user/_cancel_section.html" with record_label="order" cancel_url=cancel_url refund_dollars=total_dollars %}
 {% endblock %}

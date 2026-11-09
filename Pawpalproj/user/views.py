@@ -3,14 +3,15 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import F, Q
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
 from inventory.models import CartItem, Order, Product
-from payment.services import payment_summary
-from service.models import Booking
+from payment.services import can_cancel, cancel_deadline, payment_summary, refund_payment
+from service.models import Booking, BookingUpdate, TimeSlot
 
 from .forms import (
     ForgotPasswordEmailForm,
@@ -502,6 +503,22 @@ class BookingListView(View):
             },
         )
 
+# Checks if booking's appointment time has not started and if it is within the 24-hour cancellation window
+def _booking_can_cancel(booking):
+    return can_cancel(booking) and booking.slot.start_time > timezone.now()
+
+
+# Context for the cancel section on the booking / order details page.
+def _cancel_context(request, record, allowed):
+    not_started = record.status in (record.Status.PENDING, record.Status.CONFIRMED)
+    return {
+        "can_cancel": allowed,
+        "confirm_cancel": allowed and request.GET.get("cancel") == "1", #shows cancel confirmation message
+        "cancel_deadline": cancel_deadline(record),
+        "cancel_closed": not_started and not allowed,  
+    }
+
+
 class BookingDetailView(View):
 
     template_name = "user/booking_detail.html"
@@ -529,9 +546,47 @@ class BookingDetailView(View):
                 "booking": booking,
                 "updates": updates,
                 **payment_summary(booking, booking.price_cents), #helper function in services.py to calculate
+                **_cancel_context(request, booking, _booking_can_cancel(booking)),
                 "active_account_page": "bookings",
             },
         )
+
+
+class BookingCancelView(View):
+
+    def post(self, request, booking_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update(), pk=booking_id, customer=customer
+            )
+
+            if not _booking_can_cancel(booking):
+                messages.error(
+                    request,
+                    "This booking can no longer be cancelled. Bookings can only be "
+                    "cancelled within 24 hours of booking and before the appointment.",
+                )
+                return redirect("user:booking_detail", booking.pk)
+
+            booking.status = Booking.Status.CANCELLED
+            booking.cancelled_at = timezone.now()
+            booking.save(update_fields=["status", "cancelled_at"])
+
+            # Increase the capacity in the time slot
+            TimeSlot.objects.filter(pk=booking.slot_id, booked_count__gt=0).update(
+                booked_count=F("booked_count") - 1
+            )
+            # Create a BookingUpdate to update to Cancelled status
+            BookingUpdate.objects.create(
+                booking=booking,
+                new_status=Booking.Status.CANCELLED
+            )
+            refund_payment(booking, label=f"booking #{booking.pk}")
+
+        messages.success(request, "Your booking has been cancelled and your payment will be refunded.")
+        return redirect("user:booking_detail", booking.pk)
 
 # CustomerOrders
 class OrderListView(View):
@@ -574,6 +629,7 @@ class OrderDetailView(View):
             customer=customer,
         )
         items = list(order.items.select_related("product"))
+
         for item in items:
             item.unit_price_dollars = item.unit_price_cents / 100
             item.line_total_dollars = item.unit_price_cents * item.quantity / 100
@@ -587,9 +643,44 @@ class OrderDetailView(View):
                 "items": items,
                 "delivery_fee_dollars": order.delivery_fee_cents / 100,
                 **payment_summary(order, order.subtotal_cents), #helper function in services.py to calculate
+                **_cancel_context(request, order, _status(order)),
                 "active_account_page": "orders",
             },
         )
+
+
+class OrderCancelView(View):
+
+    def post(self, request, order_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        with transaction.atomic():
+            order = get_object_or_404(
+                Order.objects.select_for_update(), pk=order_id, customer=customer
+            )
+
+            if not can_cancel(order):
+                messages.error(
+                    request,
+                    "This order can no longer be cancelled. Orders can only be "
+                    "cancelled within 24 hours of ordering, before they are completed.",
+                )
+                return redirect("user:order_detail", order.pk)
+
+            order.status = Order.Status.CANCELLED
+            order.save(update_fields=["status"])
+
+            # Put the items back into stock
+            for item in order.items.all():
+                Product.objects.filter(pk=item.product_id).update(
+                    stock_quantity=F("stock_quantity") + item.quantity
+                )
+
+            # Points
+            refund_payment(order, label=f"order #{order.pk}")
+
+        messages.success(request, "Your order has been cancelled and your payment will be refunded.")
+        return redirect("user:order_detail", order.pk)
 
 
 class PetListView(View):

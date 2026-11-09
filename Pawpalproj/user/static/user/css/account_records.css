@@ -128,3 +128,29 @@
 .record-status-completed { background: #dce6f1; color: #3b5a7a; }
 .record-status-cancelled { background: #f3dedb; color: #9b3d2e; }
 
+
+/* Cancel section on the booking / order details pages */
+.cancel-panel .profile-button-row {
+  margin-top: 4px;
+}
+
+.cancel-button {
+  border-color: #9b3d2e;
+  background: #9b3d2e;
+  color: #fff;
+}
+
+.cancel-button:hover {
+  background: #7f3022;
+}
+
+.cancel-link {
+  border-color: #9b3d2e;
+  color: #9b3d2e;
+}
+
+.cancel-link:hover {
+  border-color: #9b3d2e;
+  background: #f3dedb;
+  color: #9b3d2e;
+}

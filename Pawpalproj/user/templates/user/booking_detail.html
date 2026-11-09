@@ -92,7 +92,10 @@
         {% endif %}
       </dl>
     </section>
-    
+
     <!-- Payment summary -->
     {% include "user/_payment_summary.html" with subtotal_label="Price" %}
+
+    {% url 'user:booking_cancel' booking.pk as cancel_url %}
+    {% include "user/_cancel_section.html" with record_label="booking" cancel_url=cancel_url refund_dollars=total_dollars %}
 {% endblock %}

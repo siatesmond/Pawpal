@@ -1,8 +1,12 @@
+from datetime import timedelta
+
 from django.db.models import Sum
+from django.utils import timezone
 
 from .models import Payment, PointsTransaction
 
 POINTS_PER_DOLLAR = 10  # points earned for each whole dollar paid
+CANCEL_WINDOW = timedelta(hours=24)  # customers can cancel within 24 hours of booking / ordering
 
 # Checkout logic shared by both shop products checkout and book service checkout.
 
@@ -127,3 +131,55 @@ def record_payment(customer, form, *, amount_cents, points_redeemed, label, orde
             reason=f"Earned from {label}",
         )
     return payment
+
+
+# Cancel booking or order
+
+def cancel_deadline(record):
+    return record.created_at + CANCEL_WINDOW
+
+
+# Booking and Order status must have PENDING / CONFIRMED 
+# A record can be cancelled only before staff start on it and within 24 hours after created
+def can_cancel(record):
+    not_started = record.status in (record.Status.PENDING, record.Status.CONFIRMED)
+    return not_started and timezone.now() <= cancel_deadline(record)
+
+
+# Refund a cancelled Booking or Order (called by cancel booking/order views)
+def refund_payment(record, label):
+
+    #  Update status to Refunded for completed payments
+    for payment in record.payments.filter(status=Payment.Status.COMPLETED):
+        payment.status = Payment.Status.REFUNDED
+        payment.save(update_fields=["status"])
+
+        # Calculate points redeemed and earned for this payment
+        redeemed = -sum(
+            t.points for t in payment.points_transactions.all()
+            if t.transaction_type == PointsTransaction.Type.REDEEMED
+        )
+        earned = sum(
+            t.points for t in payment.points_transactions.all()
+            if t.transaction_type == PointsTransaction.Type.EARNED
+        )
+        # Reverse points transactions for the payment
+        # Refund points that were redeemed
+        if redeemed > 0:
+            PointsTransaction.objects.create(
+                customer=payment.customer,
+                points=redeemed,
+                transaction_type=PointsTransaction.Type.REFUNDED,
+                payment=payment,
+                reason=f"Points returned for cancelled {label}",
+            )
+
+        # Remove points that were earned (status - redeemed)
+        if earned > 0:
+            PointsTransaction.objects.create(
+                customer=payment.customer,
+                points=-earned,
+                transaction_type=PointsTransaction.Type.REDEEMED,
+                payment=payment,
+                reason=f"Earned points removed for cancelled {label}",
+            )
