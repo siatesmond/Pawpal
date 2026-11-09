@@ -645,7 +645,7 @@ class OrderDetailView(View):
                 "items": items,
                 "delivery_fee_dollars": order.delivery_fee_cents / 100,
                 **payment_summary(order, order.subtotal_cents), #helper function in services.py to calculate
-                **_cancel_context(request, order, _status(order)),
+                **_cancel_context(request, order, can_cancel(order)),
                 "active_account_page": "orders",
             },
         )

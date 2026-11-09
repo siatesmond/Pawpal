@@ -18,7 +18,7 @@
         <button type="submit" class="profile-button cancel-button">Yes, cancel {{ record_label }}</button>
 
         {# Remove query params to close the confirm cancel prompt #}
-        <a class="profile-button profile-button-outline" href="?">Keep {{ record_label }}</a>
+        <a class="profile-button profile-button-outline" href="{% querystring cancel=None %}">Keep {{ record_label }}</a>
       </form>
     {# Main cancel section #}
     {% else %}
