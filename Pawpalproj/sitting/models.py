@@ -39,6 +39,9 @@ class PetSitter(User):
         REJECTED = "REJECTED", "Rejected"
 
     bio = models.TextField(blank=True)
+    # The sitter types only the postal code. The system looks up the map
+    # position (latitude, longitude) and the area name (service_area) from it.
+    postal_code = models.CharField(max_length=6, blank=True)
     service_area = models.CharField(max_length=100)
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
@@ -128,7 +131,7 @@ class SittingRequest(models.Model):
 
     @property
     def commission_cents(self):
-        # Pawpal keeps commission_rate (10%) of every sitting job (US-051)
+        # Pawpal keeps commission_rate (10%) of every sitting job
         return int(self.total_price_cents * self.commission_rate)
 
     @property

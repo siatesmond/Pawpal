@@ -1,7 +1,7 @@
-{% extends "inventory/staff_base.html" %}
+{% extends base_template|default:"inventory/staff_base.html" %}
 {% load static %}
 
-{% block title %}{{ action_title }} | Pawpal Staff{% endblock %}
+{% block title %}{{ action_title }} | Pawpal{% endblock %}
 
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
@@ -29,7 +29,7 @@
         {% endif %}
 
         <!-- Form template -->
-        {% include "inventory/form_template.html" with cancel_url="/inventory/staff/orders-stock" submit_text="Save Product" %}
+        {% include "form_template.html" with cancel_url="/inventory/staff/orders-stock" submit_text="Save Product" %}
 
     </div>
 </div>

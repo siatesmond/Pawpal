@@ -19,7 +19,7 @@ class OwnerCustomerForm(forms.ModelForm):
 
 
 class OwnerStaffEditForm(forms.ModelForm):
-    # US-040: edit a staff member's details and move them to another outlet
+    # Edit a staff member's details and move them to another outlet
     class Meta:
         model = Staff
         fields = ["first_name", "last_name", "email", "mobile", "outlet"]

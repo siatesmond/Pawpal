@@ -84,7 +84,7 @@ class PointsTransaction(models.Model):
         EARNED = "EARNED", "Earned"
         REDEEMED = "REDEEMED", "Redeemed"
         REFUNDED = "REFUNDED", "Refunded"
-        ADJUSTED = "ADJUSTED", "Adjusted by owner"  # US-039: add or deduct with a reason
+        ADJUSTED = "ADJUSTED", "Adjusted by owner"  # Add or deduct with a reason
 
     customer = models.ForeignKey(
         "user.Customer", on_delete=models.CASCADE, related_name="points_transactions"

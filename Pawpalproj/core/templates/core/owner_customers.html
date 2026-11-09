@@ -64,7 +64,7 @@
       <p class="owner-small">{{ selected_customer.pets.count }} pet{{ selected_customer.pets.count|pluralize }} · {{ customer_bookings|length }} booking{{ customer_bookings|length|pluralize }} · {{ customer_orders|length }} order{{ customer_orders|length|pluralize }}</p>
     </section>
 
-    {# ---------- Adjust points (US-039) ---------- #}
+    {# Adjust points #}
     <section class="panel detail-card">
       <h2 style="margin-top: 0;">Adjust points</h2>
       <form method="post" action="{% url 'core:owner_adjust_points' selected_customer.pk %}">
@@ -83,7 +83,7 @@
       </form>
     </section>
 
-    {# ---------- Pets ---------- #}
+    {# Pets #}
     <section class="panel detail-card">
       <h2 style="margin-top: 0;">Pets</h2>
       <table class="owner-table">
@@ -95,7 +95,7 @@
       </table>
     </section>
 
-    {# ---------- Bookings ---------- #}
+    {# Bookings #}
     <section class="panel detail-card">
       <h2 style="margin-top: 0;">Bookings</h2>
       <table class="owner-table">
@@ -111,7 +111,7 @@
       </table>
     </section>
 
-    {# ---------- Orders ---------- #}
+    {# Orders #}
     <section class="panel detail-card">
       <h2 style="margin-top: 0;">Orders</h2>
       <table class="owner-table">
@@ -127,7 +127,7 @@
       </table>
     </section>
 
-    {# ---------- Points history ---------- #}
+    {# Points history #}
     <section class="panel detail-card">
       <h2 style="margin-top: 0;">Points history</h2>
       <table class="owner-table">

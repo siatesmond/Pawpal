@@ -1,7 +1,7 @@
-{% extends "inventory/staff_base.html" %}
+{% extends base_template|default:"inventory/staff_base.html" %}
 {% load static %}
 
-{% block title %}Orders & stock | Pawpal staff{% endblock %}
+{% block title %}Orders & stock | Pawpal{% endblock %}
 
 {% block content %}
 {# header: title, search, status filter, add product #}

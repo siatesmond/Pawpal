@@ -8,7 +8,7 @@
 <section class="sitter">
   <div class="sitter-head"><div><h1>My jobs</h1><p>Jobs you have accepted, jobs in progress and your job history</p></div></div>
 
-  {# ---------- Tabs: ?tab=... shows only that group ---------- #}
+  {# Tabs: ?tab=... shows only that group #}
   <nav class="tabs">
     {% for value, label in tabs %}
       <a href="?tab={{ value }}" class="pill {% if tab == value %}pill-active{% else %}pill-outline{% endif %}">
@@ -20,7 +20,7 @@
   <div class="sitter-cols">
     <div class="sitter-stack">
 
-      {# ---------- In progress: progress bar, latest update, complete ---------- #}
+      {# In progress: progress bar, latest update, complete #}
       {% if tab == "all" or tab == "in_progress" %}
         <div class="group-head"><h2>In progress</h2><span class="muted small">{{ in_progress|length }} job{{ in_progress|length|pluralize }}</span></div>
         {% for job in in_progress %}
@@ -55,7 +55,7 @@
         {% endfor %}
       {% endif %}
 
-      {# ---------- Upcoming: owner has confirmed and paid ---------- #}
+      {# Upcoming: owner has confirmed and paid #}
       {% if tab == "all" or tab == "upcoming" %}
         <div class="group-head"><h2>Upcoming</h2><span class="muted small">{{ upcoming|length }} job{{ upcoming|length|pluralize }} · owner has paid</span></div>
         {% for job in upcoming %}
@@ -97,7 +97,7 @@
         {% endfor %}
       {% endif %}
 
-      {# ---------- Pending: I accepted, waiting for the owner ---------- #}
+      {# Pending: I accepted, waiting for the owner #}
       {% if tab == "all" or tab == "pending" %}
         <div class="group-head"><h2>Pending</h2><span class="muted small">{{ pending|length }} request{{ pending|length|pluralize }} · waiting for owner</span></div>
         {% for job in pending %}
@@ -124,7 +124,7 @@
         {% endfor %}
       {% endif %}
 
-      {# ---------- Completed: rate the owner (US-052) ---------- #}
+      {# Completed: rate the owner #}
       {% if tab == "all" or tab == "completed" %}
         <div class="group-head"><h2>Completed</h2><span class="muted small">{{ completed|length }} job{{ completed|length|pluralize }}</span></div>
         <div class="s-card">
@@ -172,7 +172,7 @@
         </div>
       {% endif %}
 
-      {# ---------- Cancelled or declined ---------- #}
+      {# Cancelled or declined #}
       {% if tab == "cancelled" %}
         <div class="group-head"><h2>Cancelled</h2></div>
         {% for job in cancelled %}
@@ -189,7 +189,7 @@
       {% endif %}
     </div>
 
-    {# ---------- Right column ---------- #}
+    {# Right column #}
     <aside class="sitter-stack">
       {% if in_progress %}
         <form method="post" enctype="multipart/form-data" class="s-card">

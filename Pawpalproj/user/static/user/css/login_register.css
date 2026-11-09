@@ -1,4 +1,4 @@
-/* ===== Log in page (G3) – uses the colours from base.css ===== */
+/* Log in page – uses the colours from base.css */
 
 .login {
   display: grid;
@@ -254,7 +254,7 @@ main:has(.login) + .footer {
   }
 }
 
-/* ===== Register page (G2) – extra styles, shares everything above ===== */
+/* Register page – extra styles, shares everything above */
 
 .form-grid-2 {
   display: grid;

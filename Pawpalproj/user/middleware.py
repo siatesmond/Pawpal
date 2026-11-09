@@ -1,6 +1,8 @@
+from django.contrib import messages
 from django.shortcuts import redirect
 
 from .models import User
+from .views import home_for
 
 # URL prefix -> which user types may open it
 PROTECTED_PATHS = {
@@ -14,7 +16,7 @@ PROTECTED_PATHS = {
     "/inventory/staff/": ["staff", "owner"],
     "/inventory/stock/": ["staff", "owner"],
     "/service/book/": ["customer"],
-    # US-021: only the business owner can open the owner dashboard and accounts
+    # Only the business owner can open the owner dashboard and accounts
     "/admin-panel/": ["owner"],
     "/core/admin-panel/": ["owner"],  # same pages through the old /core/ prefix
     "/sitting/jobs/": ["sitter"],
@@ -22,6 +24,10 @@ PROTECTED_PATHS = {
     "/sitting/earnings/": ["sitter"],
     "/sitting/profile/": ["sitter"],
     "/sitting/application/": ["sitter"],
+    # customer side: find & request a pet sitter
+    "/sitting/find/": ["customer"],
+    "/sitting/sitters/": ["customer"],
+    "/sitting/requests/": ["customer"],
 }
 
 
@@ -39,9 +45,17 @@ def login_required_middleware(get_response):
                     is_active=True,
                 ).first()
                 actual_type = get_user_type(user) if user else None
-                if actual_type not in allowed_types:
+
+                # Account deleted or deactivated: log out completely
+                if actual_type is None:
                     request.session.flush()
                     return redirect("/user/login/")
+
+                # Logged in, but this page is for another role (e.g. staff on an
+                # owner page): keep them logged in and send them to their own home page
+                if actual_type not in allowed_types:
+                    messages.error(request, "That page isn't available for your account.")
+                    return redirect(home_for(actual_type))
                 if request.session.get("user_type") != actual_type:
                     request.session["user_type"] = actual_type
                 break

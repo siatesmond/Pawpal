@@ -1,4 +1,9 @@
-<form method="POST" {% if enctype %}enctype="{{ enctype }}"{% endif %} {% if form_id %}id="{{ form_id }}"{% endif %} class="{{ form_css_class|default:'checkout-form' }}">
+{% comment %}
+Shared form layout used by every Django form in Pawpal.
+Include it with: include "form_template.html" with cancel_url="..." submit_text="..."
+Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit, show_photo_upload
+{% endcomment %}
+<form method="POST" {% if enctype %}enctype="{{ enctype }}"{% endif %} {% if form_id %}id="{{ form_id }}"{% endif %} class="{{ form_css_class|default:'product-form' }}">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -35,6 +40,7 @@
                 </div>
             {% endfor %}
 
+            <!-- Checkout only: preview the points discount without paying -->
             {% if field.name == "points_to_redeem" %}
                 <button type="submit" name="action" value="preview_points" class="apply-points-btn" formnovalidate>
                     Apply points
@@ -42,6 +48,15 @@
             {% endif %}
         </div>
     {% endfor %}
+
+    <!-- Staff booking update only: upload several photos -->
+    {% if show_photo_upload %}
+        <div class="form-group" style="margin-top: 1rem;">
+            <label for="id_photos">Upload Photos</label>
+            <input type="file" name="photos" id="id_photos" multiple accept="image/*">
+            <small style="display: block; margin-top: 0.25rem; color: #666;">You can select multiple images</small>
+        </div>
+    {% endif %}
 
     {% if success_message %}
         <div class="form-alert form-alert-success">
@@ -55,17 +70,20 @@
         </div>
     {% endif %}
 
-    <!-- Buttons -->
-    {% if not hide_submit %}
+    <!-- Buttons (checkout hides these and uses its own Pay button) -->
+    {% if cancel_url or not hide_submit %}
         <div class="form-actions">
             {% if cancel_url %}
                 <a href="{{ cancel_url }}" class="cancel-btn">
                     Cancel
                 </a>
             {% endif %}
-            <button type="submit" class="save-btn">
-                {{ submit_text|default:"Save Changes" }}
-            </button>
+
+            {% if not hide_submit %}
+                <button type="submit" class="save-btn">
+                    {{ submit_text|default:"Save Changes" }}
+                </button>
+            {% endif %}
         </div>
     {% endif %}
 </form>

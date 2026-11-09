@@ -4,13 +4,13 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
-from django.db.models import F, Q
+from django.db.models import F, Q, Sum
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
 from inventory.models import CartItem, Order, Product
-from payment.services import can_cancel, cancel_deadline, payment_summary, refund_payment
+from payment.services import can_cancel, cancel_deadline, get_points_balance, payment_summary, refund_payment
 from service.models import Booking, BookingUpdate, TimeSlot
 
 from .forms import (
@@ -25,6 +25,7 @@ from .forms import (
     ResetPasswordForm,
 )
 from .models import OTP, Customer, Pet, User
+from .utils import get_current_customer
 
 
 # USER TYPE AND OTP HELPERS
@@ -956,3 +957,23 @@ def decrement_cart_item(request, item_id):
         item.delete()
 
     return redirect("user:customer_cart")
+
+
+# NAVBAR
+
+# Gives every page the logged-in customer's points and cart count for the navbar.
+# Django runs this for every template (see "context_processors" in settings.py),
+# so we don't have to pass these values from every single view.
+def navbar(request):
+    customer = get_current_customer(request)
+    if customer is None:
+        return {}  # guests, staff, owner and sitters get nothing extra
+
+    # total number of items in the cart (2 bags of food = 2)
+    cart_count = customer.cart_items.aggregate(total=Sum("quantity"))["total"] or 0
+
+    return {
+        "nav_customer": customer,
+        "nav_points": f"{get_points_balance(customer):,}",  # 1240 -> "1,240"
+        "nav_cart_count": cart_count,
+    }

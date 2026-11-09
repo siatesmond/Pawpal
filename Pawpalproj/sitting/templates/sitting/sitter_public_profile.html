@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ sitter.first_name }} · Pet sitter | Pawpal{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="sitter">
+  <a href="{% url 'sitting:find_sitter' %}?{{ query_string }}" class="link small">‹ Back to recommended sitters</a>
+
+  <div class="sitter-cols side-left">
+    {# Summary card #}
+    <aside class="sitter-stack">
+      <div class="s-card profile-summary">
+        <div class="avatar avatar-lg">🙂</div>
+        <h2>{{ sitter.first_name }} {{ sitter.last_name|slice:":1" }}.</h2>
+        <p class="muted">Pet sitter · {{ sitter.service_area }}</p>
+        <span class="pill pill-success">✓ Approved by Pawpal</span>
+        <div class="profile-stats">
+          <div><strong>{% if rating %}{{ rating }} ★{% else %}–{% endif %}</strong><span>{{ review_count }} review{{ review_count|pluralize }}</span></div>
+          <div><strong>{{ jobs_done }}</strong><span>Jobs done</span></div>
+          <div><strong>{{ sitter.experience_years }} yrs</strong><span>Experience</span></div>
+        </div>
+      </div>
+      <div class="s-card s-card-blue">
+        <p class="eyebrow">Rate</p>
+        <p class="big-serif">SGD {{ sitter.daily_rate_display }} / day</p>
+        <p class="muted small">Pay securely through Pawpal after the sitter accepts.</p>
+      </div>
+    </aside>
+
+    <div class="sitter-stack">
+      <div class="s-card">
+        <h2>About {{ sitter.first_name }}</h2>
+        <p>{{ sitter.bio|default:"This sitter has not written a bio yet." }}</p>
+        <table class="earn-table">
+          <tr><td class="muted">Service area</td><td>{{ sitter.service_area }}</td></tr>
+          <tr><td class="muted">Pet experience</td><td>{{ sitter.pet_experience|default:"–" }}</td></tr>
+          <tr><td class="muted">Years of experience</td><td>{{ sitter.experience_years }}</td></tr>
+        </table>
+      </div>
+
+      {# Reviews from other pet owners #}
+      <div class="s-card">
+        <h2>Reviews</h2>
+        {% for review in reviews %}
+          <div class="review">
+            <span class="stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+            <span>{{ review.comment|default:"No comment" }}</span>
+            <span class="muted small">{{ review.reviewer.first_name }} · {{ review.created_at|date:"j M Y" }}</span>
+          </div>
+        {% empty %}
+          <p class="muted">No reviews yet.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

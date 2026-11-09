@@ -30,7 +30,7 @@
     </aside>
 
     <div class="sitter-stack">
-      {# ---------- Sitter profile: bio, area, experience, rate, ID ---------- #}
+      {# Sitter profile: bio, area, experience, rate, ID #}
       <form id="sitter-profile" method="post" enctype="multipart/form-data" class="s-card">
         {% csrf_token %}
         <input type="hidden" name="form" value="profile">
@@ -38,7 +38,7 @@
 
         <div class="field"><label for="bio">Bio</label><textarea id="bio" name="bio">{{ sitter.bio }}</textarea></div>
         <div class="grid-2">
-          <div class="field"><label for="service_area">Service area</label><input id="service_area" name="service_area" value="{{ sitter.service_area }}" required></div>
+          <div class="field"><label for="postal_code">Home postal code</label><input id="postal_code" name="postal_code" value="{{ sitter.postal_code }}" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 529536" required><span class="muted small">Area shown to owners: {{ sitter.service_area }}</span></div>
           <div class="field"><label for="experience_years">Years of experience</label><input type="number" min="0" id="experience_years" name="experience_years" value="{{ sitter.experience_years }}" required></div>
         </div>
 
@@ -73,7 +73,7 @@
         </div>
       </form>
 
-      {# ---------- Account details ---------- #}
+      {# Account details #}
       <form id="account" method="post" class="s-card">
         {% csrf_token %}
         <input type="hidden" name="form" value="account">
@@ -89,7 +89,7 @@
         <button type="submit" class="btn btn-dark">Update details</button>
       </form>
 
-      {# ---------- Change password ---------- #}
+      {# Change password #}
       <form id="password" method="post" class="s-card">
         {% csrf_token %}
         <input type="hidden" name="form" value="password">

@@ -1,31 +1,37 @@
 import csv
 import math
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
-from django.core.mail import send_mail
+from user.utils import send_mail_in_background
 from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 
+from payment.forms import PaymentDetailsForm
+from payment.services import (
+    bind_checkout_form,
+    calculate_points_discount,
+    checkout_totals,
+    get_points_balance,
+    record_payment,
+)
 from review.models import Review
-from user.models import OTP, Pet, User
+from user.models import OTP, Address, Customer, Pet, User
 from user.views import send_otp_code
 
-from .forms import PET_EXPERIENCE_CHOICES, SitterRegistrationForm
+from .forms import PET_EXPERIENCE_CHOICES, SitterRegistrationForm, SitterReviewForm
 from .models import PetSitter, SittingRequest, SittingUpdate
+from .onemap import address_to_coordinates, look_up_postal_code
 
 SGT = ZoneInfo("Asia/Singapore")
-PAYOUT_DAYS = 3  # payouts are sent 3 days after a job is completed (Figma S5)
+PAYOUT_DAYS = 3  # payouts are sent 3 days after a job is completed
 
 
-# =====================================================================
 # Helpers
-# =====================================================================
-
 
 def today():
     return datetime.now(SGT).date()
@@ -42,7 +48,7 @@ def get_sitter(request):
 
 
 def get_approved_sitter(request):
-    # Only APPROVED sitters can see jobs, earnings and profile (US-047)
+    # Only APPROVED sitters can see jobs, earnings and profile
     sitter = get_sitter(request)
     if sitter is None or sitter.application_status != PetSitter.Status.APPROVED:
         return None
@@ -60,12 +66,12 @@ def distance_km(lat1, lon1, lat2, lon2):
 
 
 def email_owner(job, subject, message):
-    # Tell the pet owner what happened to their sitting request (US-044, US-049)
-    send_mail(subject, message, None, [job.owner.email], fail_silently=True)
+    # Tell the pet owner what happened to their sitting request
+    send_mail_in_background(subject, message, None, [job.owner.email], fail_silently=True)
 
 
 def record_update(job, sitter, new_status, note):
-    # Save every status change so the owner can see the job's history (US-050)
+    # Save every status change so the owner can see the job's history
     update = SittingUpdate(request=job, sitter=sitter, new_status=new_status, note=note)
     update.save()
 
@@ -76,10 +82,7 @@ def month_before(year, month, count):
     return total_months // 12, total_months % 12 + 1
 
 
-# =====================================================================
-# S1a · Sign up (US-045) and S1b · Application status (US-046)
-# =====================================================================
-
+# Sign up and Application status
 
 def signup(request):
     # A logged-in sitter uses the same form to edit and resubmit the application
@@ -117,10 +120,7 @@ def application_status(request):
     return render(request, "sitting/application_status.html", {"sitter": sitter})
 
 
-# =====================================================================
-# S3 · Find jobs (US-048, US-049)
-# =====================================================================
-
+# Find jobs
 
 def find_jobs(request):
     sitter = get_approved_sitter(request)
@@ -143,8 +143,8 @@ def find_jobs(request):
             return redirect("sitting:sitter_find_jobs")
 
         if action == "accept":
-            # Accepting blocks the job for other sitters (US-049).
-            # It stays "Pending" until the owner confirms & pays (Figma S3 / S4).
+            # Accepting blocks the job for other sitters.
+            # It stays "Pending" until the owner confirms & pays.
             job.sitter = sitter
             job.status = SittingRequest.Status.PENDING
             job.save()
@@ -160,7 +160,7 @@ def find_jobs(request):
             return redirect("/sitting/my-jobs/?tab=pending")
 
         elif action == "decline":
-            # Only requests sent directly to me can be declined (US-049)
+            # Only requests sent directly to me can be declined
             if job.sitter != sitter:
                 messages.error(request, "Only requests sent to you can be declined.")
                 return redirect("sitting:sitter_find_jobs")
@@ -188,7 +188,7 @@ def find_jobs(request):
         messages.error(request, "Unknown action.")
         return redirect("sitting:sitter_find_jobs")
 
-    # ---------- GET: read the filters from the query string ----------
+    # GET: read the filters from the query string
     max_distance = request.GET.get("distance", "any")
     date_from = request.GET.get("date_from", "")
     date_to = request.GET.get("date_to", "")
@@ -296,10 +296,7 @@ def find_jobs(request):
     return render(request, "sitting/find_jobs.html", context)
 
 
-# =====================================================================
-# S4 · My jobs (US-050, US-052)
-# =====================================================================
-
+# My jobs
 
 def my_jobs(request):
     sitter = get_approved_sitter(request)
@@ -338,7 +335,13 @@ def my_jobs(request):
                 job.status = SittingRequest.Status.COMPLETED
                 job.save()
                 record_update(job, sitter, job.status, "Sitting completed.")
-                email_owner(job, "Pawpal: your pet sitting is completed", f"{sitter.first_name} has completed the sitting job.")
+                email_owner(
+                    job,
+                    "Pawpal: your pet sitting is completed - leave a review",
+                    f"{sitter.first_name} has completed the sitting job.\n"
+                    f"How did it go? Rate and review {sitter.first_name} here:\n"
+                    f"{request.build_absolute_uri('/sitting/requests/')}{job.pk}/#review",
+                )
                 messages.success(request, "Job marked as completed. Your payout will be sent within 3 days.")
 
         elif action == "cancel":
@@ -364,7 +367,7 @@ def my_jobs(request):
                 messages.success(request, "You withdrew from this request.")
 
         elif action == "update":
-            # notes and photos while the job is in progress (US-050)
+            # notes and photos while the job is in progress
             note = request.POST.get("note", "").strip()
             photo = request.FILES.get("photo")
 
@@ -384,7 +387,7 @@ def my_jobs(request):
                 messages.success(request, "Update posted. The owner can see it in their booking timeline.")
 
         elif action == "rate":
-            # rate the owner 1-5 stars after the job is completed (US-052)
+            # rate the owner 1-5 stars after the job is completed
             rating = request.POST.get("owner_rating", "")
             if job.status != SittingRequest.Status.COMPLETED:
                 messages.error(request, "You can only rate the owner after the job is completed.")
@@ -403,7 +406,7 @@ def my_jobs(request):
 
         return redirect(back_to_page)
 
-    # ---------- GET: sort my jobs into groups ----------
+    # GET: sort my jobs into groups
     tab = request.GET.get("tab", "all")
     jobs = (
         SittingRequest.objects.filter(sitter=sitter)
@@ -481,10 +484,7 @@ def my_jobs(request):
     return render(request, "sitting/my_jobs.html", context)
 
 
-# =====================================================================
-# S5 · Earnings (US-051)
-# =====================================================================
-
+# Earnings
 
 def earnings(request):
     sitter = get_approved_sitter(request)
@@ -591,10 +591,7 @@ def earnings(request):
     return render(request, "sitting/earnings.html", context)
 
 
-# =====================================================================
-# S6 · Profile (sitter profile, rate, ID document, account, password)
-# =====================================================================
-
+# Profile (sitter profile, rate, ID document, account, password)
 
 def profile(request):
     sitter = get_approved_sitter(request)
@@ -605,11 +602,21 @@ def profile(request):
         form_name = request.POST.get("form")
 
         if form_name == "profile":
-            # ---- Sitter profile: what pet owners see ----
+            # Sitter profile: what pet owners see
             errors = []
-            service_area = request.POST.get("service_area", "").strip()
-            if not service_area:
-                errors.append("Service area is required.")
+            # Only the postal code is typed; the map position and area name come from OneMap
+            postal_code = request.POST.get("postal_code", "").strip()
+            place = None
+            if not (postal_code.isdigit() and len(postal_code) == 6):
+                errors.append("Enter a 6-digit Singapore postal code.")
+            elif postal_code != sitter.postal_code or sitter.latitude is None:
+                place = look_up_postal_code(postal_code)
+                if place == {}:
+                    errors.append("We couldn't find this postal code. Please check it.")
+                elif place is None:
+                    # OneMap didn't answer: keep the old postal code so it never
+                    # points to a different place than the saved map position
+                    errors.append("We couldn't check your postal code right now. Please try again.")
 
             try:
                 experience_years = int(request.POST.get("experience_years", ""))
@@ -637,7 +644,11 @@ def profile(request):
                     messages.error(request, error)
             else:
                 sitter.bio = request.POST.get("bio", "").strip()
-                sitter.service_area = service_area
+                sitter.postal_code = postal_code
+                if place:
+                    sitter.latitude = place["latitude"]
+                    sitter.longitude = place["longitude"]
+                    sitter.service_area = place["area"]
                 sitter.experience_years = experience_years
                 sitter.daily_rate_cents = int(daily_rate * 100)
                 sitter.pet_experience = ", ".join(request.POST.getlist("pet_experience"))
@@ -647,7 +658,7 @@ def profile(request):
                 messages.success(request, "Sitter profile saved.")
 
         elif form_name == "account":
-            # ---- Account details ----
+            # Account details
             first_name = request.POST.get("first_name", "").strip()
             last_name = request.POST.get("last_name", "").strip()
             email = request.POST.get("email", "").strip().lower()
@@ -669,7 +680,7 @@ def profile(request):
                 messages.success(request, "Account details updated.")
 
         elif form_name == "password":
-            # ---- Change password: current one must be correct first ----
+            # Change password: current one must be correct first
             current = request.POST.get("current_password", "")
             new = request.POST.get("new_password", "")
             confirm = request.POST.get("confirm_password", "")
@@ -690,7 +701,7 @@ def profile(request):
 
         return redirect("sitting:sitter_profile")
 
-    # ---------- GET ----------
+    # GET
     # tick the chips the sitter already has (saved as "Dogs, Cats")
     my_experience = [item.strip().lower() for item in sitter.pet_experience.split(",")]
     experience_chips = []
@@ -714,3 +725,449 @@ def profile(request):
         "daily_payout": f"{sitter.daily_rate_cents * 0.9 / 100:.2f}",
     }
     return render(request, "sitting/profile.html", context)
+
+
+# Customer side · Find a Pet Sitter
+
+# words to look for in a sitter's "pet experience" for each pet type
+PET_TYPE_WORDS = {"DOG": "dog", "CAT": "cat", "OTHER": "small"}
+
+# statuses where the sitter is already booked for those days
+BUSY_STATUSES = [
+    SittingRequest.Status.PENDING,
+    SittingRequest.Status.ACCEPTED,
+    SittingRequest.Status.IN_PROGRESS,
+]
+
+
+def get_customer(request):
+    # The logged-in customer, or None
+    if request.session.get("user_type") != "customer":
+        return None
+    try:
+        return Customer.objects.get(pk=request.session.get("user_id"))
+    except Customer.DoesNotExist:
+        return None
+
+
+def sitter_rating(sitter):
+    # average stars and number of reviews owners left for this sitter
+    reviews = Review.objects.filter(sitting_request__sitter=sitter)
+    total = 0
+    for review in reviews:
+        total += review.rating
+    if not reviews:
+        return None, 0
+    return round(total / len(reviews), 1), len(reviews)
+
+
+def read_request_form(customer, data):
+    """Read and check the "Your request" form.
+
+    Returns (form_values, errors). form_values keeps what was typed so the
+    form can be shown again; it also holds the real objects once valid.
+    """
+    values = {
+        "start": data.get("start", ""),
+        "end": data.get("end", ""),
+        "address_id": data.get("address", ""),
+        "pet_ids": data.getlist("pets"),
+        "care": data.get("care", "").strip(),
+    }
+    errors = []
+
+    try:
+        start = date.fromisoformat(values["start"])
+        end = date.fromisoformat(values["end"])
+        if start < today():
+            errors.append("The start date cannot be in the past.")
+        elif end < start:
+            errors.append("The end date must be on or after the start date.")
+        values["start_date"] = start
+        values["end_date"] = end
+        values["days"] = (end - start).days + 1
+    except ValueError:
+        errors.append("Choose the sitting dates.")
+
+    try:
+        values["address"] = Address.objects.get(pk=values["address_id"], customer=customer)
+    except (Address.DoesNotExist, ValueError):
+        errors.append("Choose the location (one of your saved addresses).")
+
+    # only the customer's own pets can be chosen
+    values["pets"] = list(Pet.objects.filter(owner_id=customer, pk__in=[pk for pk in values["pet_ids"] if pk.isdigit()]))
+    if not values["pets"]:
+        errors.append("Choose at least one pet that needs care.")
+
+    return values, errors
+
+
+def recommend_sitters(values, latitude, longitude):
+    """Rank approved, available sitters for this request.
+
+    score = rating x 2  +  2 per pet type they have experience with
+            + 1.5 per completed job with the same breed  -  distance (km) / 2
+    """
+    breeds = [pet.breed for pet in values["pets"] if pet.breed]
+    results = []
+
+    for sitter in PetSitter.objects.filter(application_status=PetSitter.Status.APPROVED, is_active=True):
+        # availability: skip sitters already booked on any of these days
+        busy = SittingRequest.objects.filter(
+            sitter=sitter,
+            status__in=BUSY_STATUSES,
+            start_date__lte=values["end_date"],
+            end_date__gte=values["start_date"],
+        ).exists()
+        if busy:
+            continue
+
+        sitter.distance = None
+        if latitude and sitter.latitude and sitter.longitude:
+            sitter.distance = round(distance_km(latitude, longitude, sitter.latitude, sitter.longitude), 1)
+
+        sitter.rating, sitter.review_count = sitter_rating(sitter)
+
+        experience = sitter.pet_experience.lower()
+        type_matches = 0
+        for pet in values["pets"]:
+            if PET_TYPE_WORDS.get(pet.pet_type, "") in experience:
+                type_matches += 1
+
+        sitter.breed_jobs = 0
+        if breeds:
+            sitter.breed_jobs = (
+                SittingRequest.objects.filter(sitter=sitter, status=SittingRequest.Status.COMPLETED, pets__breed__in=breeds)
+                .distinct()
+                .count()
+            )
+
+        sitter.score = (sitter.rating or 0) * 2 + type_matches * 2 + sitter.breed_jobs * 1.5
+        sitter.score -= sitter.distance / 2 if sitter.distance is not None else 5
+
+        sitter.price = f"{sitter.daily_rate_cents * values['days'] / 100:.2f}"
+        results.append(sitter)
+
+    results.sort(key=lambda sitter: sitter.score, reverse=True)
+    return results
+
+
+def find_sitter(request):
+    customer = get_customer(request)
+    if customer is None:
+        return redirect("user:login")
+
+    addresses = Address.objects.filter(customer=customer).order_by("-is_default", "label")
+    pets = Pet.objects.filter(owner_id=customer).order_by("name")
+
+    # POST: send the request to one sitter, or to all sitters
+    if request.method == "POST":
+        values, errors = read_request_form(customer, request.POST)
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+            return redirect("sitting:find_sitter")
+
+        latitude, longitude = address_to_coordinates(values["address"])
+        address = values["address"]
+
+        new_request = SittingRequest(
+            owner=customer,
+            start_date=values["start_date"],
+            end_date=values["end_date"],
+            location=f"{address.line1} {address.line2}, Singapore {address.postal_code}".replace("  ", " "),
+            latitude=latitude,
+            longitude=longitude,
+            care_requirements=values["care"],
+            status=SittingRequest.Status.OPEN,
+        )
+
+        if request.POST.get("action") == "send":
+            # send to the sitter the owner picked
+            try:
+                sitter = PetSitter.objects.get(
+                    pk=request.POST.get("sitter_id"), application_status=PetSitter.Status.APPROVED
+                )
+            except (PetSitter.DoesNotExist, ValueError):
+                messages.error(request, "That sitter is not available.")
+                return redirect("sitting:find_sitter")
+            new_request.sitter = sitter
+            new_request.total_price_cents = sitter.daily_rate_cents * values["days"]
+        else:
+            # open request: every nearby sitter can see it in Find Jobs.
+            # Price estimate = average daily rate of approved sitters.
+            rates = [s.daily_rate_cents for s in PetSitter.objects.filter(application_status=PetSitter.Status.APPROVED)]
+            average_rate = sum(rates) // len(rates) if rates else 5000
+            new_request.total_price_cents = average_rate * values["days"]
+
+        new_request.save()
+        for pet in values["pets"]:
+            new_request.pets.add(pet)
+
+        if new_request.sitter:
+            send_mail_in_background(
+                "Pawpal: you have a new sitting request",
+                f"{customer.first_name} sent you a sitting request for {new_request.start_date:%d %b} "
+                f"to {new_request.end_date:%d %b}. Log in to accept or decline it.",
+                None,
+                [new_request.sitter.email],
+                fail_silently=True,
+            )
+            messages.success(request, f"Request sent to {new_request.sitter.first_name}. We'll email you when they reply.")
+        else:
+            messages.success(request, "Request posted. Nearby sitters can now accept it.")
+        return redirect("sitting:request_detail", pk=new_request.pk)
+
+    # GET: show the form, and recommendations once it is filled
+    sitters = None
+    values = {"pet_ids": [], "address_id": ""}
+    estimate = None
+    if request.GET.get("start"):
+        values, errors = read_request_form(customer, request.GET)
+        if errors:
+            for error in errors:
+                messages.error(request, error)
+        else:
+            latitude, longitude = address_to_coordinates(values["address"])
+            sitters = recommend_sitters(values, latitude, longitude)
+
+            # Estimated price range before sending
+            rates = [s.daily_rate_cents for s in PetSitter.objects.filter(application_status=PetSitter.Status.APPROVED)]
+            if rates:
+                estimate = {
+                    "days": values["days"],
+                    "low": f"{min(rates) * values['days'] / 100:.0f}",
+                    "high": f"{max(rates) * values['days'] / 100:.0f}",
+                }
+
+    # pre-select the default address the first time
+    if not values.get("address_id"):
+        default_address = addresses.first()
+        values["address_id"] = str(default_address.pk) if default_address else ""
+
+    my_requests = (
+        SittingRequest.objects.filter(owner=customer).select_related("sitter").order_by("-created_at")[:3]
+    )
+
+    context = {
+        "addresses": addresses,
+        "pets": pets,
+        "values": values,
+        "sitters": sitters,
+        "estimate": estimate,
+        "my_requests": my_requests,
+        "today_iso": today().isoformat(),  # earliest date the calendar allows
+        "query_string": request.GET.urlencode(),  # keeps the form when going to a profile and back
+    }
+    return render(request, "sitting/find_sitter.html", context)
+
+
+def sitter_public_profile(request, pk):
+    # What a pet owner sees before sending a request
+    customer = get_customer(request)
+    if customer is None:
+        return redirect("user:login")
+
+    try:
+        sitter = PetSitter.objects.get(pk=pk, application_status=PetSitter.Status.APPROVED)
+    except PetSitter.DoesNotExist:
+        messages.error(request, "Sitter not found.")
+        return redirect("sitting:find_sitter")
+
+    rating, review_count = sitter_rating(sitter)
+    reviews = Review.objects.filter(sitting_request__sitter=sitter).select_related("reviewer")[:10]
+    jobs_done = SittingRequest.objects.filter(sitter=sitter, status=SittingRequest.Status.COMPLETED).count()
+
+    context = {
+        "sitter": sitter,
+        "rating": rating,
+        "review_count": review_count,
+        "reviews": reviews,
+        "jobs_done": jobs_done,
+        "query_string": request.GET.urlencode(),
+    }
+    return render(request, "sitting/sitter_public_profile.html", context)
+
+
+def my_sitting_requests(request):
+    # "View all" list of the customer's sitting requests
+    customer = get_customer(request)
+    if customer is None:
+        return redirect("user:login")
+
+    requests_list = (
+        SittingRequest.objects.filter(owner=customer)
+        .select_related("sitter")
+        .prefetch_related("pets")
+        .order_by("-created_at")
+    )
+    return render(request, "sitting/my_sitting_requests.html", {"requests_list": requests_list})
+
+
+def request_detail(request, pk):
+    # Track status, see the sitter's notes & photos, cancel, review
+    customer = get_customer(request)
+    if customer is None:
+        return redirect("user:login")
+
+    try:
+        job = SittingRequest.objects.select_related("sitter").get(pk=pk, owner=customer)
+    except SittingRequest.DoesNotExist:
+        messages.error(request, "Sitting request not found.")
+        return redirect("sitting:my_sitting_requests")
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "cancel":
+            # only before the owner has paid
+            if job.status not in [SittingRequest.Status.OPEN, SittingRequest.Status.PENDING]:
+                messages.error(request, "This request can no longer be cancelled here. Please contact Pawpal.")
+            else:
+                job.status = SittingRequest.Status.CANCELLED
+                job.save()
+                if job.sitter:
+                    send_mail_in_background(
+                        "Pawpal: a sitting request was cancelled",
+                        f"{customer.first_name} cancelled the request for {job.start_date:%d %b} to {job.end_date:%d %b}.",
+                        None,
+                        [job.sitter.email],
+                        fail_silently=True,
+                    )
+                messages.success(request, "Request cancelled.")
+
+        elif action == "review":
+            # Add a review, or update my review if I already wrote one
+            if job.status != SittingRequest.Status.COMPLETED:
+                messages.error(request, "You can review the sitter after the job is completed.")
+                return redirect("sitting:request_detail", pk=job.pk)
+
+            my_review = Review.objects.filter(sitting_request=job, reviewer=customer).first()
+            form = SitterReviewForm(request.POST, request.FILES, instance=my_review)
+
+            if form.is_valid():
+                review = form.save(commit=False)
+                review.reviewer = customer
+                review.sitting_request = job
+                review.save()
+                if my_review is None:
+                    messages.success(request, "Thanks for your review!")
+                else:
+                    messages.success(request, "Your review was updated.")
+            else:
+                # show the form again with the error messages under each field
+                return render_request_detail(request, job, customer, review_form=form, editing=True)
+
+        elif action == "delete_review":
+            my_review = Review.objects.filter(sitting_request=job, reviewer=customer).first()
+            if my_review is None:
+                messages.error(request, "There is no review to delete.")
+            else:
+                my_review.delete()
+                messages.success(request, "Your review was deleted.")
+
+        else:
+            messages.error(request, "Unknown action.")
+
+        return redirect("sitting:request_detail", pk=job.pk)
+
+    # ?edit=1 opens the form again to change an existing review
+    return render_request_detail(request, job, customer, editing=request.GET.get("edit") == "1")
+
+
+def render_request_detail(request, job, customer, review_form=None, editing=False):
+    # Builds the request page. Used for normal visits, and to show a review
+    # form again with its errors after a failed submit.
+    my_review = Review.objects.filter(sitting_request=job, reviewer=customer).first()
+    if review_form is None:
+        review_form = SitterReviewForm(instance=my_review)
+
+    # status steps for the progress line
+    steps = [
+        ("open", "Sent"),
+        ("pending", "Sitter accepted"),
+        ("accepted", "Confirmed & paid"),
+        ("in_progress", "In progress"),
+        ("completed", "Completed"),
+    ]
+    step_order = [value for value, label in steps]
+    current_index = step_order.index(job.status) if job.status in step_order else -1
+
+    payment = job.payments.order_by("-created_at").first()
+    context = {
+        "job": job,
+        "pets": job.pets.all(),
+        "updates": SittingUpdate.objects.filter(request=job),
+        "steps": steps,
+        "current_index": current_index,
+        "my_review": my_review,
+        "review_form": review_form,
+        # show the form when there is no review yet, or when editing it
+        "show_review_form": job.status == SittingRequest.Status.COMPLETED and (my_review is None or editing),
+        "payment": payment,
+        "paid_amount": f"{payment.amount_cents / 100:.2f}" if payment else None,
+    }
+    return render(request, "sitting/request_detail.html", context)
+
+
+def pay_for_request(request, pk):
+    # The sitter accepted (status "pending") -> owner confirms & pays
+    customer = get_customer(request)
+    if customer is None:
+        return redirect("user:login")
+
+    try:
+        job = SittingRequest.objects.select_related("sitter").get(pk=pk, owner=customer)
+    except SittingRequest.DoesNotExist:
+        messages.error(request, "Sitting request not found.")
+        return redirect("sitting:my_sitting_requests")
+
+    if job.status != SittingRequest.Status.PENDING:
+        messages.error(request, "This request is not waiting for payment.")
+        return redirect("sitting:request_detail", pk=job.pk)
+
+    # the same card + points form as the shop and service checkouts
+    points_balance = get_points_balance(customer)
+    form, preview_points = bind_checkout_form(request, PaymentDetailsForm, customer, points_balance)
+
+    if request.POST.get("action") == "place_order" and form.is_valid():
+        discount_cents = calculate_points_discount(
+            job.total_price_cents,
+            form.cleaned_data.get("points_to_redeem") or 0,
+            points_balance,
+        )
+        record_payment(
+            customer,
+            form,
+            amount_cents=job.total_price_cents - discount_cents,
+            points_redeemed=discount_cents,
+            label=f"Pet sitting #{job.pk}",
+            sitting_request=job,
+        )
+        job.status = SittingRequest.Status.ACCEPTED
+        job.save()
+        record_update(job, job.sitter, job.status, f"{customer.first_name} confirmed and paid.")
+        send_mail_in_background(
+            "Pawpal: sitting job confirmed",
+            f"{customer.first_name} confirmed and paid for {job.start_date:%d %b} to {job.end_date:%d %b}. "
+            "It is now in your Upcoming jobs.",
+            None,
+            [job.sitter.email],
+            fail_silently=True,
+        )
+        messages.success(request, f"Paid! {job.sitter.first_name} is confirmed for your pet sitting.")
+        return redirect("sitting:request_detail", pk=job.pk)
+
+    discount_cents = calculate_points_discount(job.total_price_cents, preview_points, points_balance)
+    context = {
+        "form": form,
+        "job": job,
+        "pets": job.pets.all(),
+        "summary_title": "Pet sitting summary",
+        "checkout_intro": "Use your points and pay by card to confirm your pet sitter",
+        "submit_text": "Confirm & pay",
+        "back_url": f"/sitting/requests/{job.pk}/",
+        "back_text": "Back to request",
+        **checkout_totals(job.total_price_cents, discount_cents),
+    }
+    return render(request, "sitting/pay_request.html", context)

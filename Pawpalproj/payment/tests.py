@@ -118,6 +118,7 @@ class CheckoutSuccessTests(TestCase):
         response = self.client.post(
             "/payment/checkout/",
             {
+                "action": "place_order",  # what the Place Order button sends
                 "delivery_method": "pickup",
                 "pickup_outlet": outlet.pk,
                 "points_to_redeem": "5000",

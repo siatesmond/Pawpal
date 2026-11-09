@@ -2,25 +2,41 @@
   <nav class="nav-container">
     <ul class="nav-links">
       <li><a href="{% url 'service:book' %}">Services</a></li>
-      <li><a href="#">Shop</a></li>
-      <li><a href="#">Pet Sitting</a></li>
-      <li><a href="#">How It Works</a></li>
-      <li><a href="#">About</a></li>
+      <li><a href="{% url 'inventory:product_list' %}">Shop</a></li>
+      <li><a href="{% url 'sitting:find_sitter' %}">Pet Sitting</a></li>
     </ul>
 
     <a class="logo" href="/">Pawpal</a>
 
     <div class="nav-buttons">
-      <a href="/user/cart">Cart</a>
+      <a href="/user/cart">🛒 Cart{% if nav_cart_count %} ({{ nav_cart_count }}){% endif %}</a>
       <a href="{% url 'service:book' %}" class="signup-btn">Book now</a>
       {% if request.session.user_id %}
-        {# logged in: read the name we stored in the session at login #}
-        {% if request.session.user_type == "customer" %}
-          <a href="/user/profile/">Hi, {{ request.session.username }}</a>
+        {% if nav_customer %}
+          {# avatar + name + points; click to open the account menu #}
+          <details class="user-chip">
+            <summary>
+              <span class="user-chip-avatar">{{ nav_customer.first_name|default:nav_customer.username|first|upper }}</span>
+              <span class="user-chip-text">
+                <strong>{{ nav_customer.first_name|default:nav_customer.username }} ▾</strong>
+                <small>{{ nav_points }} pts</small>
+              </span>
+            </summary>
+            <div class="user-chip-menu">
+              <a href="{% url 'user:customer_home' %}">My Pawpal</a>
+              <a href="{% url 'user:profile' %}">Profile &amp; points</a>
+              <a href="{% url 'user:pets' %}">My pets</a>
+              <a href="{% url 'user:bookings' %}">Bookings</a>
+              <a href="{% url 'user:orders' %}">Orders</a>
+              <a href="{% url 'sitting:my_sitting_requests' %}">Sitting requests</a>
+              <a href="{% url 'user:logout' %}" class="user-chip-logout">Log out</a>
+            </div>
+          </details>
         {% else %}
+          {# staff / owner / sitter on a customer page #}
           <span>Hi, {{ request.session.username }}</span>
+          <a href="/user/logout">Log out</a>
         {% endif %}
-        <a href="/user/logout">Log out</a>
       {% else %}
         <a href="/user/login">Log in</a>
         <a href="/user/register" class="signup-btn">Sign up</a>

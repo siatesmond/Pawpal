@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from django.contrib.auth.hashers import make_password
 from django.db.models import Count, F, Q, Sum
 from django.contrib import messages
-from django.core.mail import send_mail
+from user.utils import send_mail_in_background
 from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
@@ -20,9 +20,7 @@ from user.models import Address, BusinessOwner, Customer, Pet, Staff, User
 from core.models import Outlet
 from .forms import OwnerCustomerForm, OwnerStaffEditForm, OwnerStaffForm
 
-# =====================================================================
 # Helpers
-# =====================================================================
 
 SGT = ZoneInfo("Asia/Singapore")
 DEMO_PASSWORD = "Pawpal123!"  # every demo account uses this password
@@ -56,9 +54,7 @@ def set_created_at(model, pk, n_days_ago):
     model.objects.filter(pk=pk).update(created_at=days_ago(n_days_ago))
 
 
-# =====================================================================
 # Mock data – core
-# =====================================================================
 
 outlets = [
     {
@@ -99,9 +95,7 @@ outlets = [
     },  # renovation
 ]
 
-# =====================================================================
 # Mock data – users
-# =====================================================================
 
 business_owners = [
     {
@@ -226,9 +220,10 @@ pet_sitters = [
         "last_name": "Koh",
         "mobile": "83456789",
         "bio": "Lifelong animal lover and former vet clinic assistant.",
-        "service_area": "Tampines",
-        "latitude": "1.349600",
-        "longitude": "103.956800",
+        "postal_code": "520201",
+        "service_area": "Tampines Street 21",
+        "latitude": "1.352895",
+        "longitude": "103.953586",
         "experience_years": 5,
         "pet_experience": "dogs, cats",
         "daily_rate_cents": 6000,
@@ -243,9 +238,10 @@ pet_sitters = [
         "last_name": "Rahman",
         "mobile": "83456790",
         "bio": "Dog walker who loves big, energetic breeds.",
-        "service_area": "Jurong East",
-        "latitude": "1.332900",
-        "longitude": "103.743600",
+        "postal_code": "600135",
+        "service_area": "Jurong Gateway Road",
+        "latitude": "1.333825",
+        "longitude": "103.739677",
         "experience_years": 3,
         "pet_experience": "dogs",
         "daily_rate_cents": 5000,
@@ -260,9 +256,10 @@ pet_sitters = [
         "last_name": "Sim",
         "mobile": "83456791",
         "bio": "University student with two cats at home.",
-        "service_area": "Bishan",
-        "latitude": "1.350800",
-        "longitude": "103.848500",
+        "postal_code": "579837",
+        "service_area": "Bishan Place",
+        "latitude": "1.350422",
+        "longitude": "103.848826",
         "experience_years": 1,
         "pet_experience": "cats",
         "daily_rate_cents": 4500,
@@ -277,9 +274,10 @@ pet_sitters = [
         "last_name": "Yeo",
         "mobile": "83456792",
         "bio": "Happy to look after any pet.",
-        "service_area": "Woodlands",
-        "latitude": "1.436000",
-        "longitude": "103.786500",
+        "postal_code": "730888",
+        "service_area": "Woodlands Drive 50",
+        "latitude": "1.437705",
+        "longitude": "103.795269",
         "experience_years": 0,
         "pet_experience": "dogs, cats, rabbits",
         "daily_rate_cents": 3500,
@@ -418,9 +416,7 @@ pets = [
         "last_vaccination_date": None,
     },
 ]
-# =====================================================================
 # Mock data – inventory
-# =====================================================================
 
 categories = ["Food", "Treats", "Toys", "Grooming", "Accessories", "Health"]
 brands = [
@@ -695,9 +691,7 @@ orders = [
     },
 ]
 
-# =====================================================================
 # Mock data – services and bookings
-# =====================================================================
 
 services = [
     {
@@ -983,11 +977,9 @@ booking_updates = [
     },
 ]
 
-# =====================================================================
 # Mock data – pet sitting
-# =====================================================================
 
-# Map position of each owner's home, used by the sitter "Distance" filter (US-048)
+# Map position of each owner's home, used by the sitter "Distance" filter
 owner_coordinates = {
     "amy_tan": ("1.353600", "103.945000"),     # Tampines
     "jason_lee": ("1.333100", "103.742400"),   # Jurong East
@@ -1187,9 +1179,7 @@ sitting_updates = [
     },
 ]
 
-# =====================================================================
 # Mock data – payments, points and reviews
-# =====================================================================
 
 # for = which booking (B), order (O) or sitting request (R) the payment is for
 payments = [
@@ -1250,14 +1240,11 @@ reviews = [
 ]
 
 
-# =====================================================================
 # Load data view
-# =====================================================================
-
 
 def loadData(request):
 
-    # ---------- Clear existing data (children before parents) ----------
+    # Clear existing data (children before parents)
     Review.objects.all().delete()
     PointsTransaction.objects.all().delete()
     Payment.objects.all().delete()
@@ -1281,7 +1268,7 @@ def loadData(request):
 
     hashed_password = make_password(DEMO_PASSWORD)
 
-    # ---------- Outlets ----------
+    # Outlets
     for outlet in outlets:
         new_outlet = Outlet(
             name=outlet["name"],
@@ -1294,7 +1281,7 @@ def loadData(request):
         )
         new_outlet.save()
 
-    # ---------- Users ----------
+    # Users
     for owner in business_owners:
         new_owner = BusinessOwner(
             username=owner["username"],
@@ -1352,6 +1339,7 @@ def loadData(request):
             mobile=sitter["mobile"],
             is_verified=True,
             bio=sitter["bio"],
+            postal_code=sitter["postal_code"],
             service_area=sitter["service_area"],
             latitude=sitter["latitude"],
             longitude=sitter["longitude"],
@@ -1364,7 +1352,7 @@ def loadData(request):
         )
         new_sitter.save()
 
-    # ---------- Addresses and pets ----------
+    # Addresses and pets
     for address in addresses:
         new_address = Address(
             customer=Customer.objects.get(username=address["customer"]),
@@ -1388,7 +1376,7 @@ def loadData(request):
         )
         new_pet.save()
 
-    # ---------- Inventory ----------
+    # Inventory
     for category in categories:
         Category(name=category).save()
 
@@ -1472,7 +1460,7 @@ def loadData(request):
 
         created[order["ref"]] = new_order
 
-    # ---------- Services, time slots and bookings ----------
+    # Services, time slots and bookings
     for service in services:
         new_service = Service(
             name=service["name"],
@@ -1553,7 +1541,7 @@ def loadData(request):
         )
         new_update.save()
 
-    # ---------- Pet sitting ----------
+    # Pet sitting
     for request_data in sitting_requests:
         owner = Customer.objects.get(username=request_data["owner"])
         address = Address.objects.filter(customer=owner).first()
@@ -1597,7 +1585,7 @@ def loadData(request):
         )
         new_update.save()
 
-    # ---------- Payments ----------
+    # Payments
     payment_for = {}  # ref -> Payment
     for payment in payments:
         target = created[payment["for"]]
@@ -1631,7 +1619,7 @@ def loadData(request):
         set_created_at(Payment, new_payment.pk, payment["days_ago"])
         payment_for[payment["for"]] = new_payment
 
-    # ---------- Points history ----------
+    # Points history
     for customer in Customer.objects.filter(is_verified=True):
         PointsTransaction(
             customer=customer,
@@ -1670,7 +1658,7 @@ def loadData(request):
         customer.point_balance = total
         customer.save()
 
-    # ---------- Reviews ----------
+    # Reviews
     for review in reviews:
         target = created[review["for"]]
         new_review = Review(
@@ -1743,10 +1731,7 @@ def load_staff_owner_data(request):
     )
 
 
-# =====================================================================
 # Business owner pages
-# =====================================================================
-
 
 PAID_STATUSES = ["CONFIRMED", "COMPLETED"]  # orders that count as revenue
 
@@ -1772,7 +1757,7 @@ def percent_change(now, before):
 
 
 def revenue_for_period(start_date, end_date, outlet=None):
-    """Add up revenue for one date range, split by stream (US-033, US-034).
+    """Add up revenue for one date range, split by stream.
 
     Services and products are linked to an outlet; delivery orders and
     pet sitting are not, so they are left out when one outlet is chosen.
@@ -1832,7 +1817,7 @@ def revenue_for_period(start_date, end_date, outlet=None):
 
 
 def owner_dashboard(request):
-    # ---------- Filters: date range + outlet (US-033 to US-037) ----------
+    # Filters: date range + outlet
     today_date = today()
     try:
         start = date.fromisoformat(request.GET.get("start", ""))
@@ -1851,7 +1836,7 @@ def owner_dashboard(request):
     if outlet_id.isdigit():
         outlet = Outlet.objects.filter(pk=outlet_id).first()
 
-    # ---------- This period vs the period just before (same length) ----------
+    # This period vs the period just before (same length)
     current = revenue_for_period(start, end, outlet)
     number_of_days = (end - start).days + 1
     previous_end = start - timedelta(days=1)
@@ -1875,7 +1860,7 @@ def owner_dashboard(request):
             "change": percent_change(current[key], previous[key]),
         })
 
-    # ---------- Revenue by outlet (US-033 #2) ----------
+    # Revenue by outlet
     outlet_rows = []
     for each_outlet in Outlet.objects.filter(is_active=True).order_by("name"):
         outlet_revenue = revenue_for_period(start, end, each_outlet)
@@ -1885,7 +1870,7 @@ def owner_dashboard(request):
             "bookings": outlet_revenue["booking_count"],
         })
 
-    # ---------- Bookings by service and outlet (US-035 #1) ----------
+    # Bookings by service and outlet
     period_bookings = (
         Booking.objects.filter(created_at__date__gte=start, created_at__date__lte=end)
         .exclude(status="CANCELLED")
@@ -1909,7 +1894,7 @@ def owner_dashboard(request):
 
     top_services = sorted(service_counts.items(), key=lambda item: item[1], reverse=True)[:3]
 
-    # ---------- Top-selling products (US-035 #2) ----------
+    # Top-selling products
     period_items = OrderItem.objects.filter(
         order__status__in=PAID_STATUSES,
         order__created_at__date__gte=start,
@@ -1923,7 +1908,7 @@ def owner_dashboard(request):
         product_counts[item.product.name] = product_counts.get(item.product.name, 0) + item.quantity
     top_products = sorted(product_counts.items(), key=lambda item: item[1], reverse=True)[:3]
 
-    # ---------- New vs returning customers (US-036 #1) ----------
+    # New vs returning customers
     active_customer_ids = set()
     for booking in period_bookings:
         active_customer_ids.add(booking.customer_id)
@@ -1940,7 +1925,7 @@ def owner_dashboard(request):
     active_total = new_customers + returning_customers
     returning_percent = round(returning_customers * 100 / active_total) if active_total else 0
 
-    # ---------- Points issued and redeemed (US-036 #2) ----------
+    # Points issued and redeemed
     points_issued = 0
     points_redeemed = 0
     for transaction in PointsTransaction.objects.filter(
@@ -1951,7 +1936,7 @@ def owner_dashboard(request):
         elif transaction.transaction_type == "REDEEMED":
             points_redeemed += -transaction.points  # stored as a negative number
 
-    # ---------- Pet sitting commission per job (US-034 #2, #3) ----------
+    # Pet sitting commission per job
     sitting_jobs = (
         SittingRequest.objects.filter(
             status=SittingRequest.Status.COMPLETED,
@@ -1965,7 +1950,7 @@ def owner_dashboard(request):
     for job in sitting_jobs:
         paid_to_sitters += job.sitter_payout_cents
 
-    # ---------- Export CSV with the same filters (US-037) ----------
+    # Export CSV with the same filters
     if request.GET.get("export") == "csv":
         response = HttpResponse(content_type="text/csv")
         response["Content-Disposition"] = f'attachment; filename="pawpal-report-{start}-to-{end}.csv"'
@@ -1998,7 +1983,7 @@ def owner_dashboard(request):
             writer.writerow([job.end_date, job.owner.first_name, job.sitter.first_name, job.total_price_display, job.commission_display, job.sitter_payout_display])
         return response
 
-    # ---------- Stacked bar chart: last 6 months (US-033 #3) ----------
+    # Stacked bar chart: last 6 months
     chart = []
     for months_back in range(5, -1, -1):
         total_months = end.year * 12 + (end.month - 1) - months_back
@@ -2049,50 +2034,12 @@ def owner_dashboard(request):
         "sitting_jobs": sitting_jobs,
         "paid_to_sitters": money(paid_to_sitters),
         "chart": chart,
-        # US-029: products at or below their low-stock level
+        # Products at or below their low-stock level
         "low_stock_products": Product.objects.filter(
             stock_quantity__lte=F("low_stock_level")
         ).order_by("stock_quantity")[:5],
     }
     return render(request, "core/owner_dashboard.html", context)
-
-
-def owner_bookings(request):
-    bookings = Booking.objects.select_related(
-        "customer", "pet", "slot", "slot__service"
-    ).order_by("-slot__start_time")
-    return render(
-        request,
-        "core/owner_bookings.html",
-        {"active_page": "bookings", "bookings": bookings},
-    )
-
-
-def owner_orders(request):
-    orders = (
-        Order.objects.select_related("customer", "pickup_outlet")
-        .annotate(item_count=Count("items"))
-        .order_by("-created_at")
-    )
-    stock_products = Product.objects.order_by("stock_quantity")
-    return render(
-        request,
-        "core/owner_orders.html",
-        {
-            "active_page": "orders",
-            "orders": orders,
-            "stock_products": stock_products,
-        },
-    )
-
-
-def owner_products(request):
-    products = Product.objects.select_related("category", "brand").order_by("-id")
-    return render(
-        request,
-        "core/owner_products.html",
-        {"active_page": "products", "products": products},
-    )
 
 
 def owner_customers(request):
@@ -2119,7 +2066,7 @@ def owner_customers(request):
         else None
     )
 
-    # US-038: the selected customer's pets, bookings, orders and points history
+    # The selected customer's pets, bookings, orders and points history
     customer_bookings = []
     customer_orders = []
     points_history = []
@@ -2148,7 +2095,7 @@ def owner_customers(request):
 
 
 def owner_adjust_points(request, pk):
-    # US-039: add or deduct points with a reason; it shows in the points history
+    # Add or deduct points with a reason; it shows in the points history
     back_to_customer = f"/admin-panel/customers/?customer={pk}"
     if request.method != "POST":
         return redirect(back_to_customer)
@@ -2244,8 +2191,8 @@ def owner_review_sitter(request, pk):
                 "reviewed_by",
             ]
         )
-        # US-046 #2: tell the applicant by email
-        send_mail(
+        # Tell the applicant by email
+        send_mail_in_background(
             "Pawpal: your pet sitter application is approved",
             f"Hi {sitter.first_name}, your application was approved. "
             "Log in to Pawpal to start accepting sitting jobs.",
@@ -2269,7 +2216,7 @@ def owner_review_sitter(request, pk):
                     "reviewed_by",
                 ]
             )
-            send_mail(
+            send_mail_in_background(
                 "Pawpal: update on your pet sitter application",
                 f"Hi {sitter.first_name}, your application was not approved.\n"
                 f"Reason: {reason}\n"
@@ -2330,7 +2277,7 @@ def owner_add_staff(request):
 
 
 def owner_edit_staff(request, pk):
-    # US-040: edit details and assign the staff member to an outlet
+    # Edit details and assign the staff member to an outlet
     try:
         staff = Staff.objects.get(pk=pk)
     except Staff.DoesNotExist:
