@@ -22,7 +22,7 @@
       <!-- Filter by outlet dropdown list -->
       <div>
         <label for="outlet">Outlet</label>
-        <select id="outlet" name="outlet" onchange="this.form.submit()">
+        <select id="outlet" name="outlet">
           <option value="">All Outlets</option>
           {% for outlet in outlets %}
           <option value="{{ outlet.id }}" {% if outlet_filter == outlet.id|stringformat:"i" %}selected{% endif %}>{{ outlet.name }}</option>
@@ -33,7 +33,7 @@
        <!-- Filter by status dropdown list -->
       <div>
         <label for="status">Status</label>
-        <select id="status" name="status" onchange="this.form.submit()">
+        <select id="status" name="status">
           <option value="">All Status</option>
           {% for code, label in status_choices %}
           <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
@@ -44,9 +44,10 @@
       <!-- Filter by date picker -->
       <div>
         <label for="date">Date</label>
-        <input type="date" id="date" name="date" value="{{ date_filter }}" onchange="this.form.submit()">
+        <input type="date" id="date" name="date" value="{{ date_filter }}">
       </div>
 
+      <button type="submit" class="save-btn filter-btn">Filter</button>
     </form>
   </div>
 </div>

@@ -527,3 +527,7 @@ button.update-action-delete {
   border-radius: 8px;
   font-family: inherit;
 }
+
+.staff-filters .filter-btn {
+  padding: 12px 22px;
+}
