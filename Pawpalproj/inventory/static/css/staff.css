@@ -438,3 +438,53 @@
   color: #77746a;
   font-size: 12px;
 }
+/* Edit / Delete buttons on each booking update card  */
+.update-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.update-action-btn {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.update-action-btn:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.update-action-delete {
+  border-color: #e8b4ab;
+  color: #9b3d2e;
+}
+
+.update-action-delete:hover,
+button.update-action-delete {
+  border-color: #9b3d2e;
+  background: #9b3d2e;
+  color: #fff;
+}
+
+.update-delete-confirm {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f3dedb;
+  border-radius: 6px;
+  background: #fdf3f1;
+}
+
+.update-delete-confirm p {
+  margin: 0;
+  color: #9b3d2e;
+  font-size: 13px;
+}

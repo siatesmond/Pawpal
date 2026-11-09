@@ -190,6 +190,28 @@
                     {% endfor %}
                   </div>
                 {% endif %}
+
+                <!-- Edit/Delete Booking update btn -->
+                {% if update.staff_id %}
+                  {% if request.GET.delete_update == update.pk|stringformat:"i" %}
+
+                    {# use query params ?delete_update=<id> to show confirmation prompt #}
+                    <div class="update-delete-confirm">
+                      <p>Delete this update{% if update.photos.all or update.photo %} and its photos{% endif %}? This can't be undone.</p>
+                      <form method="post" action="{% url 'inventory:delete_booking_update' update.pk %}" class="update-card-actions">
+                        {% csrf_token %}
+                        <button type="submit" class="update-action-btn update-action-delete">Yes, delete</button>
+                        {# Remove query param to cancel delete confirmation prompt #}
+                        <a class="update-action-btn" href="{% querystring delete_update=None %}">Keep</a> 
+                      </form>
+                    </div>
+                  {% else %}
+                    <div class="update-card-actions">
+                      <a class="update-action-btn" href="{% url 'inventory:edit_booking_update' update.pk %}">Edit</a>
+                      <a class="update-action-btn update-action-delete" href="{% querystring delete_update=update.pk %}">Delete</a>
+                    </div>
+                  {% endif %}
+                {% endif %}
               </div>
             {% empty %}
               <p class="detail-text" style="color: #6b7280; font-style: italic; margin-top: 0.5rem;">No updates recorded yet.</p>

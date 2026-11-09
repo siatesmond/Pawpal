@@ -16,4 +16,6 @@ urlpatterns = [
     path("staff/products/<int:pk>/edit/", views.product_form, name="update_product"),
     path("staff/bookings/", views.bookings, name="staff_bookings"),
     path("staff/bookings/<int:pk>/edit/", views.update_booking, name="update_booking"),
+    path("staff/bookings/updates/<int:pk>/edit/", views.edit_booking_update, name="edit_booking_update"),
+    path("staff/bookings/updates/<int:pk>/delete/", views.delete_booking_update, name="delete_booking_update"),
 ]

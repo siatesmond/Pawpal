@@ -24,7 +24,7 @@
         <hr>
 
         <!-- Form template -->
-        {% include "inventory/form_template.html" with cancel_url=cancel_url enctype="multipart/form-data" submit_text="Save Booking Update" show_photo_upload=True %}
+        {% include "inventory/form_template.html" with cancel_url=cancel_url enctype="multipart/form-data" submit_text=submit_text|default:"Save Booking Update" show_photo_upload=True %}
 
     </div>
 </div>

@@ -1,4 +1,5 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib import messages
 from django.utils import timezone
 
@@ -215,6 +216,93 @@ def bookings(request):
             "status_choices": Booking.Status.choices,
         },
     )
+
+
+# Staff bookings page with this booking selected (used after editing / deleting an update)
+def _staff_booking_url(booking):
+    return f"{reverse('inventory:staff_bookings')}?booking={booking.pk}"
+
+
+# After an update is edited or deleted, the booking's status follows its latest remaining update
+def _sync_booking_status(booking):
+
+    # Get the latest booking status
+    latest = booking.updates.order_by("-created_at").first()
+    if latest is None or latest.new_status == booking.status:
+        return
+    
+    booking.status = latest.new_status
+    
+    if booking.status == Booking.Status.CANCELLED:
+        booking.cancelled_at = booking.cancelled_at or timezone.now()
+    else:
+        booking.cancelled_at = None
+    booking.save(update_fields=["status", "cancelled_at"])
+
+# staff can only edit or delete updates that were posted by staff, not by customers 
+def _can_change_update(update):
+    return update.staff_id is not None
+
+
+# Edit an existing booking update (status, note, and add more photos)
+def edit_booking_update(request, pk):
+    update = get_object_or_404(
+        BookingUpdate.objects.select_related("booking__customer", "booking__pet", "booking__slot"),
+        pk=pk,
+    )
+    booking = update.booking
+    if not _can_change_update(update):
+        messages.error(request, "Updates posted by the customer can't be edited.")
+        return redirect(_staff_booking_url(booking))
+
+    if request.method == "POST":
+        form = BookingUpdateForm(request.POST, request.FILES, instance=update)
+        if form.is_valid():
+            form.save()
+            for photo in request.FILES.getlist("photos"):
+                BookingUpdatePhoto.objects.create(update=update, photo=photo)
+
+            _sync_booking_status(booking)
+            messages.success(request, f"Update on booking #{booking.pk} saved.")
+            return redirect(_staff_booking_url(booking))
+    else:
+        form = BookingUpdateForm(instance=update) # populate the form with the existing data
+
+    return render(
+        request,
+        "inventory/staff_update_booking.html",
+        {
+            "form": form,
+            "booking": booking,
+            "action_title": f"Edit update on booking #{booking.pk}",
+            "submit_text": "Save changes",
+            "cancel_url": _staff_booking_url(booking),
+        },
+    )
+
+
+# Delete a booking update and its booking update photos
+def delete_booking_update(request, pk):
+    if request.method != "POST":
+        return redirect("inventory:staff_bookings")
+
+    update = get_object_or_404(BookingUpdate.objects.select_related("booking"), pk=pk)
+    booking = update.booking
+
+    if not _can_change_update(update):
+        messages.error(request, "Updates posted by the customer can't be deleted.")
+        return redirect(_staff_booking_url(booking))
+
+    # Remove the image files too, not just the database rows
+    for photo in update.photos.all():
+        photo.photo.delete(save=False)
+    if update.photo:
+        update.photo.delete(save=False)
+    update.delete()  # BookingUpdatePhoto rows are deleted automatically - set by CASCADE rule in models
+
+    _sync_booking_status(booking)
+    messages.success(request, f"Update deleted from booking #{booking.pk}.")
+    return redirect(_staff_booking_url(booking))
 
 
 # Update Booking
