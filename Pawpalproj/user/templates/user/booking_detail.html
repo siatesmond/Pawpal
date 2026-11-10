@@ -81,7 +81,7 @@
         {% if booking.check_out_date %}
           <div>
             <dt>Check-out</dt>
-            <dd>{{ booking.check_out_date|date:"D, j M Y" }}</dd>
+            <dd>{{ booking.check_out_date|date:"D, j M Y" }} · {{ booking.slot.start_time|date:"g:i A" }}</dd>
           </div>
         {% endif %}
         {% if booking.cancelled_at %}

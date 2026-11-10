@@ -143,7 +143,7 @@ def _validate_selection(customer, pet_id, service_id, outlet_id, slot_id, nights
         "start": slot.start_time,
         "nights": nights,
         "check_out_date": day + timedelta(days=nights) if _is_boarding(service) else None,
-        "check_out_time": slot.end_time,
+        "check_out_time": slot.start_time,
         "price_cents": price_cents,
     }, None
 
