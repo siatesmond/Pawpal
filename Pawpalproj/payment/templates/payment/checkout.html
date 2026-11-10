@@ -1,68 +1,23 @@
-{% extends "base.html" %}
-{% load static %}
+{% extends "payment/checkout_base.html" %}
 
-{% block title %}Checkout | Pawpal{% endblock %}
-
-{% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/staff.css' %}">
-<link rel="stylesheet" href="{% static 'css/staff_form.css' %}">
-{% endblock %}
-
-{% block content %}
-<div class="form-page checkout-page">
-    <div class="form-page-header">
-        <h1>Checkout</h1>
-        <p>Provide your order and payment details</p>
-    </div>
-
-    <div class="checkout-layout">
-        <div class="form-card checkout-form-card">
-            <!-- Form template (Order and Payment Details) -->
-            {% include "payment/form_template.html" with cancel_url="/user/cart/" form_css_class="checkout-form" form_id="checkout-form" hide_submit=True %}
+<!-- Display cart items in the checkout summary (shop products only)-->
+{% block summary_items %}
+    {% for item in cart_items %}
+        <div class="checkout-summary-item">
+            <div class="checkout-summary-product">
+                {% if item.product.image_url %}
+                    <img src="{{ item.product.image_url.url }}" alt="{{ item.product.name }}">
+                {% else %}
+                    <div class="checkout-summary-placeholder">P</div>
+                {% endif %}
+            </div>
+            <div>
+                <strong>{{ item.product.name }}</strong>
+                <span>{{ item.quantity }} × SGD {{ item.product.price_dollars|floatformat:2 }}</span>
+            </div>
+            <strong>SGD {{ item.line_total_dollars|floatformat:2 }}</strong>
         </div>
-
-        <!-- Order Summary -->
-        <section class="checkout-summary">
-            <h2>Order summary</h2>
-            {% for item in cart_items %}
-                <div class="checkout-summary-item">
-                    <div class="checkout-summary-product">
-                        {% if item.product.image_url %}
-                            <img src="{{ item.product.image_url.url }}" alt="{{ item.product.name }}">
-                        {% else %}
-                            <div class="checkout-summary-placeholder">P</div>
-                        {% endif %}
-                    </div>
-                    <div>
-                        <strong>{{ item.product.name }}</strong>
-                        <span>{{ item.quantity }} × SGD {{ item.product.price_dollars|floatformat:2 }}</span>
-                    </div>
-                    <strong>SGD {{ item.line_total_dollars|floatformat:2 }}</strong>
-                </div>
-            {% empty %}
-                <p class="checkout-summary-empty">Your cart is empty.</p>
-            {% endfor %}
-
-            <div class="checkout-summary-total"> 
-                <span>Subtotal</span>
-                <strong>SGD {{ subtotal_dollars|floatformat:2 }}</strong>
-            </div>
-            <div class="checkout-summary-total">
-                <span>Points discount</span>
-                <strong>SGD {{ points_discount_dollars|floatformat:2 }}</strong>
-            </div>
-            <div class="checkout-summary-total">
-                <span>Total to pay</span>
-                <strong>SGD {{ total_dollars|floatformat:2 }}</strong>
-            </div>
-            <div class="checkout-summary-total checkout-points-earned">
-                <span>Points earned</span>
-                <strong>{{ points_earned }}</strong>
-            </div>
-            <button type="submit" form="checkout-form" class="save-btn checkout-pay-btn">
-                Place Order
-            </button>
-        </section>
-    </div>
-</div>
+    {% empty %}
+        <p class="checkout-summary-empty">Your cart is empty.</p>
+    {% endfor %}
 {% endblock %}

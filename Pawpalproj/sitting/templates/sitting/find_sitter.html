@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Find a pet sitter | Pawpal{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="find-hero">
+  <div class="find-hero-inner">
+    <p class="eyebrow">Pet sitting at home</p>
+    <h1>Find a trusted pet sitter</h1>
+    <p>Verified sitters, daily photo updates, and payment handled securely by Pawpal.</p>
+  </div>
+</section>
+
+<section class="sitter find-layout">
+  {# Your request #}
+  <aside>
+    <form method="get" class="s-card">
+      <h2>Your request</h2>
+      {# one rounded box: From → To. min= stops the calendar from picking past days #}
+      <div class="field">
+        <p class="field-label">Dates {% if values.days %}<span class="pill pill-sage pill-sm">{{ values.days }} day{{ values.days|pluralize }}</span>{% endif %}</p>
+        <div class="find-dates">
+          <label class="find-date">
+            <span>From</span>
+            <input type="date" id="start" name="start" value="{{ values.start }}" min="{{ today_iso }}" required>
+          </label>
+          <span class="find-date-arrow">→</span>
+          <label class="find-date">
+            <span>To</span>
+            <input type="date" id="end" name="end" value="{{ values.end }}" min="{{ today_iso }}" required>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="address">Location</label>
+        <select id="address" name="address" required>
+          {% for address in addresses %}
+            <option value="{{ address.pk }}" {% if address.pk|stringformat:"d" == values.address_id %}selected{% endif %}>{{ address.label }} · {{ address.line1 }}, S{{ address.postal_code }}</option>
+          {% empty %}
+            <option value="">Add an address in your profile first</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="field">
+        <p class="field-label">Which pets?</p>
+        <div class="chips">
+          {% for pet in pets %}
+            <label class="chip"><input type="checkbox" name="pets" value="{{ pet.pk }}" {% if pet.pk|stringformat:"d" in values.pet_ids %}checked{% endif %}><span>{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %} {{ pet.name }}</span></label>
+          {% empty %}
+            <a href="/user/pets/" class="link small">Add a pet first →</a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="field"><label for="care">Care requirements</label><textarea id="care" name="care" placeholder="Feed twice daily, 30-min walk, medication at 8pm...">{{ values.care }}</textarea></div>
+
+      {% if estimate %}
+        <div class="find-estimate"><span>Estimated price ({{ estimate.days }} day{{ estimate.days|pluralize }})</span><strong>SGD {{ estimate.low }} – {{ estimate.high }}</strong></div>
+      {% endif %}
+
+      <button type="submit" class="btn btn-dark btn-block">Find sitters</button>
+    </form>
+  </aside>
+
+  <div class="sitter-stack">
+    {# Recommended sitters #}
+    {% if sitters is not None %}
+      <div>
+        <h2 class="find-title">Recommended sitters</h2>
+        <p class="muted small">Ranked by distance, availability, rating and experience with your pets. Only Pawpal-approved sitters are shown.</p>
+      </div>
+
+      {% for sitter in sitters %}
+        <article class="s-card find-sitter-card">
+          <div class="avatar avatar-lg">🙂</div>
+          <div class="find-sitter-info">
+            <h3>{{ sitter.first_name }} {{ sitter.last_name|slice:":1" }}. {% if forloop.first %}<span class="pill pill-honey pill-sm">Best match</span>{% endif %}</h3>
+            <p class="small">
+              {% if sitter.rating %}★ {{ sitter.rating }} ({{ sitter.review_count }} review{{ sitter.review_count|pluralize }}){% else %}New sitter{% endif %}
+              {% if sitter.distance is not None %} · {{ sitter.distance }} km away{% endif %}
+            </p>
+            <p class="muted small">{{ sitter.experience_years }} yrs · {{ sitter.pet_experience|lower }}{% if sitter.breed_jobs %} · {{ sitter.breed_jobs }} job{{ sitter.breed_jobs|pluralize }} with your breed{% endif %}</p>
+          </div>
+          <div class="find-sitter-actions">
+            <strong>SGD {{ sitter.daily_rate_display }} / day</strong>
+            <span class="muted small">Total SGD {{ sitter.price }}</span>
+            <div class="actions">
+              <a href="{% url 'sitting:sitter_public_profile' sitter.pk %}?{{ query_string }}" class="btn btn-outline">View profile</a>
+              {# send the same request form values + which sitter #}
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="send">
+                <input type="hidden" name="sitter_id" value="{{ sitter.pk }}">
+                <input type="hidden" name="start" value="{{ values.start }}">
+                <input type="hidden" name="end" value="{{ values.end }}">
+                <input type="hidden" name="address" value="{{ values.address_id }}">
+                {% for pet_id in values.pet_ids %}<input type="hidden" name="pets" value="{{ pet_id }}">{% endfor %}
+                <input type="hidden" name="care" value="{{ values.care }}">
+                <button type="submit" class="btn find-btn-honey">Send request</button>
+              </form>
+            </div>
+          </div>
+        </article>
+      {% empty %}
+        <div class="s-card sitter-empty-state"><h2>No sitters free on those dates</h2><p>Try other dates, or post your request to all sitters below.</p></div>
+      {% endfor %}
+
+      {# open request: any nearby sitter can accept it in Find Jobs #}
+      <form method="post" class="find-open-request">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="open">
+        <input type="hidden" name="start" value="{{ values.start }}">
+        <input type="hidden" name="end" value="{{ values.end }}">
+        <input type="hidden" name="address" value="{{ values.address_id }}">
+        {% for pet_id in values.pet_ids %}<input type="hidden" name="pets" value="{{ pet_id }}">{% endfor %}
+        <input type="hidden" name="care" value="{{ values.care }}">
+        <span class="muted small">Not sure who to pick?</span>
+        <button type="submit" class="link">Post to all nearby sitters →</button>
+      </form>
+    {% else %}
+      <div class="s-card sitter-empty-state"><h2>Tell us what you need</h2><p>Fill in your dates, location and pets, then press “Find sitters”.</p></div>
+    {% endif %}
+
+    {# My sitting requests #}
+    <div class="s-card s-card-blue">
+      <div class="s-card-head"><h2>My sitting requests</h2><a href="{% url 'sitting:my_sitting_requests' %}" class="link small">View all →</a></div>
+      {% for job in my_requests %}
+        <div class="find-request-row">
+          <span>{{ job.start_date|date:"d" }}–{{ job.end_date|date:"d M" }} · {% if job.sitter %}{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.{% else %}Open to all sitters{% endif %}</span>
+          <span class="pill pill-sm {% if job.status == 'completed' %}pill-success{% elif job.status == 'pending' %}pill-honey{% else %}pill-outline{% endif %}">{{ job.get_status_display }}</span>
+          <a href="{% url 'sitting:request_detail' job.pk %}{% if job.status == 'completed' %}#review{% endif %}" class="link small">
+            {% if job.status == "completed" %}Review sitter{% elif job.status == "pending" %}Confirm &amp; pay{% else %}Track updates{% endif %}
+          </a>
+        </div>
+      {% empty %}
+        <p class="muted small">No sitting requests yet.</p>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

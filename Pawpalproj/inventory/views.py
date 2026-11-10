@@ -1,6 +1,6 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
+from django.urls import reverse
 from django.contrib import messages
-from django.utils import timezone
 
 from django.db.models import Q, F, Count
 from django.db.models import Prefetch
@@ -143,6 +143,14 @@ def loadData(request):
 
 # Views
 
+# Owner pages use the owner sidebar, staff pages use the staff sidebar.
+# The page templates are shared, they just extend whichever base we pass in.
+def base_template_for(request):
+    if request.session.get("user_type") == "owner":
+        return "core/owner_base.html"
+    return "inventory/staff_base.html"
+
+
 def bookings(request):
     # Optimize query with select_related for customer, pet, slot, and outlet
     bookings = Booking.objects.select_related(
@@ -204,6 +212,7 @@ def bookings(request):
         request,
         "inventory/staff_bookings.html",
         {
+            "base_template": base_template_for(request),
             "active_page": "bookings",
             "bookings": bookings,
             "outlets": outlets,
@@ -217,12 +226,101 @@ def bookings(request):
     )
 
 
+# Staff bookings page with this booking selected (used after editing / deleting an update)
+def _staff_booking_url(booking):
+    return f"{reverse('inventory:staff_bookings')}?booking={booking.pk}"
+
+
+# After an update is edited or deleted, the booking's status follows its latest remaining update
+def _sync_booking_status(booking):
+
+    # Get the latest booking status
+    latest = booking.updates.order_by("-created_at").first()
+    if latest is None or latest.new_status == booking.status:
+        return
+    
+    booking.status = latest.new_status
+    booking.save(update_fields=["status"])
+
+
+# staff can only edit or delete updates that were posted by staff
+# staff cannot edit or delete updates if booking is cancelled by customer
+def _can_change_update(update):
+    return update.staff_id is not None and update.booking.status != Booking.Status.CANCELLED
+
+
+# Edit an existing booking update (status, note, and add more photos)
+def edit_booking_update(request, pk):
+    update = get_object_or_404(
+        BookingUpdate.objects.select_related("booking__customer", "booking__pet", "booking__slot"),
+        pk=pk,
+    )
+    booking = update.booking
+    if not _can_change_update(update):
+        messages.error(request, "This update can no longer be edited.")
+        return redirect(_staff_booking_url(booking))
+
+    if request.method == "POST":
+        form = BookingUpdateForm(request.POST, request.FILES, instance=update)
+        if form.is_valid():
+            form.save()
+            for photo in request.FILES.getlist("photos"):
+                BookingUpdatePhoto.objects.create(update=update, photo=photo)
+
+            _sync_booking_status(booking)
+            messages.success(request, f"Update on booking #{booking.pk} saved.")
+            return redirect(_staff_booking_url(booking))
+    else:
+        form = BookingUpdateForm(instance=update) # populate the form with the existing data
+
+    return render(
+        request,
+        "inventory/staff_update_booking.html",
+        {
+            "form": form,
+            "booking": booking,
+            "action_title": f"Edit update on booking #{booking.pk}",
+            "submit_text": "Save changes",
+            "cancel_url": _staff_booking_url(booking),
+        },
+    )
+
+
+# Delete a booking update and its booking update photos
+def delete_booking_update(request, pk):
+    if request.method != "POST":
+        return redirect("inventory:staff_bookings")
+
+    update = get_object_or_404(BookingUpdate.objects.select_related("booking"), pk=pk)
+    booking = update.booking
+
+    if not _can_change_update(update):
+        messages.error(request, "This update can no longer be deleted.")
+        return redirect(_staff_booking_url(booking))
+
+    # Remove the image files too, not just the database rows
+    for photo in update.photos.all():
+        photo.photo.delete(save=False)
+    if update.photo:
+        update.photo.delete(save=False)
+    update.delete()  # BookingUpdatePhoto rows are deleted automatically - set by CASCADE rule in models
+
+    _sync_booking_status(booking)
+    messages.success(request, f"Update deleted from booking #{booking.pk}.")
+    return redirect(_staff_booking_url(booking))
+
+
 # Update Booking
 def update_booking(request, pk=None):
     booking = get_object_or_404(
         Booking.objects.select_related("customer", "pet", "slot", "slot__service"),
         pk=pk,
     )
+    # Booking is cancelled by customer, staff cannot create any more booking updates
+    if booking.status == Booking.Status.CANCELLED:
+        messages.error(request, f"Booking #{booking.pk} is cancelled and can't be updated.")
+        return redirect(_staff_booking_url(booking))
+    
     if request.method == "POST":
         form = BookingUpdateForm(request.POST, request.FILES)
         if form.is_valid():
@@ -247,17 +345,10 @@ def update_booking(request, pk=None):
             # Update booking new status from the form input
             booking.status = booking_update.new_status
 
-            if booking.status == Booking.Status.CANCELLED:
-                if not booking.cancelled_at:
-                    booking.cancelled_at = timezone.now()
-            else:
-                booking.cancelled_at = None # Clear cancellation metadata if status changes back
-                booking.cancellation_fee_cents = 0
-
             booking.save()
 
             messages.success(request, f"Booking #{booking.pk} updated successfully.")
-            return redirect("inventory:staff_bookings")
+            return redirect(_staff_booking_url(booking))
     else:
         # Pre-fill the form dropdown with the booking's current status as default 
         form = BookingUpdateForm(initial={"new_status": booking.status})
@@ -266,6 +357,8 @@ def update_booking(request, pk=None):
         request,
         "inventory/staff_update_booking.html",
         {
+            "base_template": base_template_for(request),
+            "active_page": "bookings",
             "form": form,
             "booking": booking,
             "action_title": f"Update Booking #{booking.pk}",
@@ -410,6 +503,9 @@ def product_detail(request, product_id):
 
 
 # Orders and Stock (Staff)
+
+
+
 def staff_orders_stock(request):
 
     # Read the options from the query string
@@ -466,6 +562,12 @@ def staff_orders_stock(request):
             .first()
         )
 
+    # Statuses staff can pick for the selected order (pick-up and delivery have different ones)
+    status_options = []
+    if selected:
+        allowed = Order.PICKUP_STATUSES if selected.pickup_outlet_id else Order.DELIVERY_STATUSES
+        status_options = [(value, label) for value, label in Order.Status.choices if value in allowed]
+
     # stock panel: lowest stock first
     low_count = Product.objects.filter(stock_quantity__lte=F("low_stock_level")).count()
     stock_products = Product.objects.order_by("stock_quantity")
@@ -474,6 +576,7 @@ def staff_orders_stock(request):
         request,
         "inventory/staff_orders_stock.html",
         {
+            "base_template": base_template_for(request),
             "active_page": "orders",
             "orders": orders,
             "selected": selected,
@@ -484,8 +587,41 @@ def staff_orders_stock(request):
             "status_choices": Order.Status.choices,
             "low_count": low_count,
             "stock_products": stock_products,
+            "status_options": status_options,
         },
     )
+
+# Staff orders page with this order selected in the detail panel
+def _staff_order_url(order):
+    return f"{reverse('inventory:staff_orders_stock')}?order={order.pk}"
+
+
+# Staff change an order's status from the order detail panel 
+def update_order_status(request, pk):
+    if request.method != "POST":
+        return redirect("inventory:staff_orders_stock")
+
+    order = get_object_or_404(Order, pk=pk)
+
+    # Completed/Cancelled orders statuses cannot be changed anymore
+    if order.status not in Order.ACTIVE_STATUSES:
+        messages.error(request, f"Order #{order.pk} is already {order.get_status_display().lower()}.")
+        return redirect(_staff_order_url(order))
+
+    new_status = request.POST.get("new_status", "")
+
+    # Pick-up and delivery orders have different statuses (also stops made-up values)
+    allowed_statuses = Order.PICKUP_STATUSES if order.pickup_outlet_id else Order.DELIVERY_STATUSES
+    if new_status not in allowed_statuses:
+        messages.error(request, f"That status can't be used for order #{order.pk}.")
+        return redirect(_staff_order_url(order))
+
+    order.status = new_status
+    order.save(update_fields=["status"])
+    messages.success(request, f"Order #{order.pk} is now {order.get_status_display()}.")
+
+    # so that the order is selected in the detail panel after the status update
+    return redirect(_staff_order_url(order))
 
 # Update a specific product's stock quantity 
 def update_stock(request, pk):
@@ -512,8 +648,10 @@ def update_stock(request, pk):
         form = StockForm(instance=product)
 
     return render(
-        request, "inventory/staff_update_stock.html", 
+        request,
+        "inventory/staff_update_stock.html",
         {
+            "base_template": base_template_for(request),
             "form": form, 
             "product": product, 
             "action_title": action_title,
@@ -574,6 +712,7 @@ def staff_products(request):
         request,
         "inventory/staff_products.html",
         {
+            "base_template": base_template_for(request),
             "active_page": "products",
             "products": products,
             "selected_product": selected_product,
@@ -624,6 +763,7 @@ def product_form(request, pk=None):
         request,
         "inventory/staff_product_form.html",
         {
+            "base_template": base_template_for(request),
             "form": form,
             "product": product,
             "action_title": action_title,

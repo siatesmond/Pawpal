@@ -1,0 +1,43 @@
+<!-- Cancel section used by booking_detail.html, order_detail.html and the pet sitting request page. -->
+
+{# Check if the user is within the allowed cancellation window #}
+{% if can_cancel %}
+  <section class="profile-panel cancel-panel" id="cancel">
+
+    {# Confirma Cancellation #}
+    {% if confirm_cancel %}
+      <h2>Cancel this {{ record_label }}?</h2>
+      {% if not_paid %}
+        {# Pet sitting request that has not been paid yet: nothing to refund #}
+        <p class="section-note">You haven't paid for this {{ record_label }}, so nothing will be charged. This can't be undone.</p>
+      {% else %}
+        <p class="section-note">
+          SGD {{ refund_dollars|floatformat:2 }} will be refunded to your card and any points you used will be returned.
+          Points earned from this {{ record_label }} will be removed. This can't be undone.
+        </p>
+      {% endif %}
+
+      {# Form to process payment + points refund and status update#}
+      <form method="post" action="{{ cancel_url }}" class="profile-button-row">
+        {% csrf_token %}
+        <button type="submit" class="profile-button cancel-button">Yes, cancel {{ record_label }}</button>
+
+        {# Remove query params to close the confirm cancel prompt #}
+        <a class="profile-button profile-button-outline" href="{% querystring cancel=None %}">Keep {{ record_label }}</a>
+      </form>
+    {# Main cancel section #}
+    {% else %}
+      <h2>Need to cancel?</h2>
+      <p class="section-note">You can cancel this {{ record_label }} for a full refund until {{ cancel_deadline|date:"D, j M Y · g:i A" }}.</p>
+      <div class="profile-button-row">
+        <a class="profile-button profile-button-outline cancel-link" href="?cancel=1#cancel">Cancel {{ record_label }}</a>
+      </div>
+    {% endif %}
+  </section>
+{# Cancellation not allowed#}
+{% elif cancel_closed %}
+  <section class="profile-panel">
+    <h2>Need to cancel?</h2>
+    <p class="section-note">Online cancellation was available until {{ cancel_deadline|date:"D, j M Y · g:i A" }}. Please contact us if you need help with this {{ record_label }}.</p>
+  </section>
+{% endif %}

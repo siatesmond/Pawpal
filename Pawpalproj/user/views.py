@@ -1,13 +1,34 @@
-from django.shortcuts import redirect, render, get_object_or_404
+import secrets
+from datetime import timedelta
+
 from django.contrib import messages
+from django.contrib.auth.hashers import check_password, make_password
+from django.db import transaction
+from django.db.models import F, Q, Sum
+from django.core.mail import send_mail
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
-from service.models import Booking
+from inventory.models import CartItem, Order, Product
+from payment.services import can_cancel, cancel_deadline, get_points_balance, payment_summary, refund_payment
+from service.models import Booking, BookingUpdate, TimeSlot
 
-from .forms import LoginForm, RegisterForm
-from .models import Customer
-from inventory.models import CartItem, Product
+from .forms import (
+    ForgotPasswordEmailForm,
+    AddressForm,
+    LoginForm,
+    OTPForm,
+    PasswordChangeForm,
+    PetForm,
+    ProfileForm,
+    RegisterForm,
+    ResetPasswordForm,
+)
+from .models import OTP, Address, Customer, Pet, User
+from .utils import get_current_customer
 
+
+# USER TYPE AND OTP HELPERS
 
 def get_user_type(user):
     """Which child table this user has a row in (multi-table inheritance)."""
@@ -22,6 +43,34 @@ def get_user_type(user):
     return None
 
 
+def send_otp_code(user, purpose):
+    # Generate a random 6-digit code for the user.
+    code = f"{secrets.randbelow(1_000_000):06d}"
+
+    # Delete the user's previous code so only the newest code can be used.
+    OTP.objects.filter(user=user, purpose=purpose).delete()
+
+    # Save the hashed code in the database. The real code is never stored.
+    OTP.objects.create(
+        user=user,
+        code_hash=make_password(code),
+        purpose=purpose,
+        expires_at=timezone.now() + timedelta(minutes=OTP.VALID_MINUTES),
+    )
+
+    # Send the real code to the user's email address.
+    send_mail(
+        "Your Pawpal verification code",
+        f"Your Pawpal verification code is {code}. "
+        f"It expires in {OTP.VALID_MINUTES} minutes.",
+        None,
+        [user.email],
+        fail_silently=False,
+    )
+
+
+# LOGIN, REGISTRATION AND OTP VERIFICATION
+
 class LoginView(View):
     form_class = LoginForm
     template_name = "user/login.html"
@@ -30,6 +79,8 @@ class LoginView(View):
         # already logged in -> go straight to the right page
         if "user_id" in request.session:
             return redirect(home_for(request.session.get("user_type")))
+        if request.GET.get("guest_notice") == "1":
+            messages.info(request, "Please log in to view more details.")
         return render(request, self.template_name, {"form": self.form_class()})
 
     def post(self, request, *args, **kwargs):
@@ -37,6 +88,12 @@ class LoginView(View):
 
         if form.is_valid():
             user = form.cleaned_data["user"]
+
+            if not user.is_verified:
+                send_otp_code(user, OTP.Purpose.REGISTER)
+                request.session["otp_user_id"] = user.pk
+                request.session["otp_purpose"] = OTP.Purpose.REGISTER
+                return redirect("user:verify_otp")
 
             # store the login in the session (request.session is like a dict)
             request.session["user_id"] = user.pk
@@ -62,16 +119,237 @@ class RegisterView(View):
     def post(self, request, *args, **kwargs):
         form = self.form_class(request.POST)
         if form.is_valid():
-            form.save()
-            return redirect("/user/login/")
+            user = form.save()
+            send_otp_code(user, OTP.Purpose.REGISTER)
+            request.session["otp_user_id"] = user.pk
+            request.session["otp_purpose"] = OTP.Purpose.REGISTER
+            return redirect("user:verify_otp")
         return render(request, self.template_name, {"form": form})
 
 
+class VerifyOTPView(View):
+    template_name = "user/verify_otp.html"
+
+    def get(self, request, *args, **kwargs):
+        # Find the user who is currently waiting to verify an OTP.
+        user_id = request.session.get("otp_user_id")
+        user = User.objects.filter(pk=user_id, is_active=True).first()
+        if user is None:
+            return redirect("user:login")
+        return render(
+            request,
+            self.template_name,
+            {
+                "form": OTPForm(),
+                "email": user.email,
+                "purpose": request.session.get("otp_purpose"),
+            },
+        )
+
+    def post(self, request, *args, **kwargs):
+        # Read the user and OTP purpose saved during registration or password reset.
+        user_id = request.session.get("otp_user_id")
+        purpose = request.session.get("otp_purpose")
+        user = User.objects.filter(pk=user_id, is_active=True).first()
+        if user is None or purpose not in (
+            OTP.Purpose.REGISTER,
+            OTP.Purpose.PASSWORD_RESET,
+        ):
+            return redirect("user:login")
+
+        # Check the code submitted by the user.
+        form = OTPForm(request.POST)
+        otp = OTP.objects.filter(
+            user=user,
+            purpose=purpose,
+        ).order_by("-created_at").first()
+
+        # Reject the code if it does not exist or is older than 5 minutes.
+        if otp is None or otp.is_expired():
+            form.add_error("code", "This code has expired. Request a new one.")
+
+        # Stop accepting codes after too many incorrect attempts.
+        elif otp.attempts >= OTP.MAX_ATTEMPTS:
+            form.add_error("code", "Too many incorrect attempts. Request a new code.")
+
+        # Only check the code when the form contains valid 6-digit input.
+        elif form.is_valid():
+            # Count this submission as one attempt before checking the code.
+            otp.attempts += 1
+            otp.save(update_fields=["attempts"])
+
+            if check_password(form.cleaned_data["code"], otp.code_hash):
+                # Delete the code after successful use so it cannot be reused.
+                otp.delete()
+                request.session.pop("otp_user_id", None)
+                request.session.pop("otp_purpose", None)
+
+                if purpose == OTP.Purpose.REGISTER:
+                    # Mark a newly registered account as verified and log it in.
+                    user.is_verified = True
+                    user.save(update_fields=["is_verified"])
+                    request.session["user_id"] = user.pk
+                    request.session["user_type"] = get_user_type(user)
+                    request.session["username"] = user.first_name or user.username
+                    if request.session["user_type"] == "sitter":
+                        return redirect("sitting:application_status")
+                    return redirect(home_for(request.session["user_type"]))
+
+                # A password-reset OTP leads to the change-password page.
+                request.session["password_reset_user_id"] = user.pk
+                request.session["password_reset_step"] = "password"
+                request.session["password_reset_verified"] = True
+                return redirect("user:forgot_password")
+
+            # Keep the form on the page and show an error for a wrong code.
+            form.add_error("code", "That code is incorrect.")
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "form": form,
+                "email": user.email,
+                "purpose": purpose,
+            },
+        )
+
+
+class ResendOTPView(View):
+    def post(self, request, *args, **kwargs):
+        # Find the user and the type of OTP that needs to be sent again.
+        user_id = request.session.get("otp_user_id")
+        purpose = request.session.get("otp_purpose")
+        user = User.objects.filter(pk=user_id, is_active=True).first()
+        if user is None or purpose not in (
+            OTP.Purpose.REGISTER,
+            OTP.Purpose.PASSWORD_RESET,
+        ):
+            return redirect("user:login")
+
+        # Get the newest OTP to check when the last code was sent.
+        otp = OTP.objects.filter(
+            user=user,
+            purpose=purpose,
+        ).order_by("-created_at").first()
+
+        # Prevent repeated resend requests within 30 seconds.
+        if otp and timezone.now() - otp.created_at < timedelta(seconds=30):
+            return render(
+                request,
+                "user/verify_otp.html",
+                {
+                    "form": OTPForm(),
+                    "email": user.email,
+                    "purpose": purpose,
+                    "status_message": "Please wait 30 seconds before requesting another code.",
+                },
+            )
+
+        # The cooldown has ended, so create and send a new code.
+        send_otp_code(user, purpose)
+        return redirect("user:verify_otp")
+
+
+# FORGOT PASSWORD
+
+class ForgotPasswordView(View):
+    template_name = "user/forgot_password.html"
+
+    def get(self, request, *args, **kwargs):
+        # Decide which page to show: enter email or set a new password.
+        step = request.session.get("password_reset_step", "email")
+        if step not in {"email", "password"}:
+            step = "email"
+        if step == "password" and not request.session.get("password_reset_verified"):
+            step = "email"
+        if step == "email":
+            form = ForgotPasswordEmailForm()
+        else:
+            form = ResetPasswordForm()
+        return render(
+            request,
+            self.template_name,
+            {"step": step, "form": form},
+        )
+
+    def post(self, request, *args, **kwargs):
+        # Read the current step saved in the user's session.
+        step = request.session.get("password_reset_step", "email")
+
+        if step == "email":
+            # Check the email entered by the user.
+            form = ForgotPasswordEmailForm(request.POST)
+            if form.is_valid():
+                # Find an active account with the submitted email.
+                user = User.objects.filter(
+                    email__iexact=form.cleaned_data["email"],
+                    is_active=True,
+                ).first()
+                if user is None:
+                    form.add_error(
+                        "email", "We couldn't find an active account with that email."
+                    )
+                else:
+                    # Send the user to the shared OTP verification page.
+                    send_otp_code(user, OTP.Purpose.PASSWORD_RESET)
+                    request.session["otp_user_id"] = user.pk
+                    request.session["otp_purpose"] = OTP.Purpose.PASSWORD_RESET
+                    return redirect("user:verify_otp")
+            return render(request, self.template_name, {"step": "email", "form": form})
+
+        user_id = request.session.get("password_reset_user_id")
+        user = User.objects.filter(pk=user_id, is_active=True).first()
+        if user is None:
+            # Clear incomplete reset details if the user no longer exists.
+            request.session.pop("password_reset_user_id", None)
+            request.session.pop("password_reset_step", None)
+            request.session.pop("password_reset_verified", None)
+            return redirect("user:forgot_password")
+
+        if step == "password":
+            # Only allow this page after the shared OTP page verified the code.
+            if not request.session.get("password_reset_verified"):
+                return redirect("user:forgot_password")
+
+            # Check the new password and confirmation entered by the user.
+            form = ResetPasswordForm(request.POST)
+            if form.is_valid():
+                # Hash the new password before saving it in the database.
+                user.password = make_password(form.cleaned_data["password"])
+                user.save(update_fields=["password"])
+
+                # Delete any remaining reset code after the password changes.
+                OTP.objects.filter(
+                    user=user,
+                    purpose=OTP.Purpose.PASSWORD_RESET,
+                ).delete()
+
+                # Clear the reset session so the flow cannot be reused.
+                request.session.pop("password_reset_user_id", None)
+                request.session.pop("password_reset_step", None)
+                request.session.pop("password_reset_verified", None)
+                messages.success(
+                    request, "Your password has been changed. You can now log in."
+                )
+                return redirect("user:login")
+            return render(
+                request, self.template_name, {"step": "password", "form": form}
+            )
+
+        request.session.pop("password_reset_user_id", None)
+        request.session.pop("password_reset_step", None)
+        request.session.pop("password_reset_verified", None)
+        return redirect("user:forgot_password")
+
+
+# LOGOUT AND CUSTOMER HOME
+
 class LogoutView(View):
     def get(self, request, *args, **kwargs):
-        request.session.flush()  # clears all session data (Lecture 7, slide 38)
+        # clears all session data
+        request.session.flush()
         return redirect("/user/login/")
-
 
 class CustomerHomeView(View):
     """customer home. The middleware has already checked the login."""
@@ -82,10 +360,7 @@ class CustomerHomeView(View):
         customer = Customer.objects.get(pk=request.session["user_id"])
 
         upcoming = (
-            Booking.objects.filter(
-                customer=customer, slot__start_time__gte=timezone.now()
-            )
-            .exclude(status="CANCELLED")
+            Booking.objects.filter(_current_bookings(), customer=customer)
             .select_related("pet", "slot__service", "slot__outlet")
             .order_by("slot__start_time")
         )
@@ -98,15 +373,525 @@ class CustomerHomeView(View):
         return render(request, self.template_name, context)
 
 
+# CUSTOMER PROFILE
+
+# used in BookingListView to filter bookings into current/upcoming, ignoring past bookings
+# used in CustomerHomeView to filter upcoming bookings for the dashboard
+def _current_bookings():
+    return Q(status__in=Booking.IN_CARE_STATUSES) | Q(
+        status__in=Booking.BOOKED_STATUSES, slot__start_time__gte=timezone.now()
+    )
+
+class CustomerProfileView(View):
+    template_name = "user/profile.html"
+
+    def get(self, request, *args, **kwargs):
+        # Load the customer who is logged in from the session.
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": ProfileForm(instance=customer),
+                "password_form": PasswordChangeForm(),
+            },
+        )
+
+    def post(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        if request.POST.get("action") == "change_password":
+            password_form = PasswordChangeForm(request.POST)
+            if password_form.is_valid() and check_password(
+                password_form.cleaned_data["current_password"],
+                customer.password,
+            ):
+                customer.password = make_password(
+                    password_form.cleaned_data["new_password"]
+                )
+                customer.save(update_fields=["password"])
+                messages.success(request, "Your password has been updated.")
+                return redirect("user:profile")
+            if password_form.is_valid():
+                password_form.add_error(
+                    "current_password", "Your current password is incorrect."
+                )
+            return render(
+                request,
+                self.template_name,
+                {
+                    "customer": customer,
+                    "form": ProfileForm(instance=customer),
+                    "password_form": password_form,
+                },
+            )
+
+        # Bind the submitted values to the logged-in customer's existing record.
+        form = ProfileForm(request.POST, instance=customer)
+
+        if form.is_valid():
+            # Save the updated profile details.
+            form.save()
+            request.session["username"] = customer.first_name or customer.username
+            messages.success(request, "Your profile has been updated.")
+            return redirect("user:profile")
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": form,
+                "password_form": PasswordChangeForm(),
+            },
+        )
+
+
+# CUSTOMER ADDRESSES
+
+class AddAddressView(View):
+    template_name = "user/add_address.html"
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"form": AddressForm()})
+
+    def post(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        form = AddressForm(request.POST)
+
+        if form.is_valid():
+            address = form.save(commit=False)
+            address.customer = customer
+
+            # Only one address can be the default address for this customer.
+            if address.is_default:
+                customer.addresses.update(is_default=False)
+
+            address.save()
+            messages.success(request, "Your address has been added.")
+            return redirect("user:profile")
+
+        return render(request, self.template_name, {"form": form})
+
+
+# CUSTOMER PET PROFILES
+
+# Customer bookings
+class BookingListView(View):
+
+    template_name = "user/bookings.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        bookings = (
+            Booking.objects.filter(customer=customer)
+            .select_related("pet", "slot__service", "slot__outlet")
+        )
+        current_bookings = _current_bookings()
+        upcoming_bookings = list(bookings.filter(current_bookings).order_by("slot__start_time"))
+
+        # Completed and Cancelled statuses
+        past_bookings = list(bookings.exclude(current_bookings).order_by("-slot__start_time"))
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "upcoming_bookings": upcoming_bookings,
+                "past_bookings": past_bookings  ,
+                "active_account_page": "bookings",
+            },
+        )
+
+# Checks if booking's appointment time has not started and if it is within the 24-hour cancellation window
+def _booking_can_cancel(booking):
+    return can_cancel(booking) and booking.slot.start_time > timezone.now()
+
+
+# Context for the cancel section on the booking / order details page.
+def _cancel_context(request, record, allowed):
+    not_started = record.status in (record.Status.PENDING, record.Status.CONFIRMED)
+    return {
+        "can_cancel": allowed,
+        "confirm_cancel": allowed and request.GET.get("cancel") == "1", #shows cancel confirmation message
+        "cancel_deadline": cancel_deadline(record),
+        "cancel_closed": not_started and not allowed,  
+    }
+
+
+class BookingDetailView(View):
+
+    template_name = "user/booking_detail.html"
+
+    def get(self, request, booking_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        booking = get_object_or_404(
+            Booking.objects.select_related("pet", "slot__service", "slot__outlet"),
+            pk=booking_id,
+            customer=customer,
+        )
+        # Booking updates, with staff and photos prefetched (newest first)
+        updates = (
+            booking.updates.select_related("staff")
+            .prefetch_related("photos")
+            .order_by("-created_at")
+        )
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "booking": booking,
+                "updates": updates,
+                **payment_summary(booking, booking.price_cents), #helper function in services.py to calculate
+                **_cancel_context(request, booking, _booking_can_cancel(booking)),
+                "active_account_page": "bookings",
+            },
+        )
+
+
+class BookingCancelView(View):
+
+    def post(self, request, booking_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        with transaction.atomic():
+            booking = get_object_or_404(
+                Booking.objects.select_for_update(), pk=booking_id, customer=customer
+            )
+
+            if not _booking_can_cancel(booking):
+                messages.error(
+                    request,
+                    "This booking can no longer be cancelled. Bookings can only be "
+                    "cancelled within 24 hours of booking and before the appointment.",
+                )
+                return redirect("user:booking_detail", booking.pk)
+
+            booking.status = Booking.Status.CANCELLED
+            booking.cancelled_at = timezone.now()
+            booking.save(update_fields=["status", "cancelled_at"])
+
+            # Increase the capacity in the time slot
+            TimeSlot.objects.filter(pk=booking.slot_id, booked_count__gt=0).update(
+                booked_count=F("booked_count") - 1
+            )
+            # Create a BookingUpdate to update to Cancelled status
+            BookingUpdate.objects.create(
+                booking=booking,
+                new_status=Booking.Status.CANCELLED
+            )
+            refund_payment(booking, label=f"booking #{booking.pk}")
+
+        messages.success(request, "Your booking has been cancelled and your payment will be refunded.")
+        return redirect("user:booking_detail", booking.pk)
+
+# CustomerOrders
+class OrderListView(View):
+
+    template_name = "user/orders.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        orders = (
+            Order.objects.filter(customer=customer)
+            .select_related("pickup_outlet")
+            .prefetch_related("items__product")
+            .order_by("-created_at")
+        )
+        current_statuses = Order.ACTIVE_STATUSES  # pending, confirmed, packed, ready for pickup, out for delivery
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "current_orders": orders.filter(status__in=current_statuses),
+                "past_orders": orders.exclude(status__in=current_statuses),
+                "active_account_page": "orders",
+            },
+        )
+
+
+class OrderDetailView(View):
+
+    template_name = "user/order_detail.html"
+
+    def get(self, request, order_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        order = get_object_or_404(
+            Order.objects.select_related("pickup_outlet", "delivery_address"),
+            pk=order_id,
+            customer=customer,
+        )
+        items = list(order.items.select_related("product"))
+
+        for item in items:
+            item.unit_price_dollars = item.unit_price_cents / 100
+            item.line_total_dollars = item.unit_price_cents * item.quantity / 100
+
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "order": order,
+                "items": items,
+                "delivery_fee_dollars": order.delivery_fee_cents / 100,
+                **payment_summary(order, order.subtotal_cents), #helper function in services.py to calculate
+                **_cancel_context(request, order, can_cancel(order)),
+                "active_account_page": "orders",
+            },
+        )
+
+
+class OrderCancelView(View):
+
+    def post(self, request, order_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        with transaction.atomic():
+            order = get_object_or_404(
+                Order.objects.select_for_update(), pk=order_id, customer=customer
+            )
+
+            if not can_cancel(order):
+                messages.error(
+                    request,
+                    "This order can no longer be cancelled. Orders can only be "
+                    "cancelled within 24 hours of ordering, before they are completed.",
+                )
+                return redirect("user:order_detail", order.pk)
+
+            order.status = Order.Status.CANCELLED
+            order.save(update_fields=["status"])
+
+            # Put the items back into stock
+            for item in order.items.all():
+                Product.objects.filter(pk=item.product_id).update(
+                    stock_quantity=F("stock_quantity") + item.quantity
+                )
+
+            # Points
+            refund_payment(order, label=f"order #{order.pk}")
+
+        messages.success(request, "Your order has been cancelled and your payment will be refunded.")
+        return redirect("user:order_detail", order.pk)
+
+
+class PetListView(View):
+    template_name = "user/pets.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "pets": customer.pets.all().order_by("name"),
+                "active_account_page": "pets",
+            },
+        )
+
+
+class AddPetView(View):
+    template_name = "user/pet_form.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": PetForm(),
+                "active_account_page": "pets",
+            },
+        )
+
+    def post(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        form = PetForm(request.POST, request.FILES)
+        if form.is_valid():
+            pet = form.save(commit=False)
+            pet.owner_id = customer
+            pet.save()
+            messages.success(request, "Your pet has been added.")
+            return redirect("user:pets")
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "form": form,
+                "active_account_page": "pets",
+            },
+        )
+
+
+class EditPetView(View):
+    template_name = "user/pets.html"
+
+    def get_pet(self, request, pet_id):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        pet = get_object_or_404(Pet, pk=pet_id, owner_id=customer)
+        return customer, pet
+
+    def get(self, request, pet_id, *args, **kwargs):
+        customer, pet = self.get_pet(request, pet_id)
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "pets": customer.pets.all().order_by("name"),
+                "form": PetForm(instance=pet),
+                "editing_pet": pet,
+                "active_account_page": "pets",
+            },
+        )
+
+    def post(self, request, pet_id, *args, **kwargs):
+        customer, pet = self.get_pet(request, pet_id)
+        form = PetForm(request.POST, request.FILES, instance=pet)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your pet profile has been updated.")
+            return redirect("user:pets")
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "pets": customer.pets.all().order_by("name"),
+                "form": form,
+                "editing_pet": pet,
+                "active_account_page": "pets",
+            },
+        )
+
+
+class DeletePetView(View):
+    def post(self, request, pet_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        pet = get_object_or_404(Pet, pk=pet_id, owner_id=customer)
+        pet.delete()
+        messages.success(request, "Your pet has been deleted.")
+        return redirect("user:pets")
+
+
+# ADDRESS EDITING
+
+class EditAddressView(View):
+    template_name = "user/add_address.html"
+
+    def get(self, request, address_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        address = get_object_or_404(
+            customer.addresses,
+            pk=address_id,
+        )
+        return render(
+            request,
+            self.template_name,
+            {"form": AddressForm(instance=address), "edit_mode": True},
+        )
+
+    def post(self, request, address_id, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+        address = get_object_or_404(
+            customer.addresses,
+            pk=address_id,
+        )
+        form = AddressForm(request.POST, instance=address)
+
+        if form.is_valid():
+            updated_address = form.save(commit=False)
+            if updated_address.is_default:
+                customer.addresses.exclude(pk=address.pk).update(is_default=False)
+            updated_address.save()
+            messages.success(request, "Your address has been updated.")
+            return redirect("user:profile")
+
+        return render(
+            request,
+            self.template_name,
+            {"form": form, "edit_mode": True},
+        )
+
+
+# Make one saved address the default (it is pre-selected at checkout)
+def set_default_address(request, address_id):
+    if request.method != "POST":
+        return redirect("user:profile")
+
+    customer = Customer.objects.get(pk=request.session["user_id"])
+    try:
+        address = customer.addresses.get(pk=address_id)
+    except Address.DoesNotExist:
+        messages.error(request, "Address not found.")
+        return redirect("/user/profile/#addresses")
+
+    # only one default: clear the others first
+    customer.addresses.update(is_default=False)
+    address.is_default = True
+    address.save()
+    messages.success(request, "Default address updated.")
+    return redirect("/user/profile/#addresses")
+
+
+# Remove a saved address
+def delete_address(request, address_id):
+    if request.method != "POST":
+        return redirect("user:profile")
+
+    customer = Customer.objects.get(pk=request.session["user_id"])
+    try:
+        address = customer.addresses.get(pk=address_id)
+    except Address.DoesNotExist:
+        messages.error(request, "Address not found.")
+        return redirect("/user/profile/#addresses")
+
+    # an address used by a past order must stay, so the order still shows where it went
+    if address.orders.exists():
+        messages.error(request, "This address is used by one of your orders, so it can't be removed.")
+        return redirect("/user/profile/#addresses")
+
+    was_default = address.is_default
+    address.delete()
+
+    # if the default was removed, make the next address the default
+    if was_default:
+        next_address = customer.addresses.first()
+        if next_address:
+            next_address.is_default = True
+            next_address.save()
+
+    messages.success(request, "Address removed.")
+    return redirect("/user/profile/#addresses")
+
+
+# REDIRECT USERS TO THE CORRECT HOME PAGE
+
 def home_for(user_type):
     """Where each type of user lands after logging in."""
     return {
         "customer": "/user/home/",
-        "staff": "/admin-panel/",
+        "staff": "/inventory/staff/bookings/",
         "owner": "/admin-panel/",
-        "sitter": "/sitting/jobs/",
+        "sitter": "/sitting/application/",
     }.get(user_type, "/")
 
+
+# CART
 
 def cart(request):
     customer = get_object_or_404(Customer, pk=request.session.get("user_id"))
@@ -125,7 +910,6 @@ def cart(request):
     )
 
 
-# CART
 # Add a product to the customer's cart
 def add_to_cart(request, product_id):
     # Check if the user is authenticated as customer
@@ -175,18 +959,19 @@ def increment_cart_item(request, item_id):
         )
         return redirect("user:login")
 
-
     item = get_object_or_404(
         CartItem.objects.select_related("product"),
         pk=item_id,
-        customer_id=request.session["user_id"], #ensures only customer can edit own cart
+        customer_id=request.session[
+            "user_id"
+        ],  # ensures only customer can edit own cart
     )
 
     # Check stock availability before saving the incremented quantity
     if item.quantity >= item.product.stock_quantity:
         messages.error(
             request,
-            f"You've reached the maximum available stock for this item",
+            "You've reached the maximum available stock for this item",
         )
     else:
         item.quantity += 1
@@ -210,7 +995,9 @@ def decrement_cart_item(request, item_id):
     item = get_object_or_404(
         CartItem.objects.select_related("product"),
         pk=item_id,
-        customer_id=request.session["user_id"], #ensures only customer can edit own cart
+        customer_id=request.session[
+            "user_id"
+        ],  # ensures only customer can edit own cart
     )
 
     # Check stock availability before saving the decremented quantity
@@ -221,3 +1008,23 @@ def decrement_cart_item(request, item_id):
         item.delete()
 
     return redirect("user:customer_cart")
+
+
+# NAVBAR
+
+# Gives every page the logged-in customer's points and cart count for the navbar.
+# Django runs this for every template (see "context_processors" in settings.py),
+# so we don't have to pass these values from every single view.
+def navbar(request):
+    customer = get_current_customer(request)
+    if customer is None:
+        return {}  # guests, staff, owner and sitters get nothing extra
+
+    # total number of items in the cart (2 bags of food = 2)
+    cart_count = customer.cart_items.aggregate(total=Sum("quantity"))["total"] or 0
+
+    return {
+        "nav_customer": customer,
+        "nav_points": f"{get_points_balance(customer):,}",  # 1240 -> "1,240"
+        "nav_cart_count": cart_count,
+    }

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% load static %}
+
+<!-- Display a success message after a successful booking (bookservice only) -->
+{% block title %}Booking confirmed | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'service/css/booking.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="booking-page">
+  <div class="success-card">
+    <div class="success-check" aria-hidden="true">✓</div>
+    <h1 class="booking-title">Booking confirmed</h1>
+    <p class="muted">See you and {{ booking.pet.name }} soon! Booking #{{ booking.pk }}</p>
+
+    <dl class="summary-rows">
+      <div><dt>Pet</dt><dd>{{ booking.pet.name }}</dd></div>
+      <div><dt>Service</dt><dd>{{ booking.slot.service.name }}</dd></div>
+      <div><dt>Outlet</dt><dd>{{ booking.slot.outlet.name }}</dd></div>
+      <div><dt>{% if check_out %}Check-in{% else %}Date &amp; time{% endif %}</dt><dd>{{ when }}</dd></div>
+      {% if check_out %}<div><dt>Check-out</dt><dd>{{ check_out }}</dd></div>{% endif %}
+      {% if discount_dollars %}<div><dt>Points discount</dt><dd>− SGD {{ discount_dollars|floatformat:2 }}</dd></div>{% endif %}
+      <div class="summary-total"><dt>Total paid</dt><dd>SGD {{ total_dollars|floatformat:2 }}</dd></div>
+    </dl>
+    {% if points_earned %}<p class="fine-print">You earned {{ points_earned }} points.</p>{% endif %}
+
+    <div class="success-actions">
+      <a href="{% url 'service:book' %}" class="outline-btn">Book another</a>
+      <a href="/user/home/" class="pay-btn">Go to my account</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

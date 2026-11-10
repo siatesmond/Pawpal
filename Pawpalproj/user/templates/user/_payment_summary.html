@@ -1,0 +1,41 @@
+{% comment %}
+  Payment section shared by booking_detail.html and order_detail.html.
+  Needs the context from payment_summary() in payment/services.py:
+    subtotal_dollars, discount_dollars, points_used, total_dollars, points_earned, payment
+  Optional (pass with "include ... with"):
+    subtotal_label       - "Price" for bookings, defaults to "Subtotal"
+    delivery_fee_dollars - only shown when it is not 0 (orders with delivery)
+{% endcomment %}
+<section class="profile-panel">
+  <h2>Payment</h2>
+  <dl class="detail-list">
+    <div>
+      <dt>{{ subtotal_label|default:"Subtotal" }}</dt>
+      <dd>SGD {{ subtotal_dollars|floatformat:2 }}</dd>
+    </div>
+    {% if delivery_fee_dollars %}
+      <div>
+        <dt>Delivery fee</dt>
+        <dd>SGD {{ delivery_fee_dollars|floatformat:2 }}</dd>
+      </div>
+    {% endif %}
+    <div>
+      <dt>Points discount</dt>
+      <dd>{% if points_used %}− SGD {{ discount_dollars|floatformat:2 }} <small>({{ points_used }} pts)</small>{% else %}SGD 0.00{% endif %}</dd>
+    </div>
+    <div class="detail-total">
+      <dt>Total paid</dt>
+      <dd>SGD {{ total_dollars|floatformat:2 }}</dd>
+    </div>
+    {% if payment %}
+      <div>
+        <dt>Paid by</dt>
+        <dd>{{ payment.get_method_display }}{% if payment.card_number %} {{ payment.card_number }}{% endif %}</dd>
+      </div>
+    {% endif %}
+    <div>
+      <dt>Points earned</dt>
+      <dd>{{ points_earned }} pts</dd>
+    </div>
+  </dl>
+</section>

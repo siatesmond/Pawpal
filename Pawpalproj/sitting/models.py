@@ -10,6 +10,9 @@ from django.db.models import Q
 from user.models import BusinessOwner, Customer, Pet, User
 
 IMAGE_TYPES = FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"])
+DOCUMENT_TYPES = FileExtensionValidator(
+    allowed_extensions=["jpg", "jpeg", "png", "pdf"]
+)
 
 sitting_images = FileSystemStorage(
     location=settings.BASE_DIR / "sitting" / "static" / "sitting" / "images",
@@ -36,6 +39,9 @@ class PetSitter(User):
         REJECTED = "REJECTED", "Rejected"
 
     bio = models.TextField(blank=True)
+    # The sitter types only the postal code. The system looks up the map
+    # position (latitude, longitude) and the area name (service_area) from it.
+    postal_code = models.CharField(max_length=6, blank=True)
     service_area = models.CharField(max_length=100)
     latitude = models.DecimalField(
         max_digits=9, decimal_places=6, null=True, blank=True
@@ -47,7 +53,7 @@ class PetSitter(User):
     pet_experience = models.CharField(max_length=100, blank=True)
     daily_rate_cents = models.PositiveIntegerField()
     id_document = models.FileField(
-        storage=sitting_images, validators=[IMAGE_TYPES], blank=True
+        storage=sitting_images, validators=[DOCUMENT_TYPES], blank=True
     )
     application_status = models.CharField(
         max_length=10, choices=Status.choices, default=Status.PENDING
@@ -61,6 +67,10 @@ class PetSitter(User):
         related_name="reviewed_sitters",
     )
     applied_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def daily_rate_display(self):
+        return f"{self.daily_rate_cents / 100:.2f}"
 
 
 class SittingRequest(models.Model):
@@ -113,6 +123,33 @@ class SittingRequest(models.Model):
                 name="end_after_start",
             ),
         ]
+
+    @property
+    def number_of_days(self):
+        # both the start and end day count, e.g. 20 Nov to 24 Nov = 5 days
+        return (self.end_date - self.start_date).days + 1
+
+    @property
+    def commission_cents(self):
+        # Pawpal keeps commission_rate (10%) of every sitting job
+        return int(self.total_price_cents * self.commission_rate)
+
+    @property
+    def sitter_payout_cents(self):
+        # what the sitter receives = job price - Pawpal commission
+        return self.total_price_cents - self.commission_cents
+
+    @property
+    def total_price_display(self):
+        return f"{self.total_price_cents / 100:.2f}"
+
+    @property
+    def commission_display(self):
+        return f"{self.commission_cents / 100:.2f}"
+
+    @property
+    def sitter_payout_display(self):
+        return f"{self.sitter_payout_cents / 100:.2f}"
 
 
 class SittingUpdate(models.Model):

@@ -1,6 +1,6 @@
-{% extends "inventory/staff_base.html" %}
+{% extends base_template|default:"inventory/staff_base.html" %}
 
-{% block title %}Bookings | Pawpal staff{% endblock %}
+{% block title %}Bookings | Pawpal{% endblock %}
 
 {% block content %}
 
@@ -22,7 +22,7 @@
       <!-- Filter by outlet dropdown list -->
       <div>
         <label for="outlet">Outlet</label>
-        <select id="outlet" name="outlet" onchange="this.form.submit()">
+        <select id="outlet" name="outlet">
           <option value="">All Outlets</option>
           {% for outlet in outlets %}
           <option value="{{ outlet.id }}" {% if outlet_filter == outlet.id|stringformat:"i" %}selected{% endif %}>{{ outlet.name }}</option>
@@ -33,7 +33,7 @@
        <!-- Filter by status dropdown list -->
       <div>
         <label for="status">Status</label>
-        <select id="status" name="status" onchange="this.form.submit()">
+        <select id="status" name="status">
           <option value="">All Status</option>
           {% for code, label in status_choices %}
           <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
@@ -44,9 +44,10 @@
       <!-- Filter by date picker -->
       <div>
         <label for="date">Date</label>
-        <input type="date" id="date" name="date" value="{{ date_filter }}" onchange="this.form.submit()">
+        <input type="date" id="date" name="date" value="{{ date_filter }}">
       </div>
 
+      <button type="submit" class="save-btn filter-btn">Filter</button>
     </form>
   </div>
 </div>
@@ -190,17 +191,45 @@
                     {% endfor %}
                   </div>
                 {% endif %}
+
+                <!-- Edit/Delete Booking update btn -->
+                {% if update.staff_id and selected_booking.status != 'CANCELLED' %}
+                  {% if request.GET.delete_update == update.pk|stringformat:"i" %}
+
+                    {# use query params ?delete_update=<id> to show confirmation prompt #}
+                    <div class="update-delete-confirm">
+                      <p>Delete this update{% if update.photos.all or update.photo %} and its photos{% endif %}? This can't be undone.</p>
+                      <form method="post" action="{% url 'inventory:delete_booking_update' update.pk %}" class="update-card-actions">
+                        {% csrf_token %}
+                        <button type="submit" class="update-action-btn update-action-delete">Yes, delete</button>
+                        {# Remove query param to cancel delete confirmation prompt #}
+                        <a class="update-action-btn" href="{% querystring delete_update=None %}">Keep</a> 
+                      </form>
+                    </div>
+                  {% else %}
+                    <div class="update-card-actions">
+                      <a class="update-action-btn" href="{% url 'inventory:edit_booking_update' update.pk %}">Edit</a>
+                      <a class="update-action-btn update-action-delete" href="{% querystring delete_update=update.pk %}">Delete</a>
+                    </div>
+                  {% endif %}
+                {% endif %}
               </div>
             {% empty %}
               <p class="detail-text" style="color: #6b7280; font-style: italic; margin-top: 0.5rem;">No updates recorded yet.</p>
             {% endfor %}
           </div>
 
-          {# Update Booking Btn #}
+          {# Update Booking Btn - shows only if booking is active #}
           <div style="margin-top: 1.5rem;">
+            {% if selected_booking.status != 'CANCELLED' %}
               <a href="{% url 'inventory:update_booking' selected_booking.pk %}" class="edit-product-btn" style="display: block; text-align: center; text-decoration: none;">
                 Update booking
               </a>
+            {% else %}
+              <p class="detail-text" style="color: #913434; font-style: italic; margin-top: 0.5rem; text-align: center;">
+                Booking was cancelled by customer, no further updates can be added.
+              </p>
+            {% endif %}
           </div>
 
       </section>

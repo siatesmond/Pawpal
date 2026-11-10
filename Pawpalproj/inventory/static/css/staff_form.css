@@ -35,7 +35,39 @@
   margin: 1.75rem 0;
 }
 
-<<<<<<< Updated upstream
+/* no picture can be wider than the card */
+.form-card img {
+  max-width: 100%;
+}
+
+/* Header at the top of an edit form: small photo + name + ID */
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.product-info .product-image {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #f9fafb;
+}
+
+.product-info h2 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.product-info p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
 .checkout-summary {
   margin-bottom: 0;
   padding: 1.5rem 2.25rem;
@@ -95,145 +127,10 @@
 
 .checkout-summary-item span,
 .checkout-summary-empty {
-=======
-/* no picture can be wider than the card */
-.form-card img {
-  max-width: 100%;
-}
-
-/* Header at the top of an edit form: small photo + name + ID */
-.product-info {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.product-info .product-image {
-  flex: none;
-  width: 88px;
-  height: 88px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  object-fit: cover;
-  background: #f9fafb;
-}
-
-.product-info h2 {
-  margin: 0 0 4px;
-  font-size: 1.05rem;
-}
-
-.product-info p {
-  margin: 0;
->>>>>>> Stashed changes
   color: #6b7280;
   font-size: 0.85rem;
 }
 
-<<<<<<< Updated upstream
-.checkout-summary-total {
-  padding-bottom: 0;
-  border-bottom: 0;
-  color: #374151;
-}
-
-.checkout-summary-total strong {
-  color: #111827;
-  font-size: 1.1rem;
-}
-
-.checkout-points-earned strong {
-  color: #15803d;
-}
-
-.apply-points-btn {
-  margin-top: 8px;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 999px;
-  background: var(--green);
-  color: #fff;
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.apply-points-btn:hover {
-  background: #3d4b34;
-}
-
-.checkout-pay-btn {
-  width: 100%;
-  margin-top: 1.25rem;
-}
-
-.checkout-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  column-gap: 1.5rem;
-  row-gap: 1.5rem;
-}
-
-.checkout-form > .form-group,
-.checkout-form > .form-error-summary,
-.checkout-form > .form-actions {
-  grid-column: 1 / -1;
-}
-
-.checkout-form > .form-group:has(#id_expiry),
-.checkout-form > .form-group:has(#id_cvv) {
-  grid-column: span 1;
-}
-
-.checkout-form .form-group:has(#id_delivery_method_0) {
-  display: block;
-}
-
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_delivery_address),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_use_new_address),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_new_address_line1),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_new_address_label),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_new_address_line2),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_new_address_postal_code),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_save_address),
-.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
-  .form-group:has(#id_new_address_is_default) {
-  display: none;
-}
-
-.checkout-form:has(input[name="delivery_method"][value="delivery"]:checked)
-  .form-group:has(#id_pickup_outlet) {
-  display: none;
-}
-
-.checkout-form:not(:has(#id_use_new_address:checked))
-  .form-group:has(#id_new_address_label),
-.checkout-form:not(:has(#id_use_new_address:checked))
-  .form-group:has(#id_new_address_line1),
-.checkout-form:not(:has(#id_use_new_address:checked))
-  .form-group:has(#id_new_address_line2),
-.checkout-form:not(:has(#id_use_new_address:checked))
-  .form-group:has(#id_new_address_postal_code),
-.checkout-form:not(:has(#id_use_new_address:checked))
-  .form-group:has(#id_save_address),
-.checkout-form:not(:has(#id_use_new_address:checked))
-  .form-group:has(#id_new_address_is_default) {
-  display: none;
-}
-
-.checkout-form .form-actions {
-  margin-top: 0;
-}
-
-=======
->>>>>>> Stashed changes
 @media (max-width: 600px) {
   .form-page {
     padding: 1.5rem 1rem;
@@ -329,4 +226,52 @@
 .form-alert-error {
   background-color: #fef2f2;
   color: #991b1b;
+}
+/* File upload in forms (e.g. product photo): current photo + picker, kept inside the card */
+.file-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0.6rem;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.file-current img {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.file-current div {
+  min-width: 0; /* lets a long file name wrap instead of pushing out of the card */
+}
+
+.file-current strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.file-current span {
+  display: block;
+  color: #6b7280;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.form-group input[type="file"] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px dashed #c9c3b6;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
 }

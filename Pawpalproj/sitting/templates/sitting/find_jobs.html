@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Find jobs | Pawpal{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+{# Leaflet: free map library, no API key needed #}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+{% endblock %}
+
+{% block content %}
+<section class="sitter">
+  <div class="sitter-head">
+    <div><h1>Find jobs</h1><p>Open sitting requests near your service area · {{ sitter.service_area }}</p></div>
+    <span class="pill pill-success">✓ Approved sitter</span>
+  </div>
+
+  <div class="sitter-cols side-left">
+    {# Filters #}
+    <aside class="sitter-stack">
+      <form method="get" class="s-card">
+        <div class="s-card-head"><h2>Filters</h2><a href="{% url 'sitting:sitter_find_jobs' %}" class="link">Reset</a></div>
+
+        <div class="field">
+          <p class="field-label">Distance from {{ sitter.service_area }}</p>
+          <div class="chips">
+            {% for km in distance_choices %}
+              <label class="chip"><input type="radio" name="distance" value="{{ km }}" {% if max_distance == km %}checked{% endif %}><span>{% if km == "any" %}Any{% else %}{{ km }} km{% endif %}</span></label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="field"><label for="date_from">From</label><input type="date" id="date_from" name="date_from" value="{{ date_from }}"></div>
+        <div class="field"><label for="date_to">To</label><input type="date" id="date_to" name="date_to" value="{{ date_to }}"></div>
+
+        <div class="field">
+          <p class="field-label">Pet type</p>
+          <div class="chips">
+            {% for value, label in pet_type_choices %}
+              <label class="chip"><input type="checkbox" name="pet_type" value="{{ value }}" {% if value in pet_types %}checked{% endif %}><span>{{ label }}</span></label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="field">
+          <p class="field-label">Job length</p>
+          <div class="chips">
+            <label class="chip"><input type="radio" name="job_length" value="" {% if not job_length %}checked{% endif %}><span>Any</span></label>
+            <label class="chip"><input type="radio" name="job_length" value="dropin" {% if job_length == "dropin" %}checked{% endif %}><span>Drop-in</span></label>
+            <label class="chip"><input type="radio" name="job_length" value="short" {% if job_length == "short" %}checked{% endif %}><span>1–3 days</span></label>
+            <label class="chip"><input type="radio" name="job_length" value="long" {% if job_length == "long" %}checked{% endif %}><span>4+ days</span></label>
+          </div>
+        </div>
+
+        <div class="field"><label for="min_pay">Min. pay per day (SGD)</label><input type="number" id="min_pay" name="min_pay" min="0" value="{{ min_pay }}"></div>
+        <input type="hidden" name="sort" value="{{ sort }}">
+        <button type="submit" class="btn btn-dark btn-block">Apply filters</button>
+      </form>
+
+      <div class="s-card s-card-blue">
+        <p class="eyebrow">How accepting works</p>
+        <ol class="steps">
+          <li>Accept a request → it shows as Pending</li>
+          <li>Owner confirms &amp; pays → Upcoming</li>
+          <li>Post updates while the job is in progress</li>
+          <li>Payout after completion (Pawpal keeps 10%)</li>
+        </ol>
+      </div>
+    </aside>
+
+    {# Request list #}
+    <div class="sitter-stack">
+      <div class="toolbar">
+        <div><strong>{{ jobs|length }} open request{{ jobs|length|pluralize }}</strong><span class="muted small">Matching your filters</span></div>
+        <form method="get" class="actions">
+          {# keep the current filters when changing the sort order #}
+          <input type="hidden" name="distance" value="{{ max_distance }}">
+          <input type="hidden" name="date_from" value="{{ date_from }}">
+          <input type="hidden" name="date_to" value="{{ date_to }}">
+          {% for value in pet_types %}<input type="hidden" name="pet_type" value="{{ value }}">{% endfor %}
+          <input type="hidden" name="job_length" value="{{ job_length }}">
+          <input type="hidden" name="min_pay" value="{{ min_pay }}">
+          <select name="sort" onchange="this.form.submit()">
+            <option value="nearest" {% if sort == "nearest" %}selected{% endif %}>Sort: Nearest</option>
+            <option value="date" {% if sort == "date" %}selected{% endif %}>Sort: Start date</option>
+          </select>
+        </form>
+      </div>
+
+      {% if map_centre %}
+        {# Map: my service area + one pin per request #}
+        {# Leaflet draws the map, OpenStreetMap supplies the map pictures (free, no key) #}
+        <div id="jobs-map" style="height: 320px; border-radius: 16px; z-index: 0;"></div>
+        {{ map_pins|json_script:"map-pins" }}
+        {{ map_centre|json_script:"map-centre" }}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+        <script>
+          // read the data the view sent with |json_script
+          const pins = JSON.parse(document.getElementById("map-pins").textContent);
+          const centre = JSON.parse(document.getElementById("map-centre").textContent);
+
+          // Singapore only: OneMap has no map pictures outside these corners
+          const singapore = L.latLngBounds([1.144, 103.535], [1.494, 104.502]);
+
+          // map centred on the sitter's service area
+          const map = L.map("jobs-map", { maxBounds: singapore, minZoom: 11, maxZoom: 19 })
+            .setView([centre.lat, centre.lng], 12);
+
+          // Map pictures from OneMap (Singapore government, free, no key).
+          // OpenStreetMap's servers block local test sites, which showed "Access blocked".
+          L.tileLayer("https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png", {
+            minZoom: 11,
+            maxZoom: 19,
+            bounds: singapore,
+            attribution: '<a href="https://www.onemap.gov.sg/" target="_blank">OneMap</a> &copy; contributors | <a href="https://www.sla.gov.sg/" target="_blank">Singapore Land Authority</a>',
+          }).addTo(map);
+
+          // green circle = the distance filter around the sitter (5 km when "Any")
+          L.circle([centre.lat, centre.lng], {
+            radius: {% if max_distance != "any" %}{{ max_distance }} * 1000{% else %}5000{% endif %},
+            color: "#55644A",
+            fillColor: "#55644A",
+            fillOpacity: 0.12,
+            weight: 1,
+          }).addTo(map);
+
+          // the sitter's own location: a green dot with a "You" label,
+          // so it looks different from the blue request pins
+          L.circleMarker([centre.lat, centre.lng], {
+            radius: 9,
+            color: "#ffffff",
+            weight: 3,
+            fillColor: "#55644A",
+            fillOpacity: 1,
+          })
+            .addTo(map)
+            .bindTooltip("You · {{ sitter.service_area|escapejs }}", { permanent: true, direction: "bottom", offset: [0, 8] });
+
+          // turn < > & " into safe text, so names typed by users cannot inject HTML
+          function safe(text) {
+            const box = document.createElement("span");
+            box.textContent = text;
+            return box.innerHTML;
+          }
+
+          // one pin per request; click it to see the details
+          for (const pin of pins) {
+            const popupText =
+              "<strong>" + safe(pin.title) + "</strong><br>" + safe(pin.pets) +
+              "<br>SGD " + safe(pin.price) + (pin.distance !== null ? " · " + pin.distance + " km" : "");
+            L.marker([pin.lat, pin.lng]).addTo(map).bindPopup(popupText);
+          }
+        </script>
+      {% else %}
+        <div class="map-placeholder">Map — add your service area to see nearby requests</div>
+      {% endif %}
+
+      {% for job in jobs %}
+        <article class="s-card">
+          <div class="job-top">
+            <div class="job-who">
+              <h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3>
+              {% if job.distance is not None %}<span class="pill pill-cream">📍 {{ job.distance }} km</span>{% endif %}
+              {% for pet in job.pet_list %}<span class="pill pill-outline pill-sm">{{ pet.get_pet_type_display }}</span>{% endfor %}
+              {% if job.sent_to_me %}<span class="pill pill-honey">Sent to you</span>{% endif %}
+            </div>
+            <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} ({{ job.number_of_days }} day{{ job.number_of_days|pluralize }})</span>
+          </div>
+
+          <div class="job-body">
+            <div class="avatar">🐾</div>
+            <div class="job-info">
+              <strong>{% for pet in job.pet_list %}{{ pet.name }}{% if pet.breed %} ({{ pet.breed }}){% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</strong>
+              <p>{{ job.care_requirements|default:"Pet care requested by the owner." }}</p>
+
+              {# See the pet profile, medical and behaviour notes before accepting #}
+              <details>
+                <summary class="link small">View pet profile, medical &amp; behaviour notes →</summary>
+                {% for pet in job.pet_list %}
+                  <div class="note-box">
+                    <strong>{{ pet.name }}</strong>
+                    <span class="small">{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %}{% if pet.weight_kg %} · {{ pet.weight_kg }} kg{% endif %}</span>
+                    {% if pet.allergies %}<span class="small"><b>Allergies:</b> {{ pet.allergies }}</span>{% endif %}
+                    {% if pet.conditions %}<span class="small"><b>Conditions:</b> {{ pet.conditions }}</span>{% endif %}
+                    {% if pet.medication %}<span class="small"><b>Medication:</b> {{ pet.medication }}</span>{% endif %}
+                    {% if pet.medical_notes %}<span class="small"><b>Medical notes:</b> {{ pet.medical_notes }}</span>{% endif %}
+                    {% if pet.behaviour_notes %}<span class="small"><b>Behaviour:</b> {{ pet.behaviour_notes }}</span>{% endif %}
+                    {% if pet.last_vaccination_date %}<span class="small"><b>Last vaccination:</b> {{ pet.last_vaccination_date|date:"j M Y" }}</span>{% endif %}
+                  </div>
+                {% endfor %}
+              </details>
+              <span class="muted small">{{ job.location }}</span>
+            </div>
+            <div class="job-pay"><strong>SGD {{ job.total_price_display }}</strong><small>You earn SGD {{ job.sitter_payout_display }} after 10% fee</small></div>
+          </div>
+
+          <div class="actions">
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="request_id" value="{{ job.pk }}">
+              <input type="hidden" name="action" value="accept">
+              <button type="submit" class="btn btn-dark">Accept job</button>
+            </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="request_id" value="{{ job.pk }}">
+              {% if job.sent_to_me %}
+                {# a request sent only to me -> decline it and tell the owner #}
+                <input type="hidden" name="action" value="decline">
+                <button type="submit" class="btn btn-outline" onclick="return confirm('Decline this request? The owner will be notified.');">Decline</button>
+              {% else %}
+                {# an open request -> just hide it from my list #}
+                <input type="hidden" name="action" value="hide">
+                <button type="submit" class="btn btn-outline">Not interested</button>
+              {% endif %}
+            </form>
+          </div>
+        </article>
+      {% empty %}
+        <div class="s-card sitter-empty-state"><h2>No jobs found</h2><p>Try a wider distance or different dates.</p></div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

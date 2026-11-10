@@ -19,14 +19,18 @@
 </head>
 
 <body>
-  {% include "navbar.html" %}
+  {% if request.session.user_type == "sitter" %}
+    {% include "sitting/sitter_navbar.html" %}
+  {% else %}
+    {% include "navbar.html" %}
+  {% endif %}
 
   {% block top_banner %}{% endblock %}
   
   <main class="main">
     {% if messages %}
       {% for message in messages %}
-        <div class="site-message site-message-{{ message.tags }}">{{ message }}</div>
+        <div class="site-message site-message-{{ message.tags }}" role="alert">{{ message }}</div>
       {% endfor %}
     {% endif %}
     {% block content %}{% endblock %}

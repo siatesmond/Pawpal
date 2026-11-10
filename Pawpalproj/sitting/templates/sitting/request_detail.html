@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sitting request | Pawpal{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}" />
+{% endblock %}
+
+{% block content %}
+<section class="sitter request-page">
+  <a href="{% url 'sitting:my_sitting_requests' %}" class="link small request-back">‹ All sitting requests</a>
+  <div class="sitter-head">
+    <div>
+      <h1>Pet sitting · {{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }}</h1>
+      <p>{{ job.number_of_days }} day{{ job.number_of_days|pluralize }} · {{ job.location }}</p>
+    </div>
+    <span class="pill {% if job.status == 'completed' %}pill-success{% elif job.status == 'pending' %}pill-honey{% else %}pill-outline{% endif %}">{{ job.get_status_display }}</span>
+  </div>
+
+  {# Status progress #}
+  {% if current_index >= 0 %}
+    <ol class="request-steps">
+      {% for value, label in steps %}
+        <li class="{% if forloop.counter0 <= current_index %}done{% endif %}">{{ label }}</li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <div class="s-card"><p>This request was <strong>{{ job.get_status_display|lower }}</strong>.
+      {% if job.status == "declined" %}<a href="{% url 'sitting:find_sitter' %}" class="link">Choose another sitter →</a>{% endif %}</p></div>
+  {% endif %}
+
+  <div class="sitter-cols">
+    <div class="sitter-stack">
+      {# What to do next #}
+      {% if job.status == "open" %}
+        <div class="s-card">
+          {% if job.sitter %}
+            <p>Waiting for <strong>{{ job.sitter.first_name }}</strong> to accept or decline. We'll email you when they reply.</p>
+          {% else %}
+            <p>Your request is open to all nearby sitters. We'll email you when one accepts.</p>
+          {% endif %}
+        </div>
+      {% elif job.status == "pending" %}
+        <div class="s-card s-card-blue">
+          <h2>{{ job.sitter.first_name }} accepted your request 🎉</h2>
+          <p>Confirm and pay to book {{ job.sitter.first_name }} for these dates.</p>
+          <a href="{% url 'sitting:pay_for_request' job.pk %}" class="btn btn-dark">Confirm &amp; pay SGD {{ job.total_price_display }}</a>
+        </div>
+      {% elif job.status == "completed" %}
+        {% if show_review_form %}
+          {# Rate & review the sitter (ModelForm) #}
+          <form method="post" enctype="multipart/form-data" class="s-card s-card-blue" id="review">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="review">
+            <h2>{% if my_review %}Edit your review{% else %}How was {{ job.sitter.first_name }}?{% endif %}</h2>
+            <p class="muted small">Your rating helps other pet owners choose a sitter.</p>
+
+            {# 5 radio buttons drawn as stars; picking the 4th lights up stars 1-4 #}
+            <div class="field">
+              <p class="field-label">Rating</p>
+              <div class="star-picker">
+                {% for radio in review_form.rating %}
+                  <input type="radio" name="rating" value="{{ radio.data.value }}" id="star{{ radio.data.value }}" {% if radio.data.selected %}checked{% endif %}>
+                  <label for="star{{ radio.data.value }}" title="{{ radio.data.value }} star{{ radio.data.value|pluralize }}">★</label>
+                {% endfor %}
+              </div>
+              {% if review_form.rating.errors %}<div class="review-error">{{ review_form.rating.errors }}</div>{% endif %}
+            </div>
+
+            <div class="field">
+              <label for="{{ review_form.comment.id_for_label }}">{{ review_form.comment.label }}</label>
+              {{ review_form.comment }}
+              {% if review_form.comment.errors %}<div class="review-error">{{ review_form.comment.errors }}</div>{% endif %}
+            </div>
+
+            <div class="field">
+              <label for="{{ review_form.photo.id_for_label }}">{{ review_form.photo.label }}</label>
+              {{ review_form.photo }}
+              {% if review_form.photo.errors %}<div class="review-error">{{ review_form.photo.errors }}</div>{% endif %}
+            </div>
+
+            <div class="actions">
+              <button type="submit" class="btn btn-dark">{% if my_review %}Save changes{% else %}Submit review{% endif %}</button>
+              {% if my_review %}<a href="{% url 'sitting:request_detail' job.pk %}" class="btn btn-outline">Cancel</a>{% endif %}
+            </div>
+          </form>
+        {% else %}
+          {# My review, with edit / delete #}
+          <div class="s-card" id="review">
+            <div class="s-card-head"><h2>Your review</h2><span class="muted small">{{ my_review.created_at|date:"j M Y" }}</span></div>
+            <div class="review">
+              <span class="stars">{% for i in "12345" %}{% if forloop.counter <= my_review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+              <span>{{ my_review.comment|default:"No comment" }}</span>
+              {% if my_review.photo %}<img src="{{ my_review.photo.url }}" alt="Your review photo" class="update-photo">{% endif %}
+            </div>
+            <div class="actions">
+              <a href="?edit=1#review" class="btn btn-outline">Edit</a>
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_review">
+                <button type="submit" class="link-danger" onclick="return confirm('Delete your review?');">Delete</button>
+              </form>
+            </div>
+          </div>
+        {% endif %}
+      {% endif %}
+
+      {# Notes and photos from the sitter #}
+      <div class="s-card">
+        <h2>Updates from your sitter</h2>
+        <ul class="timeline">
+          {% for update in updates %}
+            <li>
+              <div>
+                <span class="muted small">{{ update.created_at|date:"j M, g:i a" }}{% if update.new_status %} · {{ update.get_new_status_display }}{% endif %}</span><br>
+                {{ update.note }}
+                {% if update.photo %}<br><img src="{{ update.photo.url }}" alt="Photo from the sitter" class="update-photo">{% endif %}
+              </div>
+            </li>
+          {% empty %}
+            <li>No updates yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      {# Same cancel section as bookings and orders #}
+      {% url 'sitting:cancel_request' job.pk as cancel_url %}
+      {% include "user/_cancel_section.html" with record_label="sitting request" cancel_url=cancel_url %}
+    </div>
+
+    <aside class="sitter-stack">
+      <div class="s-card">
+        <h2>Details</h2>
+        <table class="earn-table">
+          <tr><td class="muted">Sitter</td><td>{% if job.sitter %}<a href="{% url 'sitting:sitter_public_profile' job.sitter.pk %}" class="link">{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.</a>{% else %}Open to all sitters{% endif %}</td></tr>
+          <tr><td class="muted">Pets</td><td>{{ pets|join:", " }}</td></tr>
+          <tr><td class="muted">Care</td><td>{{ job.care_requirements|default:"–" }}</td></tr>
+          <tr><td class="muted">Price</td><td>SGD {{ job.total_price_display }}{% if job.status == "open" and not job.sitter %} (estimate){% endif %}</td></tr>
+          {% if payment %}<tr><td class="muted">Paid</td><td>SGD {{ paid_amount }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}</td></tr>{% endif %}
+        </table>
+      </div>
+
+    </aside>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,43 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Business owner | Pawpal{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}">
+  <link rel="stylesheet" href="{% static 'css/staff.css' %}">
+  <link rel="stylesheet" href="{% static 'css/owner.css' %}">
+  {% block extra_css %}{% endblock %}
+</head>
+<body class="owner-body">
+  <aside class="owner-sidebar">
+    <p class="owner-logo">Pawpal</p>
+    <p class="owner-role">Business owner · All outlets</p>
+    <nav class="owner-nav">
+      <a href="{% url 'core:owner_dashboard' %}" {% if active_page == "dashboard" %}class="active"{% endif %}>Dashboard</a>
+      <a href="{% url 'inventory:staff_bookings' %}" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>
+      <a href="{% url 'inventory:staff_orders_stock' %}" {% if active_page == "orders" %}class="active"{% endif %}>Orders</a>
+      <a href="{% url 'inventory:staff_products' %}" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
+      <a href="{% url 'core:owner_customers' %}" {% if active_page == "customers" %}class="active"{% endif %}>Customers</a>
+      <a href="{% url 'core:owner_sitters' %}" {% if active_page == "sitters" %}class="active"{% endif %}>Pet sitters</a>
+      <a href="{% url 'core:owner_sitting_requests' %}" {% if active_page == "sitting" %}class="active"{% endif %}>Pet sitting</a>
+      <a href="{% url 'core:owner_staff' %}" {% if active_page == "staff" %}class="active"{% endif %}>Staff</a>
+    </nav>
+    <a class="owner-logout" href="{% url 'user:logout' %}">Log out</a>
+  </aside>
+  <main class="owner-main">
+    <div class="owner-topbar">{{ request.session.username|default:"Business owner" }}</div>
+    {# Success / error messages from the views (same as the staff pages) #}
+    {% if messages %}
+      {% for message in messages %}
+        <div class="form-alert form-alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

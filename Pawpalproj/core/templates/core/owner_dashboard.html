@@ -1,0 +1,183 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Business owner dashboard | Pawpal{% endblock %}
+
+{% block content %}
+{# Heading + filters (date range, outlet) + Export CSV #}
+<header class="owner-dash-head">
+  <div>
+    <h1>{{ greeting }}, {{ request.session.username }}</h1>
+    <p>Business owner · {% if selected_outlet %}{{ selected_outlet.name }}{% else %}All outlets{% endif %}</p>
+  </div>
+  <form method="get" class="owner-dash-filters">
+    <label>From<input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></label>
+    <label>To<input type="date" name="end" value="{{ end|date:'Y-m-d' }}"></label>
+    <label>Outlet
+      <select name="outlet">
+        <option value="">All outlets</option>
+        {% for outlet in outlets %}
+          <option value="{{ outlet.pk }}" {% if selected_outlet.pk == outlet.pk %}selected{% endif %}>{{ outlet.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="owner-btn-outline">Apply</button>
+    {# same filters + export=csv downloads the report #}
+    <button type="submit" name="export" value="csv" class="owner-btn-dark">Export CSV</button>
+  </form>
+</header>
+
+{# Four summary cards #}
+<section class="owner-metrics">
+  <article>
+    <span>Total revenue</span>
+    <strong>SGD {{ total_revenue }}</strong>
+    <small>{% if revenue_change is not None %}{% if revenue_change >= 0 %}▲{% else %}▼{% endif %} {{ revenue_change }}% vs previous period{% else %}{{ start|date:"j M" }} – {{ end|date:"j M Y" }}{% endif %}</small>
+  </article>
+  <article>
+    <span>Bookings</span>
+    <strong>{{ booking_count }}</strong>
+    <small>{% if booking_change >= 0 %}▲ {{ booking_change }}{% else %}▼ {{ booking_change|stringformat:"d"|cut:"-" }}{% endif %} vs previous period</small>
+  </article>
+  <article>
+    <span>Pet sitting commission (10%)</span>
+    <strong>SGD {{ commission }}</strong>
+    <small>from SGD {{ sitting_sales }} sitting sales</small>
+  </article>
+  <article>
+    <span>New / returning customers</span>
+    <strong>{{ new_customers }} / {{ returning_customers }}</strong>
+    <small>{{ returning_percent }}% returning</small>
+  </article>
+</section>
+
+{# Revenue by stream chart + low stock #}
+<section class="owner-dashboard-grid">
+  <article class="owner-panel">
+    <div class="owner-panel-head">
+      <h2>Revenue by stream</h2>
+      <div class="owner-legend">
+        <span><i class="seg-services"></i>Services</span>
+        <span><i class="seg-products"></i>Products</span>
+        <span><i class="seg-delivery"></i>Delivery</span>
+        <span><i class="seg-commission"></i>Sitting (10%)</span>
+      </div>
+    </div>
+    {# each bar is 4 coloured blocks stacked; heights come from the view #}
+    <div class="owner-stack-chart">
+      {% for bar in chart %}
+        <div class="owner-stack-bar" title="SGD {{ bar.total }}">
+          <div class="owner-stack">
+            <div class="seg-commission" style="height: {{ bar.commission_px }}px"></div>
+            <div class="seg-delivery" style="height: {{ bar.delivery_px }}px"></div>
+            <div class="seg-products" style="height: {{ bar.products_px }}px"></div>
+            <div class="seg-services" style="height: {{ bar.services_px }}px"></div>
+          </div>
+          <span>{{ bar.label }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="owner-panel">
+    <h2>Low stock alerts</h2>
+    {% for product in low_stock_products %}
+      <div class="owner-row">
+        <span>{{ product.name }}<small class="{% if product.stock_quantity == 0 %}owner-text-danger{% else %}owner-text-warning{% endif %}">{{ product.stock_quantity }} left</small></span>
+        <a class="owner-link" href="{% url 'inventory:update_stock' product.pk %}">Restock</a>
+      </div>
+    {% empty %}
+      <p class="owner-empty">No low stock alerts.</p>
+    {% endfor %}
+  </article>
+</section>
+
+{# Revenue breakdown + top services & products #}
+<section class="owner-dashboard-grid">
+  <article class="owner-panel">
+    <h2>Revenue breakdown · {{ start|date:"j M" }} – {{ end|date:"j M Y" }}</h2>
+    <table class="owner-table">
+      <thead><tr><th>Stream</th><th>Revenue</th><th>Share</th><th>Change</th></tr></thead>
+      <tbody>
+        {% for row in breakdown %}
+          <tr>
+            <td>{{ row.label }}</td>
+            <td>SGD {{ row.amount }}</td>
+            <td>{{ row.share }}%</td>
+            <td>{% if row.change is None %}–{% elif row.change >= 0 %}▲ {{ row.change }}%{% else %}▼ {{ row.change|stringformat:"d"|cut:"-" }}%{% endif %}</td>
+          </tr>
+        {% endfor %}
+        <tr class="owner-total-row"><td>Total</td><td>SGD {{ total_revenue }}</td><td>100%</td><td></td></tr>
+      </tbody>
+    </table>
+  </article>
+
+  <article class="owner-panel owner-panel-blue">
+    <h2>Top services &amp; products</h2>
+    {% for name, count in top_services %}
+      <div class="owner-row"><span>{{ name }}</span><strong>{{ count }} booking{{ count|pluralize }}</strong></div>
+    {% endfor %}
+    {% for name, quantity in top_products %}
+      <div class="owner-row"><span>{{ name }}</span><strong>{{ quantity }} sold</strong></div>
+    {% endfor %}
+    {% if not top_services and not top_products %}<p class="owner-empty">No sales in this period.</p>{% endif %}
+    <p class="owner-small">Points issued {{ points_issued }} · redeemed {{ points_redeemed }}</p>
+  </article>
+</section>
+
+{# Revenue by outlet + booking volume #}
+<section class="owner-dashboard-grid">
+  <article class="owner-panel">
+    <h2>Bookings by service &amp; outlet</h2>
+    <table class="owner-table">
+      <thead><tr><th>Service</th><th>Outlet</th><th>Bookings</th></tr></thead>
+      <tbody>
+        {% for row in booking_volume_rows %}
+          <tr><td>{{ row.service }}</td><td>{{ row.outlet }}</td><td>{{ row.count }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" style="text-align: center;">No bookings in this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  <article class="owner-panel">
+    <h2>Revenue by outlet</h2>
+    <table class="owner-table">
+      <thead><tr><th>Outlet</th><th>Revenue</th><th>Bookings</th></tr></thead>
+      <tbody>
+        {% for row in outlet_rows %}
+          <tr><td>{{ row.name }}</td><td>SGD {{ row.amount }}</td><td>{{ row.bookings }}</td></tr>
+        {% empty %}
+          <tr><td colspan="3" style="text-align: center;">No outlets.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="owner-small">Outlet revenue = services + pick-up orders. Delivery orders and pet sitting are not tied to an outlet.</p>
+  </article>
+</section>
+
+{# Pet sitting commission per job #}
+<section class="owner-panel">
+  <div class="owner-panel-head">
+    <h2>Pet sitting commission</h2>
+    <span class="owner-small">Commission SGD {{ commission }} · paid to sitters SGD {{ paid_to_sitters }}</span>
+  </div>
+  <table class="owner-table">
+    <thead><tr><th>Completed</th><th>Owner</th><th>Sitter</th><th>Job price</th><th>Commission (10%)</th><th>Paid to sitter</th></tr></thead>
+    <tbody>
+      {% for job in sitting_jobs %}
+        <tr>
+          <td>{{ job.end_date|date:"j M Y" }}</td>
+          <td>{{ job.owner.first_name }} {{ job.owner.last_name }}</td>
+          <td>{{ job.sitter.first_name }} {{ job.sitter.last_name }}</td>
+          <td>SGD {{ job.total_price_display }}</td>
+          <td>SGD {{ job.commission_display }}</td>
+          <td>SGD {{ job.sitter_payout_display }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6" style="text-align: center;">No completed sitting jobs in this period.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

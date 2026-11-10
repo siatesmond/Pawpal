@@ -1,0 +1,17 @@
+{# booking card used by both sections in user/bookings.html #}
+<article class="record-row{% if booking.status == 'CANCELLED' %} is-cancelled{% endif %}">
+  <!-- Booking information -->
+  <div class="record-info"> 
+    <h3>{{ booking.slot.service.name }}</h3>
+    <p>For {{ booking.pet.name }} · {{ booking.slot.outlet.name }}</p>
+    <p>
+      {% if booking.check_out_date %}Check-in {% endif %}{{ booking.slot.start_time|date:"D, j M Y · g:i A" }}
+      {% if booking.check_out_date %}<br>Check-out {{ booking.check_out_date|date:"D, j M Y" }} · {{ booking.slot.start_time|date:"g:i A" }}{% endif %}
+    </p>
+  </div>
+
+  <div class="record-side">
+    <span class="record-status record-status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
+    <a class="record-details-link" href="{% url 'user:booking_detail' booking.pk %}">View details</a>
+  </div>
+</article>

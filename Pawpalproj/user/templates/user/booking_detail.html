@@ -1,0 +1,101 @@
+{% extends "user/account_detail_base.html" %}
+{% load static %}
+
+{% block title %}Booking #{{ booking.pk }} | Pawpal{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'user/css/booking_detail.css' %}" />
+{% endblock %}
+
+{% block back_link %}
+<a class="record-back-link" href="{% url 'user:bookings' %}">‹ Back to my bookings</a>
+{% endblock %}
+
+{% block heading %}{{ booking.slot.service.name }}{% endblock %}
+{% block subtitle %}Booking #{{ booking.pk }} · booked on {{ booking.created_at|date:"j M Y" }}{% endblock %}
+{% block status %}
+<span class="record-status record-status-{{ booking.status|lower }}">{{ booking.get_status_display }}</span>
+{% endblock %}
+
+{% block sections %}
+    <!-- Updates posted by staff, newest first -->
+    <section class="profile-panel">
+      <h2>Updates from our team</h2>
+      {% if updates %}
+        <ol class="update-timeline">
+          {% for update in updates %}
+            <li class="update-item">
+              <div class="update-head">
+                <span class="record-status record-status-{{ update.new_status|lower }}">{{ update.get_new_status_display }}</span>
+                <time datetime="{{ update.created_at|date:'c' }}">{{ update.created_at|date:"D, j M · g:i A" }}</time>
+              </div>
+              {% if update.note %}<p class="update-note">{{ update.note }}</p>{% endif %}
+
+              {% if update.photos.all or update.photo %}
+                <div class="update-photos">
+                  {% for photo in update.photos.all %}
+                    <a href="{{ photo.photo.url }}" target="_blank" rel="noopener">
+                      <img src="{{ photo.photo.url }}" alt="Photo of {{ booking.pet.name }} from {{ update.created_at|date:'j M' }}">
+                    </a>
+                  {% endfor %}
+                  {% if update.photo %}
+                    <a href="{{ update.photo.url }}" target="_blank" rel="noopener">
+                      <img src="{{ update.photo.url }}" alt="Photo of {{ booking.pet.name }} from {{ update.created_at|date:'j M' }}">
+                    </a>
+                  {% endif %}
+                </div>
+              {% endif %}
+
+              {% if update.staff %}
+                <small class="update-by">Posted by {{ update.staff.first_name|default:update.staff.username }}</small>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="section-note">No updates yet. Our team will post updates and photos of {{ booking.pet.name }} here during the visit.</p>
+      {% endif %}
+    </section>
+
+    <!-- Booking information -->
+    <section class="profile-panel">
+      <h2>Booking details</h2>
+      <dl class="detail-list">
+        <div>
+          <dt>Pet</dt>
+          <dd>{{ booking.pet.name }}{% if booking.pet.breed %} ({{ booking.pet.breed }}){% endif %}</dd>
+        </div>
+        <div>
+          <dt>Service</dt>
+          <dd>{{ booking.slot.service.name }}</dd>
+        </div>
+        <div>
+          <dt>Outlet</dt>
+          <dd>{{ booking.slot.outlet.name }}{% if booking.slot.outlet.address %}<br><small>{{ booking.slot.outlet.address }}</small>{% endif %}</dd>
+        </div>
+        <div>
+          <dt>{% if booking.check_out_date %}Check-in{% else %}Date &amp; time{% endif %}</dt>
+          <dd>{{ booking.slot.start_time|date:"D, j M Y · g:i A" }}</dd>
+        </div>
+        {% if booking.check_out_date %}
+          <div>
+            <dt>Check-out</dt>
+            <dd>{{ booking.check_out_date|date:"D, j M Y" }} · {{ booking.slot.start_time|date:"g:i A" }}</dd>
+          </div>
+        {% endif %}
+        {% if booking.cancelled_at %}
+          <div>
+            <dt>Cancelled on</dt>
+            <dd>{{ booking.cancelled_at|date:"D, j M Y · g:i A" }}</dd>
+          </div>
+        {% endif %}
+      </dl>
+    </section>
+
+    <!-- Payment summary -->
+    {% include "user/_payment_summary.html" with subtotal_label="Price" %}
+
+    {% url 'user:booking_cancel' booking.pk as cancel_url %}
+    {% include "user/_cancel_section.html" with record_label="booking" cancel_url=cancel_url refund_dollars=total_dollars %}
+{% endblock %}

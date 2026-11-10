@@ -1,0 +1,16 @@
+<header class="sitter-navbar">
+  <a class="sitter-navbar-logo" href="{% url 'sitting:application_status' %}">Pawpal</a>
+  <span class="sitter-navbar-role">Sitter</span>
+  <nav class="sitter-navbar-links">
+    {% if sitter.application_status == "APPROVED" %}
+      <a href="{% url 'sitting:sitter_find_jobs' %}">Find Jobs</a>
+      <a href="{% url 'sitting:sitter_my_jobs' %}">My Jobs</a>
+      <a href="{% url 'sitting:sitter_earnings' %}">Earnings</a>
+      <a href="{% url 'sitting:sitter_profile' %}">Profile</a>
+    {% else %}
+      <a href="{% url 'sitting:application_status' %}">Application</a>
+      <span>{{ request.session.username }}</span>
+    {% endif %}
+    <a class="sitter-navbar-logout" href="{% url 'user:logout' %}">Log out</a>
+  </nav>
+</header>

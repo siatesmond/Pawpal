@@ -1,0 +1,18 @@
+{% extends "payment/checkout_base.html" %}
+
+{% block title %}Pay for pet sitting | Pawpal{% endblock %}
+
+{# reuse the shared checkout page; only the summary item is different #}
+{% block summary_items %}
+  <div class="checkout-summary-item">
+    <div class="checkout-summary-product">
+      <div class="checkout-summary-placeholder">🐾</div>
+    </div>
+    <div>
+      <strong>Pet sitting by {{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.</strong>
+      <span>For {{ pets|join:", " }}</span>
+      <span>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }} · {{ job.number_of_days }} day{{ job.number_of_days|pluralize }}</span>
+    </div>
+    <strong>SGD {{ job.total_price_display }}</strong>
+  </div>
+{% endblock %}

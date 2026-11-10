@@ -71,8 +71,17 @@ class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = "PENDING", "Pending"
         CONFIRMED = "CONFIRMED", "Confirmed"
+        PACKED = "PACKED", "Packed"
+        READY_FOR_PICKUP = "READY_FOR_PICKUP", "Ready for pickup"
+        OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY", "Out for delivery"
         COMPLETED = "COMPLETED", "Completed"
         CANCELLED = "CANCELLED", "Cancelled"
+
+    # Statuses staff can choose for each kind of order (Cancelled is left out: cancelling needs a refund)
+    PICKUP_STATUSES = (Status.PENDING, Status.CONFIRMED, Status.PACKED, Status.READY_FOR_PICKUP, Status.COMPLETED)
+    DELIVERY_STATUSES = (Status.PENDING, Status.CONFIRMED, Status.PACKED, Status.OUT_FOR_DELIVERY, Status.COMPLETED)
+    # Orders still being worked on (shown under "Current orders" for the customer)
+    ACTIVE_STATUSES = (Status.PENDING, Status.CONFIRMED, Status.PACKED, Status.READY_FOR_PICKUP, Status.OUT_FOR_DELIVERY)
 
     customer = models.ForeignKey(
         "user.Customer", on_delete=models.PROTECT, related_name="orders"
@@ -106,6 +115,11 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order {self.pk}"
+
+    @property
+    def total_display(self):
+        # 4890 cents -> "48.90"
+        return f"{self.total_cents / 100:.2f}"
 
 
 class OrderItem(models.Model):

@@ -30,7 +30,7 @@ class User(models.Model):
     password = models.CharField(max_length=128)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
-    mobile = models.CharField(max_length=8, blank=True)
+    mobile = models.CharField(max_length=20, blank=True)
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
@@ -51,6 +51,10 @@ class Customer(User):
                 name="customer_point_balance_non_negative",
             )
         ]
+
+    def get_point_value(self):
+        # What the points are worth at checkout: 1 point = 1 cent, e.g. 252 -> "2.52"
+        return f"{self.point_balance / 100:.2f}"
 
 
 class Staff(User):
@@ -96,6 +100,9 @@ class Pet(models.Model):
         max_digits=5, decimal_places=2, null=True, blank=True
     )
     medical_notes = models.TextField(blank=True)  # allergies, conditions, medication
+    allergies = models.CharField(max_length=255, blank=True)
+    conditions = models.CharField(max_length=255, blank=True)
+    medication = models.CharField(max_length=255, blank=True)
     behaviour_notes = models.TextField(blank=True)  # handling tips, triggers
     last_vaccination_date = models.DateField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -104,7 +111,7 @@ class Pet(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} ({self.species})"
+        return f"{self.name} ({self.get_pet_type_display()})"
 
 
 class OTP(models.Model):

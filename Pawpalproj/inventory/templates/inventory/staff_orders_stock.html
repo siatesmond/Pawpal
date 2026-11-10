@@ -1,7 +1,7 @@
-{% extends "inventory/staff_base.html" %}
+{% extends base_template|default:"inventory/staff_base.html" %}
 {% load static %}
 
-{% block title %}Orders & stock | Pawpal staff{% endblock %}
+{% block title %}Orders & stock | Pawpal{% endblock %}
 
 {% block content %}
 {# header: title, search, status filter, add product #}
@@ -22,13 +22,15 @@
     <!-- Sort by status dropdown list -->
     <div>
       <label for="status">Status</label>
-      <select id="status" name="status" onchange="this.form.submit()">
+      <select id="status" name="status">
         <option value="">All</option>
         {% for value, label in status_choices %}
         <option value="{{ value }}" {% if status == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
       </select>
     </div>
+
+    <button type="submit" class="save-btn filter-btn">Filter</button>
   </form>
 </div>
 
@@ -167,6 +169,19 @@
 
               </ul>
           </div>
+          {# Update the order status - only show for active orders #}
+          {% if selected.status != "COMPLETED" and selected.status != "CANCELLED" %}
+            <form method="post" action="{% url 'inventory:update_order_status' selected.pk %}" class="order-status-form">
+              {% csrf_token %}
+              <label for="order-status">Update status</label>
+              <select id="order-status" name="new_status">
+                {% for value, label in status_options %}
+                  <option value="{{ value }}" {% if value == selected.status %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+              </select>
+              <button type="submit" class="save-btn">Save</button>
+            </form>
+          {% endif %}
 
           {# Delivery or pick-up information #}
           <div class="detail-card-row-no-border">

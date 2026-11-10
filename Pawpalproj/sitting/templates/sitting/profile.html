@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}My profile | Pawpal{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />{% endblock %}
+
+{% block content %}
+<section class="sitter">
+  <div class="sitter-head"><div><h1>My profile</h1><p>Manage what pet owners see, your rate and your account</p></div></div>
+
+  <div class="sitter-cols side-left">
+    <aside class="sitter-stack">
+      <div class="s-card profile-summary">
+        <div class="avatar avatar-lg">🙂</div>
+        <h2>{{ sitter.first_name }} {{ sitter.last_name }}</h2>
+        <p class="muted">Pet sitter · {{ sitter.service_area }} · since {{ sitter.date_joined|date:"M Y" }}</p>
+        <span class="pill pill-success">✓ Approved</span>
+        <div class="profile-stats">
+          <div><strong>{% if average_rating %}{{ average_rating }} ★{% else %}–{% endif %}</strong><span>Rating</span></div>
+          <div><strong>{{ jobs_done }}</strong><span>Jobs done</span></div>
+          <div><strong>{{ sitter.experience_years }} yrs</strong><span>Experience</span></div>
+        </div>
+      </div>
+      <nav class="s-card profile-menu">
+        <a href="#sitter-profile" class="active">Sitter profile</a>
+        <a href="#account">Account details</a>
+        <a href="#password">Change password</a>
+        <a href="{% url 'user:logout' %}" class="link-danger">Log out</a>
+      </nav>
+    </aside>
+
+    <div class="sitter-stack">
+      {# Sitter profile: bio, area, experience, rate, ID #}
+      <form id="sitter-profile" method="post" enctype="multipart/form-data" class="s-card">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="profile">
+        <div><h2>Sitter profile</h2><p class="s-card-sub">This is what pet owners see when you accept their request.</p></div>
+
+        <div class="field"><label for="bio">Bio</label><textarea id="bio" name="bio">{{ sitter.bio }}</textarea></div>
+        <div class="grid-2">
+          <div class="field"><label for="postal_code">Home postal code</label><input id="postal_code" name="postal_code" value="{{ sitter.postal_code }}" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 529536" required><span class="muted small">Area shown to owners: {{ sitter.service_area }}</span></div>
+          <div class="field"><label for="experience_years">Years of experience</label><input type="number" min="0" id="experience_years" name="experience_years" value="{{ sitter.experience_years }}" required></div>
+        </div>
+
+        <div class="field">
+          <p class="field-label">Pet experience</p>
+          <div class="chips">
+            {% for chip in experience_chips %}
+              <label class="chip"><input type="checkbox" name="pet_experience" value="{{ chip.value }}" {% if chip.checked %}checked{% endif %}><span>{{ chip.label }}</span></label>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="rate-row">
+          <div class="field"><label for="daily_rate">Daily rate (SGD)</label><input type="number" step="0.01" min="0.01" id="daily_rate" name="daily_rate" value="{{ sitter.daily_rate_display }}" required></div>
+          <div class="rate-info"><strong>You receive SGD {{ daily_payout }} / day</strong><span class="muted small">after Pawpal’s 10% commission</span></div>
+        </div>
+
+        <div class="field">
+          <p class="field-label">ID document</p>
+          <div class="file-box">
+            <div>
+              {% if sitter.id_document %}<strong>📄 {{ sitter.id_document.name }}</strong>{% else %}<strong>No document uploaded</strong>{% endif %}
+              <span class="muted small">Verified by Pawpal · PDF, JPG or PNG</span>
+            </div>
+            <label class="btn btn-outline">Replace<input type="file" name="id_document" accept=".pdf,.jpg,.jpeg,.png" hidden></label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn btn-dark">Save changes</button>
+          <a href="{% url 'sitting:sitter_profile' %}" class="btn btn-outline">Cancel</a>
+        </div>
+      </form>
+
+      {# Account details #}
+      <form id="account" method="post" class="s-card">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="account">
+        <h2>Account details</h2>
+        <div class="grid-2">
+          <div class="field"><label for="first_name">First name</label><input id="first_name" name="first_name" value="{{ sitter.first_name }}" required></div>
+          <div class="field"><label for="last_name">Last name</label><input id="last_name" name="last_name" value="{{ sitter.last_name }}"></div>
+          <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" value="{{ sitter.email }}" required></div>
+          <div class="field"><label for="mobile">Mobile number (8 digits)</label><input id="mobile" name="mobile" value="{{ sitter.mobile }}" maxlength="8" required></div>
+          <div class="field"><label>Username</label><input value="{{ sitter.username }}" disabled></div>
+          <div class="field"><label>Member since</label><input value="{{ sitter.date_joined|date:'j M Y' }}" disabled></div>
+        </div>
+        <button type="submit" class="btn btn-dark">Update details</button>
+      </form>
+
+      {# Change password #}
+      <form id="password" method="post" class="s-card">
+        {% csrf_token %}
+        <input type="hidden" name="form" value="password">
+        <h2>Change password</h2>
+        <div class="field"><label for="current_password">Current password</label><input type="password" id="current_password" name="current_password" required></div>
+        <div class="grid-2">
+          <div class="field"><label for="new_password">New password</label><input type="password" id="new_password" name="new_password" minlength="8" placeholder="at least 8 characters" required></div>
+          <div class="field"><label for="confirm_password">Confirm new password</label><input type="password" id="confirm_password" name="confirm_password" minlength="8" placeholder="re-enter new password" required></div>
+        </div>
+        <button type="submit" class="btn btn-dark">Update password</button>
+      </form>
+    </div>
+  </div>
+</section>
+{% endblock %}

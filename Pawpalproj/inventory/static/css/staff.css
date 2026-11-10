@@ -13,6 +13,13 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  /* keep the sidebar one screen tall and in place while the page scrolls,
+     so "Log out" stays visible at the bottom on long pages */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .staff-logo {
@@ -60,17 +67,24 @@
   display: block;
 }
 
-.staff-avatar {
+.staff-user .staff-avatar {
+  display: grid; /* centre the first letter in the circle */
+  place-items: center;
+  flex: none;
   width: 36px;
   height: 36px;
   border-radius: 50%;
   background: #d9d5cb;
+  color: #2f3a27;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .staff-logout {
   display: block;
   margin-top: 16px;
   padding-left: 12px;
+  color: #f3efe4;
   font-size: 13px;
 }
 
@@ -220,7 +234,37 @@
   color: #a16207;
 }
 
+.status-pill.status-approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
 .status-pill.status-confirmed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-pill.status-checked_in {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.status-pill.status-in_progress {
+  background: #ffedd5;
+  color: #c2410c;
+}
+
+.status-pill.status-ready_for_pickup {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.status-pill.status-packed {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-pill.status-out_for_delivery {
   background: #dbeafe;
   color: #1d4ed8;
 }
@@ -422,4 +466,82 @@
   margin-top: 6px;
   color: #77746a;
   font-size: 12px;
+}
+/* Edit / Delete buttons on each booking update card  */
+.update-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.update-action-btn {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  background: #fff;
+  color: #374151;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.update-action-btn:hover {
+  border-color: var(--green);
+  color: var(--green);
+}
+
+.update-action-delete {
+  border-color: #e8b4ab;
+  color: #9b3d2e;
+}
+
+.update-action-delete:hover,
+button.update-action-delete {
+  border-color: #9b3d2e;
+  background: #9b3d2e;
+  color: #fff;
+}
+
+.update-delete-confirm {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f3dedb;
+  border-radius: 6px;
+  background: #fdf3f1;
+}
+
+.update-delete-confirm p {
+  margin: 0;
+  color: #9b3d2e;
+  font-size: 13px;
+}
+
+/* Order status form in the order detail panel (staff_orders_stock.html) */
+.order-status-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.order-status-form label {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.order-status-form select {
+  flex: 1;
+  min-width: 140px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.staff-filters .filter-btn {
+  padding: 12px 22px;
 }

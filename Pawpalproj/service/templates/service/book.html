@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Book a service | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'service/css/steps.css' %}">
+<link rel="stylesheet" href="{% static 'service/css/booking.css' %}">
+{% endblock %}
+
+{% block top_banner %}{% include "service/_steps.html" %}{% endblock %}
+
+{% block content %}
+<div class="booking-page">
+  <div class="booking-layout">
+
+    {# Every choice is a GET param. Each option is a submit button, so clicking one reloads #}
+    {# the page with fresh times and prices; no JavaScript needed. #}
+    <form class="booking-main" method="get" action="{% url 'service:book' %}" id="booking-form">
+      {# First submit button = what Enter triggers #}
+      <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true">Update</button>
+      {# Current choices. A clicked option button is sent after these, and Django's #}
+      {# request.GET.get() returns the last value, so the clicked option wins. #}
+      <input type="hidden" name="month" value="{{ month_start|date:'Y-m' }}">
+      <input type="hidden" name="pet" value="{{ pet.pk|default:'' }}">
+      <input type="hidden" name="category" value="{{ category|default:'' }}">
+      <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+      <input type="hidden" name="slot" value="{{ slot.pk|default:'' }}">
+
+      <h1 class="booking-title">Book a service</h1>
+
+      <section class="booking-section">
+        <h2>Which pet?</h2>
+        <div class="chip-row">
+          {% for p in pets %}
+            <button type="submit" name="pet" value="{{ p.pk }}"
+              class="chip{% if p == pet %} is-selected{% endif %}"
+              aria-pressed="{% if p == pet %}true{% else %}false{% endif %}">
+              <span>{{ p.name }} · {{ p.get_pet_type_display }}</span>
+            </button>
+          {% empty %}
+            <p class="muted">You haven't added a pet yet.</p>
+          {% endfor %}
+          <a class="chip chip-add" href="/user/pets/add/">+ Add pet</a>
+        </div>
+      </section>
+
+      <section class="booking-section">
+        <h2>Service</h2>
+        <div class="service-grid">
+          {% for c in category_cards %}
+            <button type="submit" name="category" value="{{ c.value }}"
+              class="service-card{% if c.value == category %} is-selected{% endif %}{% if c.from_dollars is None %} is-disabled{% endif %}"
+              aria-pressed="{% if c.value == category %}true{% else %}false{% endif %}"
+              {% if c.from_dollars is None %}disabled{% endif %}>
+              <span class="service-card-body">
+                <span class="service-icon" aria-hidden="true">{{ c.initial }}</span>
+                <strong>{{ c.label }}</strong>
+                <small>
+                  {% if c.from_dollars is None %}Unavailable
+                  {% else %}SGD {{ c.from_dollars|floatformat:"-2" }}{% if c.unit %} / {{ c.unit }}{% endif %}{% endif %}
+                </small>
+              </span>
+            </button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <div class="field-row{% if is_boarding %} has-three{% endif %}">
+        <label class="field">
+          <span>Outlet</span>
+          <select name="outlet">
+            {% for o in outlets %}
+              <option value="{{ o.pk }}" {% if o == outlet %}selected{% endif %}>{{ o.name }}</option>
+            {% empty %}
+              <option value="">No outlets open</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="field">
+          <span>{{ category_label }} package</span>
+          <select name="service">
+            {% for s in packages %}
+              <option value="{{ s.pk }}" {% if s == service %}selected{% endif %}>
+                {{ s.name }} · SGD {{ s.price_dollars|floatformat:"-2" }}
+              </option>
+            {% empty %}
+              <option value="">No packages available</option>
+            {% endfor %}
+          </select>
+        </label>
+        {% if is_boarding %}
+          <label class="field">
+            <span>Nights</span>
+            <select name="nights">
+              {% for n in nights_range %}
+                <option value="{{ n }}" {% if n == nights %}selected{% endif %}>{{ n }} night{{ n|pluralize }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        {% endif %}
+        <button type="submit" class="small-btn">Update</button>
+      </div>
+
+      <div class="schedule" id="schedule">
+        <div class="calendar-card">
+          <div class="cal-head">
+            <button type="submit" name="nav" value="{{ prev_month|date:'Y-m' }}" class="cal-nav"
+              formaction="{% url 'service:book' %}#schedule"
+              aria-label="Previous month" {% if not prev_month %}disabled{% endif %}>‹</button>
+            <strong>{{ month_start|date:"F Y" }}</strong>
+            <button type="submit" name="nav" value="{{ next_month|date:'Y-m' }}" class="cal-nav"
+              formaction="{% url 'service:book' %}#schedule"
+              aria-label="Next month" {% if not next_month %}disabled{% endif %}>›</button>
+          </div>
+          <div class="cal-grid" role="group" aria-label="Date">
+            {% for name in weekday_names %}<span class="cal-dow">{{ name }}</span>{% endfor %}
+            {% for week in weeks %}
+              {% for cell in week %}
+                {% if not cell.in_month %}
+                  <span></span>
+                {% else %}
+                  <button type="submit" name="date" value="{{ cell.date|date:'Y-m-d' }}"
+                    formaction="{% url 'service:book' %}#schedule"
+                    class="cal-day{% if cell.selected %} is-selected{% endif %}{% if cell.today %} is-today{% endif %}{% if cell.has_slots %} has-slots{% endif %}"
+                    aria-label="{{ cell.date|date:'l j F' }}{% if cell.has_slots %}, times available{% endif %}"
+                    aria-pressed="{% if cell.selected %}true{% else %}false{% endif %}"
+                    {% if cell.disabled %}disabled{% endif %}>
+                    <span>{{ cell.date.day }}</span>
+                  </button>
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+          <p class="cal-hint"><span class="cal-dot" aria-hidden="true"></span>Days with open times</p>
+        </div>
+
+        <div class="times">
+          <h2>Available times · {{ day_label }}</h2>
+          <div class="slot-grid" role="group" aria-label="Time">
+            {% for s in slots %}
+              <button type="submit" name="slot" value="{{ s.pk }}"
+                formaction="{% url 'service:book' %}#schedule"
+                class="slot{% if s == slot %} is-selected{% endif %}"
+                aria-pressed="{% if s == slot %}true{% else %}false{% endif %}"
+                {% if not s.available %}disabled{% endif %}>
+                <span>
+                  <strong>{{ s.time }}</strong>
+                  <small>
+                    {% if s == slot %}Selected
+                    {% elif s.past %}Past
+                    {% elif not s.left %}Full
+                    {% else %}{{ s.left }} slot{{ s.left|pluralize }} left{% endif %}
+                  </small>
+                </span>
+              </button>
+            {% empty %}
+              <p class="muted">
+                {% if has_open_days %}No open times on this day. Try a date marked with a dot.
+                {% else %}There are no upcoming times for {{ service.name|default:"this service" }} at {{ outlet.name|default:"this outlet" }}. Try another outlet or package.{% endif %}
+              </p>
+            {% endfor %}
+          </div>
+          <ul class="slot-legend">
+            <li><span class="swatch"></span>Available</li>
+            <li><span class="swatch swatch-selected"></span>Selected</li>
+            <li><span class="swatch swatch-full"></span>Full — cannot be selected</li>
+          </ul>
+        </div>
+      </div>
+    </form>
+
+    <aside class="summary-card" id="booking-summary">
+      <h2>Booking summary</h2>
+      {% include "service/_summary_details.html" %}
+
+      {% include "service/_summary_prices.html" %}
+
+      <form method="post" action="{% url 'service:book' %}" id="continue-form">
+        {% csrf_token %}
+        <input type="hidden" name="pet" value="{{ pet.pk|default:'' }}">
+        <input type="hidden" name="service" value="{{ service.pk|default:'' }}">
+        <input type="hidden" name="outlet" value="{{ outlet.pk|default:'' }}">
+        <input type="hidden" name="date" value="{{ day|date:'Y-m-d' }}">
+        <input type="hidden" name="slot" value="{{ slot.pk|default:'' }}">
+        <input type="hidden" name="nights" value="{{ nights }}">
+        <button type="submit" class="pay-btn" {% if not ready %}disabled{% endif %}>Continue to checkout</button>
+      </form>
+      <p class="fine-print">
+        {% if not ready %}Pick a time to continue. {% endif %}
+      </p>
+    </aside>
+
+  </div>
+</div>
+
+{% endblock %}

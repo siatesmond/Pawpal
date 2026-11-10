@@ -1,15 +1,33 @@
+from django.contrib import messages
 from django.shortcuts import redirect
+
+from .models import User
+from .views import home_for
 
 # URL prefix -> which user types may open it
 PROTECTED_PATHS = {
     "/user/home/": ["customer"],
+    "/user/profile/": ["customer"],
+    "/user/profile/address/": ["customer"],
     "/user/pets/": ["customer"],
+    "/user/bookings/": ["customer"],
+    "/user/orders/": ["customer"],
     "/user/cart/": ["customer"],
     "/inventory/staff/": ["staff", "owner"],
     "/inventory/stock/": ["staff", "owner"],
     "/service/book/": ["customer"],
-    "/admin-panel/": ["staff", "owner"],
+    # Only the business owner can open the owner dashboard and accounts
+    "/admin-panel/": ["owner"],
+    "/core/admin-panel/": ["owner"],  # same pages through the old /core/ prefix
     "/sitting/jobs/": ["sitter"],
+    "/sitting/my-jobs/": ["sitter"],
+    "/sitting/earnings/": ["sitter"],
+    "/sitting/profile/": ["sitter"],
+    "/sitting/application/": ["sitter"],
+    # customer side: find & request a pet sitter
+    "/sitting/find/": ["customer"],
+    "/sitting/sitters/": ["customer"],
+    "/sitting/requests/": ["customer"],
 }
 
 
@@ -22,8 +40,24 @@ def login_required_middleware(get_response):
             if request.path.startswith(prefix):
                 if "user_id" not in request.session:
                     return redirect("/user/login/")  # not logged in
-                if request.session.get("user_type") not in allowed_types:
-                    return redirect("/")  # logged in, wrong role
+                user = User.objects.filter(
+                    pk=request.session.get("user_id"),
+                    is_active=True,
+                ).first()
+                actual_type = get_user_type(user) if user else None
+
+                # Account deleted or deactivated: log out completely
+                if actual_type is None:
+                    request.session.flush()
+                    return redirect("/user/login/")
+
+                # Logged in, but this page is for another role (e.g. staff on an
+                # owner page): keep them logged in and send them to their own home page
+                if actual_type not in allowed_types:
+                    messages.error(request, "That page isn't available for your account.")
+                    return redirect(home_for(actual_type))
+                if request.session.get("user_type") != actual_type:
+                    request.session["user_type"] = actual_type
                 break
 
         response = get_response(request)
@@ -32,3 +66,18 @@ def login_required_middleware(get_response):
         return response
 
     return middleware
+
+
+def get_user_type(user):
+    """Return the role represented by the user's multi-table child row."""
+    if user is None:
+        return None
+    if hasattr(user, "customer"):
+        return "customer"
+    if hasattr(user, "staff"):
+        return "staff"
+    if hasattr(user, "businessowner"):
+        return "owner"
+    if hasattr(user, "petsitter"):
+        return "sitter"
+    return None
