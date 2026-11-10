@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Sum
+from django.db.models import F, Sum
 from django.utils import timezone
 
 from .models import Payment, PointsTransaction
@@ -19,6 +19,22 @@ CANCEL_WINDOW = timedelta(hours=24)  # customers can cancel within 24 hours of b
 # Customer's current points (sum of all their points transactions) 
 def get_points_balance(customer):
     return customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
+
+
+# Give or take points. Always use this instead of creating a PointsTransaction
+# directly: it saves the history row AND updates customer.point_balance,
+# so the profile, home page and navbar always show the same number.
+def add_points(customer, points, transaction_type, reason, payment=None):
+    PointsTransaction.objects.create(
+        customer=customer,
+        points=points,
+        transaction_type=transaction_type,
+        payment=payment,
+        reason=reason,
+    )
+    # F() adds to the number already in the database (safe if two things happen at once)
+    type(customer).objects.filter(pk=customer.pk).update(point_balance=F("point_balance") + points)
+    customer.refresh_from_db(fields=["point_balance"])
 
 
 # Calculate the discount in cents for a given subtotal and points to redeem.
@@ -114,23 +130,11 @@ def record_payment(customer, form, *, amount_cents, points_redeemed, label, orde
 
     # REDEEMED must be negative (check constraint on PointsTransaction)
     if points_redeemed > 0:
-        PointsTransaction.objects.create(
-            customer=customer,
-            points=-points_redeemed,
-            transaction_type=PointsTransaction.Type.REDEEMED,
-            payment=payment,
-            reason=f"Redeemed on {label}",
-        )
+        add_points(customer, -points_redeemed, PointsTransaction.Type.REDEEMED, f"Redeemed on {label}", payment)
 
     earned = points_earned(amount_cents)
     if earned > 0:
-        PointsTransaction.objects.create(
-            customer=customer,
-            points=earned,
-            transaction_type=PointsTransaction.Type.EARNED,
-            payment=payment,
-            reason=f"Earned from {label}",
-        )
+        add_points(customer, earned, PointsTransaction.Type.EARNED, f"Earned from {label}", payment)
     return payment
 
 
@@ -167,20 +171,10 @@ def refund_payment(record, label):
         # Reverse points transactions for the payment
         # Refund points that were redeemed
         if redeemed > 0:
-            PointsTransaction.objects.create(
-                customer=payment.customer,
-                points=redeemed,
-                transaction_type=PointsTransaction.Type.REFUNDED,
-                payment=payment,
-                reason=f"Points returned for cancelled {label}",
-            )
+            add_points(payment.customer, redeemed, PointsTransaction.Type.REFUNDED, f"Points returned for cancelled {label}", payment)
 
         # Remove points that were earned (status - redeemed)
+        # but never more than the customer still has (they may have spent some already)
+        earned = min(earned, payment.customer.point_balance)
         if earned > 0:
-            PointsTransaction.objects.create(
-                customer=payment.customer,
-                points=-earned,
-                transaction_type=PointsTransaction.Type.REDEEMED,
-                payment=payment,
-                reason=f"Earned points removed for cancelled {label}",
-            )
+            add_points(payment.customer, -earned, PointsTransaction.Type.REDEEMED, f"Earned points removed for cancelled {label}", payment)

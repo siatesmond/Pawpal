@@ -12,6 +12,7 @@ from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
 from payment.models import Payment, PointsTransaction
+from payment.services import add_points
 from review.models import Review
 from service.models import Booking, BookingUpdate, Service, TimeSlot
 from sitting.models import PetSitter, SittingRequest, SittingUpdate
@@ -2119,14 +2120,7 @@ def owner_adjust_points(request, pk):
     elif customer.point_balance + points < 0:
         messages.error(request, f"Cannot deduct {-points} points. The customer only has {customer.point_balance}.")
     else:
-        PointsTransaction(
-            customer=customer,
-            points=points,
-            transaction_type=PointsTransaction.Type.ADJUSTED,
-            reason=reason,
-        ).save()
-        customer.point_balance += points
-        customer.save()
+        add_points(customer, points, PointsTransaction.Type.ADJUSTED, reason)
         messages.success(request, f"{points:+d} points saved. New balance: {customer.point_balance}.")
 
     return redirect(back_to_customer)
