@@ -2,7 +2,8 @@
 {% load static %}
 
 {% block title %}My jobs | Pawpal{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}" /><link rel="stylesheet" href="{% static 'sitting/css/job_update.css' %}" />{% endblock %}
 
 {% block content %}
 <section class="sitter">
@@ -30,8 +31,12 @@
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} · Day {{ job.day_number }} of {{ job.number_of_days }}</span>
             </div>
             <div class="job-body">
-              <div class="avatar">🐾</div>
-              <div class="job-info"><strong>{{ job.pet_list|join:" + " }}</strong><p>{{ job.care_requirements }}</p></div>
+              {% include "sitting/_pet_avatar.html" %}
+              <div class="job-info">
+                <strong>{{ job.pet_list|join:" + " }}</strong>
+                <p>{{ job.care_requirements }}</p>
+                {% include "sitting/_pet_details.html" %}
+              </div>
               <div class="job-pay"><strong>You earn SGD {{ job.sitter_payout_display }}</strong><small>Job price SGD {{ job.total_price_display }} · 10% fee</small></div>
             </div>
             <div class="progress-label"><span>Job progress</span><span>{{ job.day_number }} of {{ job.number_of_days }} days</span></div>
@@ -65,11 +70,12 @@
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} ({{ job.number_of_days }} day{{ job.number_of_days|pluralize }})</span>
             </div>
             <div class="job-body">
-              <div class="avatar">🐾</div>
+              {% include "sitting/_pet_avatar.html" %}
               <div class="job-info">
                 <strong>{{ job.pet_list|join:" + " }}</strong>
                 <p>{% if job.can_start %}Starts today{% else %}Starts in {{ job.starts_in }} day{{ job.starts_in|pluralize }}{% endif %} · {{ job.care_requirements }}</p>
                 <span class="muted small">{{ job.location }}</span>
+                {% include "sitting/_pet_details.html" %}
               </div>
               <div class="job-pay"><strong>You earn SGD {{ job.sitter_payout_display }}</strong><small>Job price SGD {{ job.total_price_display }} · 10% fee</small></div>
             </div>
@@ -107,8 +113,12 @@
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} ({{ job.number_of_days }} day{{ job.number_of_days|pluralize }})</span>
             </div>
             <div class="job-body">
-              <div class="avatar">🐾</div>
-              <div class="job-info"><strong>{{ job.pet_list|join:" + " }}</strong><p>Owner needs to confirm &amp; pay</p></div>
+              {% include "sitting/_pet_avatar.html" %}
+              <div class="job-info">
+                <strong>{{ job.pet_list|join:" + " }}</strong>
+                <p>Owner needs to confirm &amp; pay</p>
+                {% include "sitting/_pet_details.html" %}
+              </div>
               <div class="job-pay"><strong>You earn SGD {{ job.sitter_payout_display }}</strong><small>Job price SGD {{ job.total_price_display }} · 10% fee</small></div>
             </div>
             <form method="post" class="actions">
@@ -209,7 +219,31 @@
             <label for="update-note">Message</label>
             <textarea id="update-note" name="note" placeholder="How is the pet doing? e.g. walk, meals, mood..."></textarea>
           </div>
-          <label class="photo-slot"><input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp">+ Photo</label>
+          {# the file picker is hidden; the box shows the chosen photo so the sitter knows it is attached #}
+          <label class="photo-slot update-photo-slot">
+            <input type="file" name="photo" id="update-photo" accept=".jpg,.jpeg,.png,.webp">
+            <img id="update-photo-preview" alt="Chosen photo" hidden>
+            <span id="update-photo-text">+ Photo</span>
+          </label>
+          <p id="update-photo-name" class="muted small"></p>
+          <script>
+            const photoInput = document.getElementById("update-photo");
+            photoInput.addEventListener("change", function () {
+              const preview = document.getElementById("update-photo-preview");
+              const text = document.getElementById("update-photo-text");
+              const name = document.getElementById("update-photo-name");
+              if (photoInput.files.length > 0) {
+                preview.src = URL.createObjectURL(photoInput.files[0]);
+                preview.hidden = false;
+                text.hidden = true;
+                name.textContent = "Photo attached: " + photoInput.files[0].name;
+              } else {
+                preview.hidden = true;
+                text.hidden = false;
+                name.textContent = "";
+              }
+            });
+          </script>
           <button type="submit" class="btn btn-dark btn-block">Post update</button>
           <p class="muted small">The owner is notified and sees this in their booking timeline.</p>
         </form>
@@ -218,7 +252,7 @@
           <h2>Update timeline</h2>
           <ul class="timeline">
             {% for update in timeline %}
-              <li><div><span class="muted small">{{ update.created_at|date:"j M, g:i a" }}</span><br>{{ update.note|default:"Photo added" }}{% if update.photo %} · <a class="link small" href="{{ update.photo.url }}" target="_blank">View photo</a>{% endif %}</div></li>
+              <li><div><span class="muted small">{{ update.created_at|date:"j M, g:i a" }}</span><br>{{ update.note|default:"Photo added" }}{% if update.photo %}<a href="{{ update.photo.url }}" target="_blank"><img class="update-thumb" src="{{ update.photo.url }}" alt="Update photo"></a>{% endif %}</div></li>
             {% empty %}
               <li>No updates yet.</li>
             {% endfor %}

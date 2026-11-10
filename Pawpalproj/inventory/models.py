@@ -44,6 +44,25 @@ class Product(models.Model):
         CAT = "CAT", "Cat"
         OTHER = "OTHER", "Other"
 
+    # Health needs a product can help with (used by the product recommender)
+    CARE_TAG_CHOICES = [
+        ("skin", "Skin & coat"),
+        ("joint", "Joints & mobility"),
+        ("dental", "Dental care"),
+        ("digestion", "Digestion / sensitive stomach"),
+        ("eye", "Eye care"),
+        ("hairball", "Hairballs"),
+        ("heart", "Heart health"),
+        ("weight", "Weight control"),
+        ("calming", "Calming / stress"),
+    ]
+
+    class LifeStage(models.TextChoices):
+        ALL = "ALL", "All ages"
+        YOUNG = "YOUNG", "Puppy / kitten"
+        ADULT = "ADULT", "Adult"
+        SENIOR = "SENIOR", "Senior"
+
     category = models.ForeignKey(
         Category, on_delete=models.PROTECT, related_name="products"
     )
@@ -59,9 +78,27 @@ class Product(models.Model):
     low_stock_level = models.PositiveIntegerField(default=5)
     is_active = models.BooleanField(default=True)
 
+    # Tags used by the product recommender (comma separated)
+    ingredients = models.CharField(max_length=255, blank=True)  # e.g. "chicken, rice"
+    care_tags = models.CharField(max_length=255, blank=True)  # e.g. "skin, joint"
+    life_stage = models.CharField(
+        max_length=10, choices=LifeStage.choices, default=LifeStage.ALL
+    )
+
     def __str__(self):
         return self.name
-    
+
+    def get_care_tag_labels(self):
+        # "skin, joint" -> ["Skin & coat", "Joints & mobility"]
+        tags = []
+        for tag in self.care_tags.split(","):
+            tags.append(tag.strip())
+        labels = []
+        for value, label in self.CARE_TAG_CHOICES:
+            if value in tags:
+                labels.append(label)
+        return labels
+
     @property
     def price_dollars(self):
         return Decimal(self.price_cents) / Decimal("100")

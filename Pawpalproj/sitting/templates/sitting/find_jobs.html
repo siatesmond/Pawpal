@@ -4,6 +4,7 @@
 {% block title %}Find jobs | Pawpal{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}" />
 {# Leaflet: free map library, no API key needed #}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
@@ -168,27 +169,13 @@
           </div>
 
           <div class="job-body">
-            <div class="avatar">🐾</div>
+            {% include "sitting/_pet_avatar.html" %}
             <div class="job-info">
               <strong>{% for pet in job.pet_list %}{{ pet.name }}{% if pet.breed %} ({{ pet.breed }}){% endif %}{% if not forloop.last %} + {% endif %}{% endfor %}</strong>
               <p>{{ job.care_requirements|default:"Pet care requested by the owner." }}</p>
 
               {# See the pet profile, medical and behaviour notes before accepting #}
-              <details>
-                <summary class="link small">View pet profile, medical &amp; behaviour notes →</summary>
-                {% for pet in job.pet_list %}
-                  <div class="note-box">
-                    <strong>{{ pet.name }}</strong>
-                    <span class="small">{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %}{% if pet.weight_kg %} · {{ pet.weight_kg }} kg{% endif %}</span>
-                    {% if pet.allergies %}<span class="small"><b>Allergies:</b> {{ pet.allergies }}</span>{% endif %}
-                    {% if pet.conditions %}<span class="small"><b>Conditions:</b> {{ pet.conditions }}</span>{% endif %}
-                    {% if pet.medication %}<span class="small"><b>Medication:</b> {{ pet.medication }}</span>{% endif %}
-                    {% if pet.medical_notes %}<span class="small"><b>Medical notes:</b> {{ pet.medical_notes }}</span>{% endif %}
-                    {% if pet.behaviour_notes %}<span class="small"><b>Behaviour:</b> {{ pet.behaviour_notes }}</span>{% endif %}
-                    {% if pet.last_vaccination_date %}<span class="small"><b>Last vaccination:</b> {{ pet.last_vaccination_date|date:"j M Y" }}</span>{% endif %}
-                  </div>
-                {% endfor %}
-              </details>
+              {% include "sitting/_pet_details.html" %}
               <span class="muted small">{{ job.location }}</span>
             </div>
             <div class="job-pay"><strong>SGD {{ job.total_price_display }}</strong><small>You earn SGD {{ job.sitter_payout_display }} after 10% fee</small></div>

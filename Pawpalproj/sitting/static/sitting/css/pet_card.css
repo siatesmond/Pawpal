@@ -1,0 +1,96 @@
+/* Pet photos and full pet profile on job cards */
+.pet-avatars {
+  display: flex;
+  flex: none;
+  align-self: flex-start; /* stay at the top when the pet details are opened */
+}
+
+.pet-avatars .avatar {
+  object-fit: cover;
+  border: 3px solid #fff;
+}
+
+.pet-avatars .avatar + .avatar {
+  margin-left: -18px;
+}
+
+.pet-details {
+  margin-top: 4px;
+}
+
+.pet-details summary {
+  cursor: pointer;
+}
+
+.pet-detail-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--cream);
+}
+
+.pet-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pet-detail-head > div {
+  display: grid;
+  gap: 2px;
+}
+
+.pet-detail-photo {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  font-size: 28px;
+}
+
+.pet-detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pet-detail-chips span {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.pet-detail-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.pet-detail-list div {
+  display: flex;
+  gap: 12px;
+}
+
+.pet-detail-list dt {
+  flex: none;
+  width: 104px;
+  color: var(--muted);
+}
+
+.pet-detail-list dd {
+  margin: 0;
+}
+
+.pet-detail-alert {
+  color: #b42318;
+  font-weight: 600;
+}

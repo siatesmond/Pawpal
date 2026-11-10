@@ -1,0 +1,23 @@
+{# One recommended product. Needs "item" (pet, product, reason, score) #}
+<article class="rec-card">
+  <a href="{% url 'inventory:product_detail' item.product.pk %}" class="rec-image">
+    {% if item.product.image_url %}
+      <img src="{{ item.product.image_url.url }}" alt="{{ item.product.name }}">
+    {% else %}
+      <span aria-hidden="true">{% if item.product.pet_type == "CAT" %}🐱{% else %}🐶{% endif %}</span>
+    {% endif %}
+    {% if show_pet %}<span class="rec-for">For {{ item.pet.name }}</span>{% endif %}
+  </a>
+  <div class="rec-body">
+    <small class="rec-brand">{{ item.product.brand.name }}</small>
+    <a href="{% url 'inventory:product_detail' item.product.pk %}" class="rec-name">{{ item.product.name }}</a>
+    <p class="rec-reason">✓ {{ item.reason }}</p>
+    <div class="rec-foot">
+      <strong>SGD {{ item.product.price_dollars|floatformat:2 }}</strong>
+      <form method="post" action="{% url 'user:customer_add_to_cart' item.product.pk %}">
+        {% csrf_token %}
+        <button type="submit" class="rec-add">Add to cart</button>
+      </form>
+    </div>
+  </div>
+</article>

@@ -1,0 +1,31 @@
+{# Full profile of every pet in the job, so the sitter knows how to care for them. Needs "job" #}
+<details class="pet-details" {% if open %}open{% endif %}>
+  <summary class="link small">View pet profile, medical &amp; behaviour notes →</summary>
+  {% for pet in job.pet_list %}
+    <div class="pet-detail-card">
+      <div class="pet-detail-head">
+        {% if pet.profile_picture %}
+          <img class="pet-detail-photo" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
+        {% else %}
+          <div class="pet-detail-photo">{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %}</div>
+        {% endif %}
+        <div>
+          <strong>{{ pet.name }}</strong>
+          <span class="muted small">{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %}</span>
+          <div class="pet-detail-chips">
+            {% if pet.get_age %}<span>{{ pet.get_age }}</span>{% endif %}
+            {% if pet.weight_kg %}<span>{{ pet.weight_kg|floatformat:1 }} kg</span>{% endif %}
+            {% if pet.last_vaccination_date %}<span>Vaccinated {{ pet.last_vaccination_date|date:"M Y" }}</span>{% else %}<span>No vaccination record</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <dl class="pet-detail-list">
+        <div><dt>Allergies</dt><dd {% if pet.allergies %}class="pet-detail-alert"{% endif %}>{{ pet.allergies|default:"None" }}</dd></div>
+        <div><dt>Conditions</dt><dd>{{ pet.conditions|default:"None" }}</dd></div>
+        <div><dt>Medication</dt><dd>{{ pet.medication|default:"None" }}</dd></div>
+        <div><dt>Medical notes</dt><dd>{{ pet.medical_notes|default:"None" }}</dd></div>
+        <div><dt>Behaviour</dt><dd>{{ pet.behaviour_notes|default:"None" }}</dd></div>
+      </dl>
+    </div>
+  {% endfor %}
+</details>

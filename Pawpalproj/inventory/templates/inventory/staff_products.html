@@ -141,6 +141,15 @@
           <li><b>Price:</b> SGD {{ selected_product.price_dollars|floatformat:2 }}</li>
           <li><b>Stock Quantity:</b> {{ selected_product.stock_quantity }}</li>
           <li><b>Status:</b> {% if selected_product.is_active %}Active{% else %}Inactive{% endif %}</li>
+          <li><b>Life stage:</b> {{ selected_product.get_life_stage_display }}</li>
+          <li><b>Ingredients:</b> {{ selected_product.ingredients|default:"Not set" }}</li>
+          <li><b>Care tags:</b>
+            {% for label in selected_product.get_care_tag_labels %}
+              <span class="care-tag">{{ label }}</span>
+            {% empty %}
+              None
+            {% endfor %}
+          </li>
           <li><b>Description:</b></li>
           <li>{{ selected_product.description|default:"No description provided." }}</li>
         </ul>

@@ -6,6 +6,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/shop.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/recommend.css' %}" />
 {% endblock %}
 
 {% block top_banner %}
@@ -85,6 +86,19 @@
   {# product results #}
 
   <section class="results">
+  {# Picked for the customer's pets by the recommender model #}
+  {% if recommended %}
+    <div class="shop-recommend">
+      <h2>Recommended for your pets</h2>
+      <p>Based on your pets' health needs and what you have bought before</p>
+      <div class="rec-grid">
+        {% for item in recommended %}
+          {% include "user/_recommend_card.html" with show_pet=True %}
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+
   <p class="result-count">{{ page_obj.paginator.count }} products{% if query %} for "{{ query }}"{% endif %}</p>
 
   <div class="product-grid">

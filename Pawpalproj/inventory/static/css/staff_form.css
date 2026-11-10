@@ -275,3 +275,39 @@
   font-size: 0.85rem;
   cursor: pointer;
 }
+
+/* Several tick boxes in one field (e.g. product care tags) */
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.form-group .checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.checkbox-option:has(input:checked) {
+  border-color: var(--green);
+  background: #eef2e8;
+}
+
+/* Care tag pill on the staff product details */
+.care-tag {
+  display: inline-block;
+  margin: 2px 4px 2px 0;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2e8;
+  color: #3f5532;
+  font-size: 12px;
+}

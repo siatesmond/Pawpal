@@ -25,6 +25,7 @@ from .forms import (
     ResetPasswordForm,
 )
 from .models import OTP, Address, Customer, Pet, User
+from .recommender import recommend_for_customer
 from .utils import get_current_customer
 
 
@@ -99,6 +100,8 @@ class LoginView(View):
             request.session["user_id"] = user.pk
             request.session["user_type"] = get_user_type(user)
             request.session["username"] = user.first_name or user.username
+            # show the recommended products pop-up once after logging in
+            request.session["show_recommendations"] = True
 
             if not form.cleaned_data["remember"]:
                 request.session.set_expiry(0)  # ends when the browser is closed
@@ -365,10 +368,16 @@ class CustomerHomeView(View):
             .order_by("slot__start_time")
         )
 
+        # products picked by the logistic regression model (user/recommender.py)
+        recommendations = recommend_for_customer(customer)
+
         context = {
             "customer": customer,
             "pets": customer.pets.all(),
             "upcoming_bookings": upcoming,
+            "recommendations": recommendations,
+            # True only on the first visit after logging in
+            "show_popup": request.session.pop("show_recommendations", False),
         }
         return render(request, self.template_name, context)
 

@@ -14,7 +14,15 @@ Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit,
 
     {% for field in form %}
         <div class="form-group">
-            {% if field.field.widget.input_type == 'checkbox' %}
+            {% if field.field.widget.allow_multiple_selected and field.field.widget.input_type == 'checkbox' %}
+                <!-- Several tick boxes, e.g. product care tags -->
+                <label>{{ field.label }}</label>
+                <div class="checkbox-grid">
+                    {% for box in field %}
+                        <label class="checkbox-option">{{ box.tag }} {{ box.choice_label }}</label>
+                    {% endfor %}
+                </div>
+            {% elif field.field.widget.input_type == 'checkbox' %}
                 <!-- Checkbox -->
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     {{ field }}
@@ -27,7 +35,8 @@ Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit,
                 <label for="{{ field.id_for_label }}">
                     {{ field.label }}
                 </label>
-                {% if field.value.url %}
+                {# check the file exists first: .url on an empty file field raises an error #}
+                {% if field.value and field.value.url %}
                     <div class="file-current">
                         <img src="{{ field.value.url }}" alt="Current {{ field.label|lower }}">
                         <div>

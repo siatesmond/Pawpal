@@ -113,6 +113,16 @@ class Pet(models.Model):
     def __str__(self):
         return f"{self.name} ({self.get_pet_type_display()})"
 
+    def get_age(self):
+        # e.g. "3 yrs" or "8 mths"; empty when the birthday is not known
+        if not self.date_of_birth:
+            return ""
+        months = (timezone.localdate() - self.date_of_birth).days * 12 // 365
+        if months < 12:
+            return f"{months} mth" + ("s" if months != 1 else "")
+        years = months // 12
+        return f"{years} yr" + ("s" if years != 1 else "")
+
 
 class OTP(models.Model):
     class Purpose(models.TextChoices):

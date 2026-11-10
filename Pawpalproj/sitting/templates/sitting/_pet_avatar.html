@@ -1,0 +1,12 @@
+{# Round photo of the job's pets (stacked when there are two or more). Needs "job" #}
+<div class="pet-avatars">
+  {% for pet in job.pet_list|slice:":3" %}
+    {% if pet.profile_picture %}
+      <img class="avatar" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
+    {% else %}
+      <div class="avatar">{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %}</div>
+    {% endif %}
+  {% empty %}
+    <div class="avatar">🐾</div>
+  {% endfor %}
+</div>

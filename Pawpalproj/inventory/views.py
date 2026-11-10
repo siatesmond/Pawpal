@@ -10,6 +10,7 @@ from django.core.paginator import Paginator
 from service.models import Booking, BookingUpdate, BookingUpdatePhoto
 
 from user.models import Outlet, Staff, Customer
+from user.recommender import recommend_for_customer
 
 from .models import Brand, Category, Order, Product, CartItem
 
@@ -470,11 +471,23 @@ def product_list(request):
     paginator = Paginator(products, 6)
     page_obj = paginator.get_page(request.GET.get("page"))
 
+    # Recommended for the logged-in customer's pets (first page, no search or filters)
+    recommended = []
+    no_filters = not (query or pets or categories or brands or prices)
+    if request.session.get("user_type") == "customer" and no_filters and page_obj.number == 1:
+        try:
+            customer = Customer.objects.get(pk=request.session["user_id"])
+            for group in recommend_for_customer(customer, per_pet=2):
+                recommended += group["items"]
+        except Customer.DoesNotExist:
+            pass
+
     return render(
         request,
         "inventory/product_list.html",
         {
             "page_obj": page_obj,
+            "recommended": recommended[:3],
             "products": products,
             "query": query,
             "sort": sort,
@@ -753,11 +766,17 @@ def product_form(request, pk=None):
             else:
                 message = f"Product ID #{saved_product.pk}, '{saved_product.name}' created successfully."
             messages.success(request, message)
-            return redirect("inventory:staff_products")
+            # back to the product list with this product's details open
+            return redirect(reverse("inventory:staff_products") + f"?product={saved_product.pk}")
         else:
             error_message = "Please correct the errors below."
     else:
         form = ProductForm(instance=product)
+
+    # Cancel goes back to the product being edited, or to the product list when adding
+    cancel_url = reverse("inventory:staff_products")
+    if product:
+        cancel_url += f"?product={product.pk}"
 
     return render(
         request,
@@ -768,5 +787,6 @@ def product_form(request, pk=None):
             "product": product,
             "action_title": action_title,
             "error_message": error_message,
+            "cancel_url": cancel_url,
         },
     )

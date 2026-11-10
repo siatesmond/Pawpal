@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'user/css/home.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/recommend.css' %}" />
 {% endblock %}
 
 {% block top_banner %}
@@ -43,6 +44,24 @@
     {% endfor %}
   </section>
 
+  {# Products picked for each pet by the recommender model #}
+  {% if recommendations %}
+    <section class="home-card" id="recommended">
+      <div class="home-card-head">
+        <h2>Recommended for your pets</h2>
+        <a href="{% url 'inventory:product_list' %}" class="home-btn home-btn-outline">Shop all</a>
+      </div>
+      {% for group in recommendations %}
+        <p class="rec-pet">For {{ group.pet.name }}<small>· {{ group.pet.get_pet_type_display }}{% if group.pet.breed %}, {{ group.pet.breed }}{% endif %}</small></p>
+        <div class="rec-grid">
+          {% for item in group.items %}
+            {% include "user/_recommend_card.html" %}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
   <section class="home-card">
     <div class="home-card-head">
       <h2>My pets</h2>
@@ -50,10 +69,32 @@
     </div>
     <div class="pet-grid">
       {% for pet in pets %}
-        <div class="pet-card">
-          <strong>{{ pet.name }}</strong>
-          <p>{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %} · {{ pet.age }} yr</p>
-        </div>
+        <article class="pet-card">
+          <div class="pet-card-top">
+            {% if pet.profile_picture %}
+              <img class="pet-photo" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
+            {% else %}
+              <span class="pet-photo pet-photo-empty" aria-hidden="true">{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %}</span>
+            {% endif %}
+            <div>
+              <strong>{{ pet.name }}</strong>
+              <p>{{ pet.get_pet_type_display }}{% if pet.breed %} · {{ pet.breed }}{% endif %}</p>
+            </div>
+            <a href="{% url 'user:edit_pet' pet.pk %}" class="pet-edit">Edit</a>
+          </div>
+
+          <div class="pet-chips">
+            {% if pet.get_age %}<span>🎂 {{ pet.get_age }}</span>{% endif %}
+            {% if pet.weight_kg %}<span>⚖️ {{ pet.weight_kg|floatformat:1 }} kg</span>{% endif %}
+            {% if pet.last_vaccination_date %}<span>💉 {{ pet.last_vaccination_date|date:"M Y" }}</span>{% endif %}
+          </div>
+
+          <dl class="pet-health">
+            <div><dt>Allergies</dt><dd {% if pet.allergies %}class="pet-alert"{% endif %}>{{ pet.allergies|default:"None" }}</dd></div>
+            <div><dt>Conditions</dt><dd>{{ pet.conditions|default:"None" }}</dd></div>
+            <div><dt>Medication</dt><dd>{{ pet.medication|default:"None" }}</dd></div>
+          </dl>
+        </article>
       {% empty %}
         <p class="home-empty">No pets yet. Add your first pet so you can book services for them.</p>
       {% endfor %}
@@ -61,4 +102,27 @@
   </section>
 
 </div>
+
+{# Pop-up after logging in: the top pick for each pet #}
+{% if show_popup and recommendations %}
+  <dialog id="recommend-popup" class="recommend-popup">
+    <div class="home-card-head">
+      <h2>Picked for your pets 🐾</h2>
+      <form method="dialog"><button class="recommend-close" aria-label="Close">×</button></form>
+    </div>
+    <div class="rec-grid">
+      {% for group in recommendations %}
+        {% with item=group.items.0 %}
+          {% include "user/_recommend_card.html" with show_pet=True %}
+        {% endwith %}
+      {% endfor %}
+    </div>
+    <form method="dialog" class="recommend-popup-foot">
+      <button class="home-btn home-btn-outline">Maybe later</button>
+    </form>
+  </dialog>
+  <script>
+    document.getElementById("recommend-popup").showModal();
+  </script>
+{% endif %}
 {% endblock %}

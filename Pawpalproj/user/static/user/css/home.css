@@ -104,14 +104,97 @@
 
 .pet-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
 }
 
 .pet-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   background: var(--nav-bg);
-  border-radius: 14px;
+  border-radius: 16px;
   padding: 16px;
+}
+
+.pet-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pet-card-top > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.pet-card-top strong {
+  font-size: 16px;
+}
+
+.pet-photo {
+  flex: none;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+}
+
+.pet-photo-empty {
+  display: grid;
+  place-items: center;
+  background: #fff;
+  font-size: 26px;
+}
+
+.pet-edit {
+  align-self: flex-start;
+  font-size: 12px;
+  text-decoration: underline;
+  color: #6f6b60;
+}
+
+.pet-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pet-chips span {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+
+.pet-health {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-top: 10px;
+  border-top: 1px solid #e3dccd;
+  font-size: 13px;
+}
+
+.pet-health div {
+  display: flex;
+  gap: 10px;
+}
+
+.pet-health dt {
+  flex: none;
+  width: 84px;
+  color: #6f6b60;
+}
+
+.pet-health dd {
+  margin: 0;
+}
+
+.pet-health .pet-alert {
+  color: #b42318;
+  font-weight: 600;
 }
 
 .home-empty {
@@ -125,4 +208,33 @@
     flex-direction: column;
     align-items: flex-start;
   }
+}
+/* Pop-up after login */
+.recommend-popup {
+  width: min(760px, calc(100% - 32px));
+  border: 0;
+  border-radius: 20px;
+  padding: 24px 28px;
+}
+
+.recommend-popup::backdrop {
+  background: rgba(20, 24, 18, 0.45);
+}
+
+.recommend-close {
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.recommend-popup-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.recommend-popup-foot .home-btn {
+  cursor: pointer;
 }

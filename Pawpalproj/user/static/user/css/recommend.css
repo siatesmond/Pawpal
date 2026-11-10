@@ -1,0 +1,157 @@
+/* Recommended product cards (customer home page and shop) */
+.rec-pet {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rec-pet small {
+  font-weight: 400;
+  color: #6f6b60;
+}
+
+.rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.rec-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #e3dccd;
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+
+.rec-card:hover {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.07);
+  transform: translateY(-2px);
+}
+
+.rec-image {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  height: 160px;
+  padding: 14px;
+  background: #f6f2ea;
+  font-size: 44px;
+}
+
+.rec-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  mix-blend-mode: multiply; /* white photo backgrounds blend into the cream */
+}
+
+.rec-for {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.rec-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  padding: 12px 14px 14px;
+}
+
+.rec-brand {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8a8478;
+}
+
+.rec-name {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.rec-reason {
+  align-self: flex-start;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #eef2e8;
+  color: #3f5532;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.rec-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.rec-foot strong {
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+.rec-foot form {
+  margin: 0;
+}
+
+.rec-add {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: var(--gold);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.rec-add:hover {
+  filter: brightness(0.95);
+}
+
+/* Box above the shop results */
+.shop-recommend {
+  margin-bottom: 24px;
+  padding: 20px;
+  border: 1px solid #e3dccd;
+  border-radius: 20px;
+  background: #fbf8f2;
+}
+
+.shop-recommend h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.shop-recommend > p {
+  margin: 4px 0 14px;
+  color: #6f6b60;
+  font-size: 13px;
+}
