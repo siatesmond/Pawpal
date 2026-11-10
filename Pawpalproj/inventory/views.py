@@ -348,7 +348,7 @@ def update_booking(request, pk=None):
             booking.save()
 
             messages.success(request, f"Booking #{booking.pk} updated successfully.")
-            return redirect("inventory:staff_bookings")
+            return redirect(_staff_booking_url(booking))
     else:
         # Pre-fill the form dropdown with the booking's current status as default 
         form = BookingUpdateForm(initial={"new_status": booking.status})
