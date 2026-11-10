@@ -36,6 +36,11 @@ class ProductForm(forms.ModelForm):
             "low_stock_level",
             "is_active",
         ]
+        labels = {"image_url": "Product photo"}
+        widgets = {
+            # a plain file picker; the form template shows the current photo above it
+            "image_url": forms.FileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp"}),
+        }
     # checks if the product exists in DB and prefills with the price in dollars 
     # to ensure price is displayed in dollars in the form instead of cents
     def __init__(self, *args, **kwargs):
@@ -44,6 +49,9 @@ class ProductForm(forms.ModelForm):
             self.initial["price_dollars"] = (
                 Decimal(self.instance.price_cents) / Decimal("100")
             )
+            self.fields["image_url"].help_text = "JPG, PNG or WEBP. Leave empty to keep the current photo."
+        else:
+            self.fields["image_url"].help_text = "JPG, PNG or WEBP."
 
     # overrides the save method to convert the price from dollars to cents before saving the product instance
     def save(self, commit=True):

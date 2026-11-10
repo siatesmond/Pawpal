@@ -327,3 +327,51 @@
   background-color: #fef2f2;
   color: #991b1b;
 }
+/* File upload in forms (e.g. product photo): current photo + picker, kept inside the card */
+.file-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 0.6rem;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.file-current img {
+  flex: none;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #fff;
+}
+
+.file-current div {
+  min-width: 0; /* lets a long file name wrap instead of pushing out of the card */
+}
+
+.file-current strong {
+  display: block;
+  font-size: 0.9rem;
+}
+
+.file-current span {
+  display: block;
+  color: #6b7280;
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.form-group input[type="file"] {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  padding: 8px;
+  border: 1px dashed #c9c3b6;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+}

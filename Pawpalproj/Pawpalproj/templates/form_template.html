@@ -22,6 +22,21 @@ Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit,
                         {{ field.label }}
                     </label>
                 </div>
+            {% elif field.field.widget.input_type == 'file' %}
+                <!-- File upload: show the current file (e.g. product photo) above the picker -->
+                <label for="{{ field.id_for_label }}">
+                    {{ field.label }}
+                </label>
+                {% if field.value.url %}
+                    <div class="file-current">
+                        <img src="{{ field.value.url }}" alt="Current {{ field.label|lower }}">
+                        <div>
+                            <strong>Current {{ field.label|lower }}</strong>
+                            <span>{{ field.value.name }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+                {{ field }}
             {% else %}
                 <!-- Input layout -->
                 <label for="{{ field.id_for_label }}">

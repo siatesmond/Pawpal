@@ -29,7 +29,8 @@
         {% endif %}
 
         <!-- Form template -->
-        {% include "form_template.html" with cancel_url="/inventory/staff/orders-stock" submit_text="Save Product" %}
+        {# enctype is needed so the browser actually sends the photo file #}
+        {% include "form_template.html" with cancel_url="/inventory/staff/orders-stock" submit_text="Save Product" enctype="multipart/form-data" %}
 
     </div>
 </div>
