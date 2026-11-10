@@ -30,6 +30,12 @@
   </aside>
   <main class="owner-main">
     <div class="owner-topbar">{{ request.session.username|default:"Business owner" }}</div>
+    {# Success / error messages from the views (same as the staff pages) #}
+    {% if messages %}
+      {% for message in messages %}
+        <div class="form-alert form-alert-{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>

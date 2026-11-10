@@ -4,11 +4,10 @@ from datetime import date, datetime, time, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
-from django.contrib.auth.hashers import make_password
-from django.db.models import Count, F, Q, Sum
 from django.contrib import messages
-from user.utils import send_mail_in_background
-from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
+from django.contrib.auth.hashers import make_password
+from django.db.models import F, Q
+from django.shortcuts import HttpResponse, redirect, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
 from payment.models import Payment, PointsTransaction
@@ -17,8 +16,10 @@ from review.models import Review
 from service.models import Booking, BookingUpdate, Service, TimeSlot
 from sitting.models import PetSitter, SittingRequest, SittingUpdate
 from user.models import Address, BusinessOwner, Customer, Pet, Staff, User
+from user.utils import send_mail_in_background
 
 from core.models import Outlet
+
 from .forms import OwnerCustomerForm, OwnerStaffEditForm, OwnerStaffForm
 
 # Helpers
@@ -419,199 +420,108 @@ pets = [
 ]
 # Mock data – inventory
 
-categories = ["Food", "Treats", "Toys", "Grooming", "Accessories", "Health"]
+categories = ["Food", "Treats", "Toys", "Accessories", "Grooming"]
+
 brands = [
-    "NutriPaws",
-    "Whisker & Co",
-    "Happy Tails",
-    "FurFresh",
-    "PlayPup",
-    "VetCare",
-]  # fictional
+    "Black Hawk",
+    "Royal Canin",
+    "Buddy Bites",
+    "Health Extension",
+    "Pet Mrkt",
+    "Gnawlers",
+    "Feline Natural",
+    "Buddy Care",
+]
 
 products = [
     {
-        "name": "Grain-Free Salmon Kibble 2kg",
-        "category": "Food",
-        "brand": "NutriPaws",
+        "name": "Pet Mrkt XL Lightweight Pet Cart Trolley Stroller Pram",
+        "category": "Accessories",
+        "brand": "Pet Mrkt",
         "pet_type": "DOG",
-        "description": "High-protein dry food with real salmon for adult dogs.",
-        "price_cents": 3990,
-        "stock_quantity": 40,
-        "low_stock_level": 10,
-        "is_active": True,
+        "description": "Up to 30kg",
+        "price_cents": 20900,
+        "stock_quantity": 6,
+        "image": "PM-XL-Lightweight-Pet-Trolley-Stroller.jpg",
     },
     {
-        "name": "Puppy Chicken & Rice 1.5kg",
+        "name": "Buddy Bites Adult Dog Fresh Lamb Kibbles",
         "category": "Food",
-        "brand": "NutriPaws",
+        "brand": "Buddy Bites",
         "pet_type": "DOG",
-        "description": "Gentle on tummies, made for puppies up to 12 months.",
-        "price_cents": 2850,
-        "stock_quantity": 25,
-        "low_stock_level": 8,
-        "is_active": True,
+        "description": "Balanced everyday nutrition for adult dogs, with lamb as the first ingredient.",
+        "price_cents": 3280,
+        "stock_quantity": 8,
+        "image": "BB-Fresh-Lamb-Adult-Dog-Food.webp",
     },
     {
-        "name": "Tuna Pâté Wet Food (12 cans)",
+        "name": "Royal Canin Mini Puppy Wet Dog Food",
         "category": "Food",
-        "brand": "Whisker & Co",
-        "pet_type": "CAT",
-        "description": "Smooth tuna pâté in 85g cans, complete and balanced.",
-        "price_cents": 2400,
-        "stock_quantity": 4,
-        "low_stock_level": 5,
-        "is_active": True,
-    },  # low stock
-    {
-        "name": "Indoor Cat Dry Food 1.2kg",
-        "category": "Food",
-        "brand": "Whisker & Co",
-        "pet_type": "CAT",
-        "description": "Hairball control formula for indoor cats.",
-        "price_cents": 2290,
-        "stock_quantity": 30,
-        "low_stock_level": 8,
-        "is_active": True,
-    },
-    {
-        "name": "Chicken Jerky Strips 200g",
-        "category": "Treats",
-        "brand": "Happy Tails",
+        "brand": "Royal Canin",
         "pet_type": "DOG",
-        "description": "Air-dried chicken breast strips, no preservatives.",
-        "price_cents": 1290,
-        "stock_quantity": 60,
-        "low_stock_level": 10,
-        "is_active": True,
-    },
-    {
-        "name": "Lickable Cat Treats (20 tubes)",
-        "category": "Treats",
-        "brand": "Whisker & Co",
-        "pet_type": "CAT",
-        "description": "Creamy chicken treats cats can lick straight from the tube.",
-        "price_cents": 1590,
+        "description": "1.5kg. Complete feed for dogs. For small breed puppies (adult weight from 1 to 10 kg)",
+        "price_cents": 2990,
         "stock_quantity": 0,
-        "low_stock_level": 5,
-        "is_active": True,
-    },  # out of stock
+        "image": "RC-Puppy-Mini-Food.png",
+    },
     {
-        "name": "Dental Chew Sticks (7 pcs)",
+        "name": "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
         "category": "Treats",
-        "brand": "Happy Tails",
-        "pet_type": "DOG",
-        "description": "Helps reduce plaque and freshen breath.",
-        "price_cents": 990,
-        "stock_quantity": 35,
-        "low_stock_level": 10,
-        "is_active": True,
-    },
-    {
-        "name": "Rope Tug Toy",
-        "category": "Toys",
-        "brand": "PlayPup",
-        "pet_type": "DOG",
-        "description": "Durable cotton rope for tug-of-war and chewing.",
-        "price_cents": 890,
-        "stock_quantity": 22,
-        "low_stock_level": 5,
-        "is_active": True,
-    },
-    {
-        "name": "Feather Wand Teaser",
-        "category": "Toys",
-        "brand": "PlayPup",
+        "brand": "Feline Natural",
         "pet_type": "CAT",
-        "description": "Interactive feather wand to keep cats active.",
-        "price_cents": 690,
-        "stock_quantity": 3,
-        "low_stock_level": 5,
-        "is_active": True,
-    },  # low stock
-    {
-        "name": "Squeaky Plush Duck",
-        "category": "Toys",
-        "brand": "PlayPup",
-        "pet_type": "DOG",
-        "description": "Soft plush toy with a squeaker inside.",
-        "price_cents": 1190,
+        "description": "50g. Chicken Healthy Bites. Treat your cat with the wholesome goodness of Feline Natural Healthy Bites. Delicious, healthy morsels made with all-natural premium ingredients. ",
+        "price_cents": 1390,
         "stock_quantity": 15,
-        "low_stock_level": 5,
-        "is_active": False,
-    },  # discontinued
-    {
-        "name": "Oatmeal Pet Shampoo 500ml",
-        "category": "Grooming",
-        "brand": "FurFresh",
-        "pet_type": "OTHER",
-        "description": "Soothing oatmeal shampoo for dogs, cats and small pets.",
-        "price_cents": 1650,
-        "stock_quantity": 28,
-        "low_stock_level": 6,
-        "is_active": True,
+        "image": "FN-Chicken-Healthy-Bites-Cats-Treats.png",
     },
     {
-        "name": "Slicker Brush",
-        "category": "Grooming",
-        "brand": "FurFresh",
-        "pet_type": "OTHER",
-        "description": "Removes loose fur and tangles for all coat types.",
-        "price_cents": 1490,
-        "stock_quantity": 18,
-        "low_stock_level": 5,
-        "is_active": True,
-    },
-    {
-        "name": "Reflective Dog Leash 1.5m",
-        "category": "Accessories",
-        "brand": "Happy Tails",
+        "name": "Pet Mrkt Rough & Tough Crocodile Dog Toy",
+        "category": "Toys",
+        "brand": "Pet Mrkt",
         "pet_type": "DOG",
-        "description": "Padded handle with reflective stitching for night walks.",
-        "price_cents": 1990,
-        "stock_quantity": 20,
-        "low_stock_level": 5,
-        "is_active": True,
+        "description": "Durable cotton plush for gentle chewing.",
+        "price_cents": 2700,
+        "stock_quantity": 8,
+        "image": "PM-Rough-and-Tough-Crocodile-Dog-Toy.png",
     },
     {
-        "name": "Breakaway Cat Collar",
-        "category": "Accessories",
-        "brand": "Whisker & Co",
+        "name": "Gnawlers Lallipop Freeze-Dried Chicken & Apple Cat Treats",
+        "category": "Treats",
+        "brand": "Gnawlers",
         "pet_type": "CAT",
-        "description": "Safety buckle releases if the collar gets caught.",
-        "price_cents": 790,
-        "stock_quantity": 26,
-        "low_stock_level": 5,
-        "is_active": True,
+        "description": "Naturally sourced Vitamins and Minerals.",
+        "price_cents": 150,
+        "stock_quantity": 3,
+        "image": "G-Lallipop-Freeze-Dried-Chicken-Apple-Cat-Treats.webp",
     },
     {
-        "name": "Joint Support Supplement (60 tabs)",
-        "category": "Health",
-        "brand": "VetCare",
+        "name": "Buddy Care Oatmeal pet shampoo 500ml",
+        "category": "Grooming",
+        "brand": "Buddy Care",
         "pet_type": "DOG",
-        "description": "Glucosamine and omega-3 for healthy joints.",
-        "price_cents": 3290,
-        "stock_quantity": 12,
-        "low_stock_level": 4,
-        "is_active": True,
-    },
-    {
-        "name": "Flea & Tick Spot-On (3 doses)",
-        "category": "Health",
-        "brand": "VetCare",
-        "pet_type": "CAT",
-        "description": "Monthly spot-on treatment for cats over 1kg.",
-        "price_cents": 2690,
-        "stock_quantity": 9,
-        "low_stock_level": 4,
-        "is_active": True,
+        "description": "500ml. Shampoo for Dogs With Irritated Skin.",
+        "price_cents": 1690,
+        "stock_quantity": 4,
+        "image": "BC-Oatmeal-Shampoo.png",
     },
 ]
 
 cart_items = [
-    {"customer": "amy_tan", "product": "Dental Chew Sticks (7 pcs)", "quantity": 2},
-    {"customer": "amy_tan", "product": "Breakaway Cat Collar", "quantity": 1},
-    {"customer": "chloe_ng", "product": "Reflective Dog Leash 1.5m", "quantity": 1},
+    {
+        "customer": "amy_tan",
+        "product": "Buddy Bites Adult Dog Fresh Lamb Kibbles",
+        "quantity": 1,
+    },
+    {
+        "customer": "amy_tan",
+        "product": "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
+        "quantity": 2,
+    },
+    {
+        "customer": "chloe_ng",
+        "product": "Pet Mrkt Rough & Tough Crocodile Dog Toy",
+        "quantity": 1,
+    },
 ]
 
 DELIVERY_FEE_CENTS = 500
@@ -628,8 +538,8 @@ orders = [
         "points_discount_cents": 0,
         "days_ago": 20,
         "items": [
-            ("Grain-Free Salmon Kibble 2kg", 1),
-            ("Chicken Jerky Strips 200g", 2),
+            ("Buddy Bites Adult Dog Fresh Lamb Kibbles", 1),
+            ("Pet Mrkt Rough & Tough Crocodile Dog Toy", 1),
         ],
     },
     {
@@ -641,7 +551,10 @@ orders = [
         "status": "COMPLETED",
         "points_discount_cents": 0,
         "days_ago": 12,
-        "items": [("Rope Tug Toy", 1), ("Dental Chew Sticks (7 pcs)", 2)],
+        "items": [
+            ("Pet Mrkt Rough & Tough Crocodile Dog Toy", 1),
+            ("Buddy Care Oatmeal pet shampoo 500ml", 1),
+        ],
     },
     {
         "ref": "O3",
@@ -653,8 +566,11 @@ orders = [
         "points_discount_cents": 200,
         "days_ago": 1,
         "items": [
-            ("Indoor Cat Dry Food 1.2kg", 2),
-            ("Tuna Pâté Wet Food (12 cans)", 1),
+            (
+                "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
+                2,
+            ),
+            ("Gnawlers Lallipop Freeze-Dried Chicken & Apple Cat Treats", 1),
         ],
     },
     {
@@ -666,7 +582,7 @@ orders = [
         "status": "PENDING",
         "points_discount_cents": 0,
         "days_ago": 0,
-        "items": [("Joint Support Supplement (60 tabs)", 1)],
+        "items": [("Pet Mrkt XL Lightweight Pet Cart Trolley Stroller Pram", 1)],
     },
     {
         "ref": "O5",
@@ -677,7 +593,7 @@ orders = [
         "status": "CANCELLED",
         "points_discount_cents": 0,
         "days_ago": 5,
-        "items": [("Oatmeal Pet Shampoo 500ml", 1)],
+        "items": [("Buddy Care Oatmeal pet shampoo 500ml", 1)],
     },
     {
         "ref": "O6",
@@ -688,7 +604,13 @@ orders = [
         "status": "CONFIRMED",
         "points_discount_cents": 0,
         "days_ago": 0,
-        "items": [("Feather Wand Teaser", 1), ("Slicker Brush", 1)],
+        "items": [
+            (
+                "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
+                1,
+            ),
+            ("Gnawlers Lallipop Freeze-Dried Chicken & Apple Cat Treats", 1),
+        ],
     },
 ]
 
@@ -982,11 +904,11 @@ booking_updates = [
 
 # Map position of each owner's home, used by the sitter "Distance" filter
 owner_coordinates = {
-    "amy_tan": ("1.353600", "103.945000"),     # Tampines
-    "jason_lee": ("1.333100", "103.742400"),   # Jurong East
+    "amy_tan": ("1.353600", "103.945000"),  # Tampines
+    "jason_lee": ("1.333100", "103.742400"),  # Jurong East
     "nur_aisyah": ("1.351700", "103.848600"),  # Bishan
-    "kumar_r": ("1.311700", "103.795800"),     # Holland Grove
-    "chloe_ng": ("1.436900", "103.786000"),    # Woodlands
+    "kumar_r": ("1.311700", "103.795800"),  # Holland Grove
+    "chloe_ng": ("1.436900", "103.786000"),  # Woodlands
 }
 
 sitting_requests = [
@@ -1243,6 +1165,7 @@ reviews = [
 
 # Load data view
 
+
 def loadData(request):
 
     # Clear existing data (children before parents)
@@ -1391,11 +1314,9 @@ def loadData(request):
             brand=Brand.objects.get(name=product["brand"]),
             pet_type=product["pet_type"],
             description=product["description"],
-            image_url="",
+            image_url=product["image"],
             price_cents=product["price_cents"],
             stock_quantity=product["stock_quantity"],
-            low_stock_level=product["low_stock_level"],
-            is_active=product["is_active"],
         )
         new_product.save()
 
@@ -1854,22 +1775,26 @@ def owner_dashboard(request):
     ]
     for key, label in streams:
         share = round(current[key] * 100 / current["total"]) if current["total"] else 0
-        breakdown.append({
-            "label": label,
-            "amount": money(current[key]),
-            "share": share,
-            "change": percent_change(current[key], previous[key]),
-        })
+        breakdown.append(
+            {
+                "label": label,
+                "amount": money(current[key]),
+                "share": share,
+                "change": percent_change(current[key], previous[key]),
+            }
+        )
 
     # Revenue by outlet
     outlet_rows = []
     for each_outlet in Outlet.objects.filter(is_active=True).order_by("name"):
         outlet_revenue = revenue_for_period(start, end, each_outlet)
-        outlet_rows.append({
-            "name": each_outlet.name,
-            "amount": money(outlet_revenue["total"]),
-            "bookings": outlet_revenue["booking_count"],
-        })
+        outlet_rows.append(
+            {
+                "name": each_outlet.name,
+                "amount": money(outlet_revenue["total"]),
+                "bookings": outlet_revenue["booking_count"],
+            }
+        )
 
     # Bookings by service and outlet
     period_bookings = (
@@ -1890,10 +1815,14 @@ def owner_dashboard(request):
 
     booking_volume_rows = []
     for (service_name, outlet_name), count in booking_volume.items():
-        booking_volume_rows.append({"service": service_name, "outlet": outlet_name, "count": count})
+        booking_volume_rows.append(
+            {"service": service_name, "outlet": outlet_name, "count": count}
+        )
     booking_volume_rows.sort(key=lambda row: row["count"], reverse=True)
 
-    top_services = sorted(service_counts.items(), key=lambda item: item[1], reverse=True)[:3]
+    top_services = sorted(
+        service_counts.items(), key=lambda item: item[1], reverse=True
+    )[:3]
 
     # Top-selling products
     period_items = OrderItem.objects.filter(
@@ -1906,14 +1835,20 @@ def owner_dashboard(request):
 
     product_counts = {}  # {product name: quantity sold}
     for item in period_items:
-        product_counts[item.product.name] = product_counts.get(item.product.name, 0) + item.quantity
-    top_products = sorted(product_counts.items(), key=lambda item: item[1], reverse=True)[:3]
+        product_counts[item.product.name] = (
+            product_counts.get(item.product.name, 0) + item.quantity
+        )
+    top_products = sorted(
+        product_counts.items(), key=lambda item: item[1], reverse=True
+    )[:3]
 
     # New vs returning customers
     active_customer_ids = set()
     for booking in period_bookings:
         active_customer_ids.add(booking.customer_id)
-    for order in Order.objects.filter(created_at__date__gte=start, created_at__date__lte=end):
+    for order in Order.objects.filter(
+        created_at__date__gte=start, created_at__date__lte=end
+    ):
         active_customer_ids.add(order.customer_id)
 
     new_customers = 0
@@ -1924,7 +1859,9 @@ def owner_dashboard(request):
         else:
             returning_customers += 1  # joined earlier and came back
     active_total = new_customers + returning_customers
-    returning_percent = round(returning_customers * 100 / active_total) if active_total else 0
+    returning_percent = (
+        round(returning_customers * 100 / active_total) if active_total else 0
+    )
 
     # Points issued and redeemed
     points_issued = 0
@@ -1951,37 +1888,102 @@ def owner_dashboard(request):
     for job in sitting_jobs:
         paid_to_sitters += job.sitter_payout_cents
 
-    # Export CSV with the same filters
+    # Export CSV: download the same report (same dates and outlet) as a spreadsheet file
     if request.GET.get("export") == "csv":
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="pawpal-report-{start}-to-{end}.csv"'
-        writer = csv.writer(response)
-        writer.writerow(["Pawpal report", f"{start} to {end}", outlet.name if outlet else "All outlets"])
-        writer.writerow([])
-        writer.writerow(["Revenue stream", "Revenue (SGD)", "Share (%)", "Change vs previous period (%)"])
+
+        # 1. Put every line of the report into a list called rows.
+        #    Each line is a list of cells, e.g. ["Total", "900.00", 100]
+        rows = []
+        if outlet:
+            outlet_name = outlet.name
+        else:
+            outlet_name = "All outlets"
+        rows.append(["Pawpal report", f"{start} to {end}", outlet_name])
+        rows.append([])  # an empty line between sections
+
+        # Revenue by stream
+        rows.append(
+            [
+                "Revenue stream",
+                "Revenue (SGD)",
+                "Share (%)",
+                "Change vs previous period (%)",
+            ]
+        )
         for row in breakdown:
-            writer.writerow([row["label"], row["amount"], row["share"], row["change"] if row["change"] is not None else ""])
+            change = row["change"]
+            if change is None:
+                change = ""  # nothing to compare with
+            rows.append([row["label"], row["amount"], row["share"], change])
         total_change = percent_change(current["total"], previous["total"])
-        writer.writerow(["Total", money(current["total"]), 100, total_change if total_change is not None else ""])
-        writer.writerow([])
-        writer.writerow(["Outlet", "Revenue (SGD)", "Bookings"])
+        if total_change is None:
+            total_change = ""
+        rows.append(["Total", money(current["total"]), 100, total_change])
+        rows.append([])
+
+        # Revenue by outlet
+        rows.append(["Outlet", "Revenue (SGD)", "Bookings"])
         for row in outlet_rows:
-            writer.writerow([row["name"], row["amount"], row["bookings"]])
-        writer.writerow([])
-        writer.writerow(["Service", "Outlet", "Bookings"])
+            rows.append([row["name"], row["amount"], row["bookings"]])
+        rows.append([])
+
+        # Bookings by service and outlet
+        rows.append(["Service", "Outlet", "Bookings"])
         for row in booking_volume_rows:
-            writer.writerow([row["service"], row["outlet"], row["count"]])
-        writer.writerow([])
-        writer.writerow(["Top product", "Quantity sold"])
+            rows.append([row["service"], row["outlet"], row["count"]])
+        rows.append([])
+
+        # Top-selling products
+        rows.append(["Top product", "Quantity sold"])
         for name, quantity in top_products:
-            writer.writerow([name, quantity])
-        writer.writerow([])
-        writer.writerow(["New customers", new_customers, "Returning customers", returning_customers])
-        writer.writerow(["Points issued", points_issued, "Points redeemed", points_redeemed])
-        writer.writerow([])
-        writer.writerow(["Sitting job end date", "Owner", "Sitter", "Job price", "Commission (10%)", "Paid to sitter"])
+            rows.append([name, quantity])
+        rows.append([])
+
+        # Customers and points
+        rows.append(
+            ["New customers", new_customers, "Returning customers", returning_customers]
+        )
+        rows.append(
+            ["Points issued", points_issued, "Points redeemed", points_redeemed]
+        )
+        rows.append([])
+
+        # Pet sitting commission per job
+        rows.append(
+            [
+                "Sitting job end date",
+                "Owner",
+                "Sitter",
+                "Job price",
+                "Commission (10%)",
+                "Paid to sitter",
+            ]
+        )
         for job in sitting_jobs:
-            writer.writerow([job.end_date, job.owner.first_name, job.sitter.first_name, job.total_price_display, job.commission_display, job.sitter_payout_display])
+            rows.append(
+                [
+                    job.end_date,
+                    job.owner.first_name,
+                    job.sitter.first_name,
+                    job.total_price_display,
+                    job.commission_display,
+                    job.sitter_payout_display,
+                ]
+            )
+
+        # 2. An HttpResponse with content_type "text/csv" is a file, not a web page.
+        #    "attachment" tells the browser to download it with this file name.
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = (
+            f'attachment; filename="pawpal-report-{start}-to-{end}.csv"'
+        )
+
+        # 3. Write each line into the file. csv.writer (from Python's csv module)
+        #    puts commas between the cells, and quotes around a cell that has
+        #    its own comma, such as "48,920.00".
+        writer = csv.writer(response)
+        for row in rows:
+            writer.writerow(row)
         return response
 
     # Stacked bar chart: last 6 months
@@ -1989,7 +1991,9 @@ def owner_dashboard(request):
     for months_back in range(5, -1, -1):
         total_months = end.year * 12 + (end.month - 1) - months_back
         month_start = date(total_months // 12, total_months % 12 + 1, 1)
-        next_month = date(month_start.year + (month_start.month // 12), month_start.month % 12 + 1, 1)
+        next_month = date(
+            month_start.year + (month_start.month // 12), month_start.month % 12 + 1, 1
+        )
         month_end = next_month - timedelta(days=1)
         month_revenue = revenue_for_period(month_start, month_end, outlet)
         chart.append({"label": month_start.strftime("%b"), "revenue": month_revenue})
@@ -2007,7 +2011,11 @@ def owner_dashboard(request):
 
     # greeting in Singapore time
     hour = datetime.now(SGT).hour
-    greeting = "Good morning" if hour < 12 else "Good afternoon" if hour < 18 else "Good evening"
+    greeting = (
+        "Good morning"
+        if hour < 12
+        else "Good afternoon" if hour < 18 else "Good evening"
+    )
 
     context = {
         "active_page": "dashboard",
@@ -2077,8 +2085,12 @@ def owner_customers(request):
             .select_related("pet", "slot__service", "slot__outlet")
             .order_by("-created_at")
         )
-        customer_orders = Order.objects.filter(customer=selected_customer).order_by("-created_at")
-        points_history = PointsTransaction.objects.filter(customer=selected_customer).order_by("-created_at")[:8]
+        customer_orders = Order.objects.filter(customer=selected_customer).order_by(
+            "-created_at"
+        )
+        points_history = PointsTransaction.objects.filter(
+            customer=selected_customer
+        ).order_by("-created_at")[:8]
 
     return render(
         request,
@@ -2114,20 +2126,32 @@ def owner_adjust_points(request, pk):
         points = 0
 
     if points == 0:
-        messages.error(request, "Enter a number of points to add (e.g. 200) or deduct (e.g. -200).")
+        messages.error(
+            request, "Enter a number of points to add (e.g. 200) or deduct (e.g. -200)."
+        )
     elif not reason:
         messages.error(request, "A reason is required for every points adjustment.")
     elif customer.point_balance + points < 0:
-        messages.error(request, f"Cannot deduct {-points} points. The customer only has {customer.point_balance}.")
+        messages.error(
+            request,
+            f"Cannot deduct {-points} points. The customer only has {customer.point_balance}.",
+        )
     else:
         add_points(customer, points, PointsTransaction.Type.ADJUSTED, reason)
-        messages.success(request, f"{points:+d} points saved. New balance: {customer.point_balance}.")
+        messages.success(
+            request, f"{points:+d} points saved. New balance: {customer.point_balance}."
+        )
 
     return redirect(back_to_customer)
 
 
 def owner_edit_customer(request, pk):
-    customer = get_object_or_404(Customer, pk=pk)
+    try:
+        customer = Customer.objects.get(pk=pk)
+    except Customer.DoesNotExist:
+        messages.error(request, "Customer not found.")
+        return redirect("core:owner_customers")
+
     if request.method == "POST":
         form = OwnerCustomerForm(request.POST, instance=customer)
         if form.is_valid():
@@ -2167,13 +2191,20 @@ def owner_sitters(request):
 
 
 def owner_review_sitter(request, pk):
-    sitter = get_object_or_404(PetSitter, pk=pk)
+    # Approve / Reject buttons send a POST; just opening the URL goes back to the list
     if request.method != "POST":
-        return_to = request.POST.get("return_to", "/admin-panel/pet-sitters/")
-        return redirect(f"{return_to}?sitter={sitter.pk}")
+        return redirect("core:owner_sitters")
+
+    try:
+        sitter = PetSitter.objects.get(pk=pk)
+    except PetSitter.DoesNotExist:
+        messages.error(request, "Pet sitter not found.")
+        return redirect("core:owner_sitters")
 
     action = request.POST.get("action")
-    owner = get_object_or_404(BusinessOwner, pk=request.session["user_id"])
+    owner = BusinessOwner.objects.get(
+        pk=request.session["user_id"]
+    )  # the middleware already checked this is the owner
     if action == "approve":
         sitter.application_status = PetSitter.Status.APPROVED
         sitter.rejection_reason = ""
@@ -2194,7 +2225,9 @@ def owner_review_sitter(request, pk):
             [sitter.email],
             fail_silently=True,
         )
-        messages.success(request, "Pet sitter application approved. The applicant has been emailed.")
+        messages.success(
+            request, "Pet sitter application approved. The applicant has been emailed."
+        )
     elif action == "reject":
         reason = request.POST.get("rejection_reason", "").strip()
         if not reason:
@@ -2219,7 +2252,10 @@ def owner_review_sitter(request, pk):
                 [sitter.email],
                 fail_silently=True,
             )
-            messages.success(request, "Pet sitter application rejected. The applicant has been emailed.")
+            messages.success(
+                request,
+                "Pet sitter application rejected. The applicant has been emailed.",
+            )
     else:
         messages.error(request, "Invalid sitter review action.")
     return redirect(f"/admin-panel/pet-sitters/?sitter={sitter.pk}")
@@ -2241,7 +2277,12 @@ def owner_staff(request):
 def owner_toggle_staff(request, pk):
     if request.method != "POST":
         return redirect("core:owner_staff")
-    staff = get_object_or_404(Staff, pk=pk)
+    try:
+        staff = Staff.objects.get(pk=pk)
+    except Staff.DoesNotExist:
+        messages.error(request, "Staff member not found.")
+        return redirect("core:owner_staff")
+
     staff.is_active = not staff.is_active
     staff.save(update_fields=["is_active"])
     action = "activated" if staff.is_active else "deactivated"
@@ -2282,7 +2323,9 @@ def owner_edit_staff(request, pk):
         form = OwnerStaffEditForm(request.POST, instance=staff)
         if form.is_valid():
             form.save()
-            messages.success(request, f"{staff.first_name or staff.username} was updated.")
+            messages.success(
+                request, f"{staff.first_name or staff.username} was updated."
+            )
             return redirect("core:owner_staff")
     else:
         form = OwnerStaffEditForm(instance=staff)

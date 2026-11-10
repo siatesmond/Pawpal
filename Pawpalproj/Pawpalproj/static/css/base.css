@@ -82,6 +82,19 @@ main {
   border: 1px solid #d87b70;
 }
 
+/* Green message after something is saved, e.g. "Customer profile updated" */
+.form-alert-success,
+.form-alert-info {
+  margin: 6px 0;
+  border: 1px solid #9cc8a8;
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /* navbar */
 .navbar {
   background: var(--nav-bg);

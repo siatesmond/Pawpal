@@ -52,6 +52,10 @@ class Customer(User):
             )
         ]
 
+    def get_point_value(self):
+        # What the points are worth at checkout: 1 point = 1 cent, e.g. 252 -> "2.52"
+        return f"{self.point_balance / 100:.2f}"
+
 
 class Staff(User):
     outlet = models.ForeignKey(
