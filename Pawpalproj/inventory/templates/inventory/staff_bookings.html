@@ -193,7 +193,7 @@
                 {% endif %}
 
                 <!-- Edit/Delete Booking update btn -->
-                {% if update.staff_id %}
+                {% if update.staff_id and selected_booking.status != 'CANCELLED' %}
                   {% if request.GET.delete_update == update.pk|stringformat:"i" %}
 
                     {# use query params ?delete_update=<id> to show confirmation prompt #}
@@ -219,11 +219,17 @@
             {% endfor %}
           </div>
 
-          {# Update Booking Btn #}
+          {# Update Booking Btn - shows only if booking is active #}
           <div style="margin-top: 1.5rem;">
+            {% if selected_booking.status != 'CANCELLED' %}
               <a href="{% url 'inventory:update_booking' selected_booking.pk %}" class="edit-product-btn" style="display: block; text-align: center; text-decoration: none;">
                 Update booking
               </a>
+            {% else %}
+              <p class="detail-text" style="color: #913434; font-style: italic; margin-top: 0.5rem; text-align: center;">
+                Booking was cancelled by customer, no further updates can be added.
+              </p>
+            {% endif %}
           </div>
 
       </section>

@@ -2,16 +2,18 @@ from decimal import Decimal
 
 from django import forms
 
-from service.models import BookingUpdate, IMAGE_TYPES
+from service.models import BookingUpdate, Booking, IMAGE_TYPES
 
 from .models import Product
+
 
 class StockForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = [
-            'stock_quantity',
+            "stock_quantity",
         ]
+
 
 class ProductForm(forms.ModelForm):
     price_dollars = forms.DecimalField(
@@ -41,15 +43,18 @@ class ProductForm(forms.ModelForm):
             # a plain file picker; the form template shows the current photo above it
             "image_url": forms.FileInput(attrs={"accept": ".jpg,.jpeg,.png,.webp"}),
         }
-    # checks if the product exists in DB and prefills with the price in dollars 
+
+    # checks if the product exists in DB and prefills with the price in dollars
     # to ensure price is displayed in dollars in the form instead of cents
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if self.instance and self.instance.pk:
-            self.initial["price_dollars"] = (
-                Decimal(self.instance.price_cents) / Decimal("100")
+            self.initial["price_dollars"] = Decimal(
+                self.instance.price_cents
+            ) / Decimal("100")
+            self.fields["image_url"].help_text = (
+                "JPG, PNG or WEBP. Leave empty to keep the current photo."
             )
-            self.fields["image_url"].help_text = "JPG, PNG or WEBP. Leave empty to keep the current photo."
         else:
             self.fields["image_url"].help_text = "JPG, PNG or WEBP."
 
@@ -59,6 +64,7 @@ class ProductForm(forms.ModelForm):
             self.cleaned_data["price_dollars"] * Decimal("100")
         )
         return super().save(commit=commit)
+
 
 class BookingUpdateForm(forms.ModelForm):
     class Meta:
@@ -70,3 +76,11 @@ class BookingUpdateForm(forms.ModelForm):
         widgets = {
             "note": forms.Textarea(attrs={"rows": 4}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["new_status"].choices = [
+            (value, label)
+            for value, label in self.fields["new_status"].choices
+            if value != Booking.Status.CANCELLED # staff cannot set booking status to CANCELLED, only customers can cancel their own bookings
+        ]
