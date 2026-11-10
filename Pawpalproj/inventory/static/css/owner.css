@@ -853,3 +853,75 @@ section.owner-panel {
     flex-wrap: wrap;
   }
 }
+
+/* Owner pet sitting page */
+.owner-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.owner-tabs a {
+  border: 1px solid #e1ddd2;
+  border-radius: 999px;
+  background: #fff;
+  padding: 6px 12px;
+  color: #4b4a43;
+  font-size: 11px;
+}
+
+.owner-tabs a.active {
+  border-color: var(--green);
+  background: var(--green);
+  color: #fff;
+}
+
+.owner-row-selected td {
+  background: #f6f3ec;
+}
+
+.owner-subtitle {
+  margin-top: 18px !important;
+  font-size: 16px !important;
+}
+
+.owner-cancel-form {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+  border-top: 1px solid #eeeae2;
+  padding-top: 14px;
+}
+
+.owner-cancel-form label {
+  display: grid;
+  gap: 4px;
+  color: #4b4a43;
+  font-size: 11px;
+}
+
+.owner-cancel-form input {
+  border: 1px solid #e1ddd2;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.owner-btn-danger {
+  justify-self: start;
+  border: 0;
+  border-radius: 999px;
+  background: #c0533f;
+  padding: 9px 18px;
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* sitting statuses that the shared status pills don't have */
+.status-pill.status-open { background: #e7eef7; color: #36506e; }
+.status-pill.status-accepted { background: #e5ead9; color: #4a5a3f; }
+.status-pill.status-declined { background: #f1ece4; color: #7a716a; }

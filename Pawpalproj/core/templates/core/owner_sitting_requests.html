@@ -1,0 +1,106 @@
+{% extends "core/owner_base.html" %}
+
+{% block title %}Pet sitting | Pawpal owner{% endblock %}
+
+{% block content %}
+{# Heading + search and sitter filter #}
+<header class="owner-dash-head">
+  <div>
+    <h1>Pet sitting</h1>
+    <p>Every pet sitting request and sitter job</p>
+  </div>
+  <form method="get" class="owner-dash-filters">
+    <input type="hidden" name="status" value="{{ status }}">
+    <label>Search
+      <input type="search" name="query" value="{{ query }}" placeholder="Owner or sitter name">
+    </label>
+    <label>Sitter
+      <select name="sitter">
+        <option value="">All sitters</option>
+        {% for sitter in sitters %}
+          <option value="{{ sitter.pk }}" {% if sitter.pk|stringformat:"d" == sitter_id %}selected{% endif %}>{{ sitter.first_name }} {{ sitter.last_name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="owner-btn-outline">Apply</button>
+  </form>
+</header>
+
+{# Status tabs with counts; they keep the search and sitter filter #}
+<nav class="owner-tabs">
+  {% for value, label, count in tabs %}
+    <a href="{% querystring status=value request=None %}" class="{% if status == value %}active{% endif %}">{{ label }} ({{ count }})</a>
+  {% endfor %}
+</nav>
+
+<section class="owner-dashboard-grid">
+  {# All requests #}
+  <article class="owner-panel">
+    <table class="owner-table">
+      <thead>
+        <tr><th>Dates</th><th>Owner</th><th>Sitter</th><th>Pets</th><th>Price</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+          <tr {% if selected.pk == job.pk %}class="owner-row-selected"{% endif %}>
+            <td>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }}</td>
+            <td>{{ job.owner.first_name }} {{ job.owner.last_name }}</td>
+            <td>{% if job.sitter %}{{ job.sitter.first_name }} {{ job.sitter.last_name }}{% else %}<span class="owner-small">Open to all</span>{% endif %}</td>
+            <td>{{ job.pets.all|join:", " }}</td>
+            <td>SGD {{ job.total_price_display }}</td>
+            <td><span class="status-pill status-{{ job.status }}">{{ job.get_status_display }}</span></td>
+            <td><a class="owner-link" href="{% querystring request=job.pk %}">View</a></td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" style="text-align: center;">No sitting requests found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
+
+  {# Details of the selected request #}
+  <article class="owner-panel">
+    {% if selected %}
+      <div class="owner-panel-head">
+        <h2>Request #{{ selected.pk }}</h2>
+        <span class="status-pill status-{{ selected.status }}">{{ selected.get_status_display }}</span>
+      </div>
+      <table class="owner-table">
+        <tr><td>Dates</td><td>{{ selected.start_date|date:"j M" }}–{{ selected.end_date|date:"j M Y" }} ({{ selected.number_of_days }} day{{ selected.number_of_days|pluralize }})</td></tr>
+        <tr><td>Owner</td><td>{{ selected.owner.first_name }} {{ selected.owner.last_name }} · {{ selected.owner.mobile }}</td></tr>
+        <tr><td>Sitter</td><td>{% if selected.sitter %}{{ selected.sitter.first_name }} {{ selected.sitter.last_name }} · {{ selected.sitter.mobile }}{% else %}Not chosen yet (open to all sitters){% endif %}</td></tr>
+        <tr><td>Pets</td><td>{{ selected.pets.all|join:", " }}</td></tr>
+        <tr><td>Location</td><td>{{ selected.location }}</td></tr>
+        <tr><td>Care</td><td>{{ selected.care_requirements|default:"–" }}</td></tr>
+        <tr><td>Price</td><td>SGD {{ selected.total_price_display }}</td></tr>
+        <tr><td>Pawpal 10%</td><td>SGD {{ selected.commission_display }} · sitter gets SGD {{ selected.sitter_payout_display }}</td></tr>
+        <tr><td>Payment</td><td>{% if payment %}{{ payment.get_status_display }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}{% else %}Not paid yet{% endif %}</td></tr>
+        {% if selected.owner_rating %}<tr><td>Owner rating</td><td>{{ selected.owner_rating }} / 5{% if selected.owner_feedback %} · {{ selected.owner_feedback }}{% endif %}</td></tr>{% endif %}
+      </table>
+
+      <h2 class="owner-subtitle">Sitter updates</h2>
+      {% for update in updates %}
+        <div class="owner-row">
+          <span>{{ update.created_at|date:"j M, g:i a" }}{% if update.new_status %} · {{ update.get_new_status_display }}{% endif %}<small>{{ update.note }}</small></span>
+          {% if update.photo %}<a class="owner-link" href="{{ update.photo.url }}" target="_blank">Photo</a>{% endif %}
+        </div>
+      {% empty %}
+        <p class="owner-empty">No updates yet.</p>
+      {% endfor %}
+
+      {# Owner can cancel a request that has not started; a paid one is refunded #}
+      {% if can_cancel %}
+        <form method="post" action="{% url 'core:owner_cancel_sitting' selected.pk %}" class="owner-cancel-form">
+          {% csrf_token %}
+          <label>Reason (sent to the customer and sitter)
+            <input type="text" name="reason" placeholder="e.g. Sitter is unwell">
+          </label>
+          <button type="submit" class="owner-btn-danger" onclick="return confirm('Cancel this sitting request? A paid request will be refunded.');">Cancel request</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <p class="owner-empty">Choose a request to see its details.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

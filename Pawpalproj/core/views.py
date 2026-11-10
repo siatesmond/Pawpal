@@ -11,7 +11,7 @@ from django.shortcuts import HttpResponse, redirect, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
 from payment.models import Payment, PointsTransaction
-from payment.services import add_points
+from payment.services import add_points, refund_payment
 from review.models import Review
 from service.models import Booking, BookingUpdate, Service, TimeSlot
 from sitting.models import PetSitter, SittingRequest, SittingUpdate
@@ -2202,6 +2202,101 @@ def owner_sitters(request):
             ).count(),
         },
     )
+
+
+def owner_sitting_requests(request):
+    # Every pet sitting request and sitter job, with status tabs, search and a sitter filter
+    status = request.GET.get("status", "all")
+    query = request.GET.get("query", "").strip()
+    sitter_id = request.GET.get("sitter", "")
+
+    jobs = (
+        SittingRequest.objects.select_related("owner", "sitter")
+        .prefetch_related("pets")
+        .order_by("-start_date")
+    )
+    if sitter_id.isdigit():
+        jobs = jobs.filter(sitter_id=sitter_id)
+    if query:
+        jobs = jobs.filter(
+            Q(owner__first_name__icontains=query)
+            | Q(owner__last_name__icontains=query)
+            | Q(sitter__first_name__icontains=query)
+            | Q(sitter__last_name__icontains=query)
+        )
+
+    # one tab per status, with how many requests are in it
+    tabs = [("all", "All", jobs.count())]
+    for value, label in SittingRequest.Status.choices:
+        tabs.append((value, label, jobs.filter(status=value).count()))
+
+    if status != "all":
+        jobs = jobs.filter(status=status)
+
+    # the request shown in the details panel (first one if none was clicked)
+    selected = None
+    selected_id = request.GET.get("request", "")
+    if selected_id.isdigit():
+        selected = SittingRequest.objects.select_related("owner", "sitter").filter(pk=selected_id).first()
+    if selected is None:
+        selected = jobs.first()
+
+    updates = []
+    payment = None
+    if selected is not None:
+        updates = SittingUpdate.objects.filter(request=selected).select_related("sitter")
+        payment = selected.payments.order_by("-created_at").first()
+
+    return render(
+        request,
+        "core/owner_sitting_requests.html",
+        {
+            "active_page": "sitting",
+            "jobs": jobs,
+            "tabs": tabs,
+            "status": status,
+            "query": query,
+            "sitter_id": sitter_id,
+            "sitters": PetSitter.objects.filter(application_status=PetSitter.Status.APPROVED).order_by("first_name"),
+            "selected": selected,
+            "updates": updates,
+            "payment": payment,
+            "can_cancel": selected is not None and selected.status in ["open", "pending", "accepted"],
+        },
+    )
+
+
+def owner_cancel_sitting(request, pk):
+    # The owner cancels a request that has not started yet; a paid request is refunded
+    if request.method != "POST":
+        return redirect("core:owner_sitting_requests")
+
+    try:
+        job = SittingRequest.objects.select_related("owner", "sitter").get(pk=pk)
+    except SittingRequest.DoesNotExist:
+        messages.error(request, "Sitting request not found.")
+        return redirect("core:owner_sitting_requests")
+
+    if job.status not in ["open", "pending", "accepted"]:
+        messages.error(request, "Only requests that have not started can be cancelled.")
+        return redirect(f"/admin-panel/sitting-requests/?request={job.pk}")
+
+    reason = request.POST.get("reason", "").strip() or "Cancelled by Pawpal."
+    job.status = SittingRequest.Status.CANCELLED
+    job.save()
+    refund_payment(job, label=f"pet sitting #{job.pk}")  # gives back the money and points if paid
+
+    if job.sitter:
+        SittingUpdate(request=job, sitter=job.sitter, new_status=job.status, note=f"Cancelled by Pawpal: {reason}").save()
+
+    # tell the customer and the sitter
+    message = f"Pawpal cancelled the pet sitting for {job.start_date:%d %b} to {job.end_date:%d %b}.\nReason: {reason}"
+    send_mail_in_background("Pawpal: pet sitting cancelled", message, None, [job.owner.email], fail_silently=True)
+    if job.sitter:
+        send_mail_in_background("Pawpal: pet sitting cancelled", message, None, [job.sitter.email], fail_silently=True)
+
+    messages.success(request, f"Sitting request #{job.pk} was cancelled.")
+    return redirect(f"/admin-panel/sitting-requests/?request={job.pk}")
 
 
 def owner_review_sitter(request, pk):

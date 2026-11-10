@@ -29,6 +29,8 @@ urlpatterns = [
         views.owner_review_sitter,
         name="owner_review_sitter",
     ),
+    path("admin-panel/sitting-requests/", views.owner_sitting_requests, name="owner_sitting_requests"),
+    path("admin-panel/sitting-requests/<int:pk>/cancel/", views.owner_cancel_sitting, name="owner_cancel_sitting"),
     path("admin-panel/staff/", views.owner_staff, name="owner_staff"),
     path("admin-panel/staff/add/", views.owner_add_staff, name="owner_add_staff"),
     path("admin-panel/staff/<int:pk>/edit/", views.owner_edit_staff, name="owner_edit_staff"),

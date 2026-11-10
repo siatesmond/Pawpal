@@ -24,6 +24,7 @@
       <a href="{% url 'inventory:staff_products' %}" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
       <a href="{% url 'core:owner_customers' %}" {% if active_page == "customers" %}class="active"{% endif %}>Customers</a>
       <a href="{% url 'core:owner_sitters' %}" {% if active_page == "sitters" %}class="active"{% endif %}>Pet sitters</a>
+      <a href="{% url 'core:owner_sitting_requests' %}" {% if active_page == "sitting" %}class="active"{% endif %}>Pet sitting</a>
       <a href="{% url 'core:owner_staff' %}" {% if active_page == "staff" %}class="active"{% endif %}>Staff</a>
     </nav>
     <a class="owner-logout" href="{% url 'user:logout' %}">Log out</a>

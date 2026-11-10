@@ -15,7 +15,7 @@
     <h2 class="owner-section-title">Pet sitter details</h2>
     <div class="owner-panel owner-staff-table">
       <div class="owner-staff-row owner-staff-header">
-        <strong>Name</strong><strong>Service area</strong><strong>Rate</strong><strong>Status</strong>
+        <strong>Name</strong><strong>Service area</strong><strong>Rate</strong><strong>Status</strong><strong>Jobs</strong>
       </div>
       {% for sitter in sitters %}
       <div class="owner-staff-row owner-sitter-detail-row">
@@ -23,6 +23,7 @@
         <span>{{ sitter.service_area }}</span>
         <span>SGD {{ sitter.daily_rate_display }}</span>
         <span class="status-pill status-{{ sitter.application_status|lower }}">{{ sitter.get_application_status_display }}</span>
+        <a class="owner-link" href="{% url 'core:owner_sitting_requests' %}?sitter={{ sitter.pk }}">View jobs ({{ sitter.sitting_jobs.count }})</a>
       </div>
       {% empty %}
       <p class="owner-empty">No pet sitters found.</p>
