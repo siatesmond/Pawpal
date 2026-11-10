@@ -1,6 +1,6 @@
 import csv
 import math
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
 from zoneinfo import ZoneInfo
 
@@ -18,6 +18,7 @@ from payment.services import (
     checkout_totals,
     get_points_balance,
     record_payment,
+    refund_payment,
 )
 from review.models import Review
 from user.models import OTP, Address, Customer, Pet, User
@@ -1004,6 +1005,54 @@ def my_sitting_requests(request):
     return render(request, "sitting/my_sitting_requests.html", {"requests_list": requests_list})
 
 
+# Customers can cancel a sitting request until the day the sitting starts
+def sitting_cancel_deadline(job):
+    return datetime.combine(job.start_date, time.min, tzinfo=SGT)  # 12:00 am on the first day
+
+
+def sitting_can_cancel(job):
+    not_started = job.status in [SittingRequest.Status.OPEN, SittingRequest.Status.PENDING, SittingRequest.Status.ACCEPTED]
+    return not_started and datetime.now(SGT) < sitting_cancel_deadline(job)
+
+
+def cancel_request(request, pk):
+    # "Yes, cancel sitting request" button on the request page
+    customer = get_customer(request)
+    if customer is None:
+        return redirect("user:login")
+    if request.method != "POST":
+        return redirect("sitting:request_detail", pk=pk)
+
+    try:
+        job = SittingRequest.objects.select_related("sitter").get(pk=pk, owner=customer)
+    except SittingRequest.DoesNotExist:
+        messages.error(request, "Sitting request not found.")
+        return redirect("sitting:my_sitting_requests")
+
+    if not sitting_can_cancel(job):
+        messages.error(request, "This sitting request can no longer be cancelled. Please contact Pawpal.")
+        return redirect("sitting:request_detail", pk=job.pk)
+
+    job.status = SittingRequest.Status.CANCELLED
+    job.save()
+
+    # if the owner already paid: refund the card and give back the points (same as orders and bookings)
+    refund_payment(job, label=f"pet sitting #{job.pk}")
+
+    if job.sitter:
+        record_update(job, job.sitter, job.status, f"{customer.first_name} cancelled this request.")
+        send_mail_in_background(
+            "Pawpal: a sitting request was cancelled",
+            f"{customer.first_name} cancelled the request for {job.start_date:%d %b} to {job.end_date:%d %b}.",
+            None,
+            [job.sitter.email],
+            fail_silently=True,
+        )
+
+    messages.success(request, "Your sitting request has been cancelled.")
+    return redirect("sitting:request_detail", pk=job.pk)
+
+
 def request_detail(request, pk):
     # Track status, see the sitter's notes & photos, cancel, review
     customer = get_customer(request)
@@ -1019,24 +1068,7 @@ def request_detail(request, pk):
     if request.method == "POST":
         action = request.POST.get("action")
 
-        if action == "cancel":
-            # only before the owner has paid
-            if job.status not in [SittingRequest.Status.OPEN, SittingRequest.Status.PENDING]:
-                messages.error(request, "This request can no longer be cancelled here. Please contact Pawpal.")
-            else:
-                job.status = SittingRequest.Status.CANCELLED
-                job.save()
-                if job.sitter:
-                    send_mail_in_background(
-                        "Pawpal: a sitting request was cancelled",
-                        f"{customer.first_name} cancelled the request for {job.start_date:%d %b} to {job.end_date:%d %b}.",
-                        None,
-                        [job.sitter.email],
-                        fail_silently=True,
-                    )
-                messages.success(request, "Request cancelled.")
-
-        elif action == "review":
+        if action == "review":
             # Add a review, or update my review if I already wrote one
             if job.status != SittingRequest.Status.COMPLETED:
                 messages.error(request, "You can review the sitter after the job is completed.")
@@ -1094,7 +1126,22 @@ def render_request_detail(request, job, customer, review_form=None, editing=Fals
     current_index = step_order.index(job.status) if job.status in step_order else -1
 
     payment = job.payments.order_by("-created_at").first()
+
+    # Same cancel section as bookings and orders (user/_cancel_section.html)
+    allowed = sitting_can_cancel(job)
+    not_started = job.status in [SittingRequest.Status.OPEN, SittingRequest.Status.PENDING, SittingRequest.Status.ACCEPTED]
+    paid_cents = 0
+    if payment and payment.status == "COMPLETED":
+        paid_cents = payment.amount_cents
+
     context = {
+        "can_cancel": allowed,
+        "confirm_cancel": allowed and request.GET.get("cancel") == "1",
+        # shown as Singapore time (settings.py uses UTC, which would show 4:00 PM the day before)
+        "cancel_deadline": sitting_cancel_deadline(job).replace(tzinfo=None),
+        "cancel_closed": not_started and not allowed,
+        "refund_dollars": paid_cents / 100,
+        "not_paid": paid_cents == 0,
         "job": job,
         "pets": job.pets.all(),
         "updates": SittingUpdate.objects.filter(request=job),

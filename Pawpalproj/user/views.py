@@ -24,7 +24,7 @@ from .forms import (
     RegisterForm,
     ResetPasswordForm,
 )
-from .models import OTP, Customer, Pet, User
+from .models import OTP, Address, Customer, Pet, User
 from .utils import get_current_customer
 
 
@@ -826,6 +826,57 @@ class EditAddressView(View):
             self.template_name,
             {"form": form, "edit_mode": True},
         )
+
+
+# Make one saved address the default (it is pre-selected at checkout)
+def set_default_address(request, address_id):
+    if request.method != "POST":
+        return redirect("user:profile")
+
+    customer = Customer.objects.get(pk=request.session["user_id"])
+    try:
+        address = customer.addresses.get(pk=address_id)
+    except Address.DoesNotExist:
+        messages.error(request, "Address not found.")
+        return redirect("/user/profile/#addresses")
+
+    # only one default: clear the others first
+    customer.addresses.update(is_default=False)
+    address.is_default = True
+    address.save()
+    messages.success(request, "Default address updated.")
+    return redirect("/user/profile/#addresses")
+
+
+# Remove a saved address
+def delete_address(request, address_id):
+    if request.method != "POST":
+        return redirect("user:profile")
+
+    customer = Customer.objects.get(pk=request.session["user_id"])
+    try:
+        address = customer.addresses.get(pk=address_id)
+    except Address.DoesNotExist:
+        messages.error(request, "Address not found.")
+        return redirect("/user/profile/#addresses")
+
+    # an address used by a past order must stay, so the order still shows where it went
+    if address.orders.exists():
+        messages.error(request, "This address is used by one of your orders, so it can't be removed.")
+        return redirect("/user/profile/#addresses")
+
+    was_default = address.is_default
+    address.delete()
+
+    # if the default was removed, make the next address the default
+    if was_default:
+        next_address = customer.addresses.first()
+        if next_address:
+            next_address.is_default = True
+            next_address.save()
+
+    messages.success(request, "Address removed.")
+    return redirect("/user/profile/#addresses")
 
 
 # REDIRECT USERS TO THE CORRECT HOME PAGE

@@ -292,36 +292,48 @@ pet_sitters = [
 addresses = [
     {
         "customer": "amy_tan",
+        "label": "Home",
+        "is_default": True,
         "line1": "Blk 123 Tampines Street 11",
         "line2": "#05-67",
         "postal_code": "521123",
     },
     {
         "customer": "amy_tan",
+        "label": "Office",
+        "is_default": False,
         "line1": "1 Raffles Place",
         "line2": "#20-01 (Office)",
         "postal_code": "048616",
     },
     {
         "customer": "jason_lee",
+        "label": "Home",
+        "is_default": True,
         "line1": "Blk 250 Jurong East Street 24",
         "line2": "#08-12",
         "postal_code": "600250",
     },
     {
         "customer": "nur_aisyah",
+        "label": "Home",
+        "is_default": True,
         "line1": "Blk 456 Bishan Street 13",
         "line2": "#11-20",
         "postal_code": "570456",
     },
     {
         "customer": "kumar_r",
+        "label": "Home",
+        "is_default": True,
         "line1": "18 Holland Grove Road",
         "line2": "",
         "postal_code": "278806",
     },
     {
         "customer": "chloe_ng",
+        "label": "Home",
+        "is_default": True,
         "line1": "Blk 789 Woodlands Drive 50",
         "line2": "#03-15",
         "postal_code": "730789",
@@ -1280,6 +1292,8 @@ def loadData(request):
     for address in addresses:
         new_address = Address(
             customer=Customer.objects.get(username=address["customer"]),
+            label=address["label"],
+            is_default=address["is_default"],
             line1=address["line1"],
             line2=address["line2"],
             postal_code=address["postal_code"],

@@ -5,6 +5,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
 <link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}" />
 {% endblock %}
 
 {% block content %}
@@ -123,6 +125,10 @@
           {% endfor %}
         </ul>
       </div>
+
+      {# Same cancel section as bookings and orders #}
+      {% url 'sitting:cancel_request' job.pk as cancel_url %}
+      {% include "user/_cancel_section.html" with record_label="sitting request" cancel_url=cancel_url %}
     </div>
 
     <aside class="sitter-stack">
@@ -137,13 +143,6 @@
         </table>
       </div>
 
-      {% if job.status == "open" or job.status == "pending" %}
-        <form method="post" class="request-cancel">
-          {% csrf_token %}
-          <input type="hidden" name="action" value="cancel">
-          <button type="submit" class="link-danger" onclick="return confirm('Cancel this sitting request?');">Cancel request</button>
-        </form>
-      {% endif %}
     </aside>
   </div>
 </section>

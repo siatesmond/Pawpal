@@ -1,4 +1,4 @@
-<!-- Cancel section used by booking_detail.html and order_detail.html. -->
+<!-- Cancel section used by booking_detail.html, order_detail.html and the pet sitting request page. -->
 
 {# Check if the user is within the allowed cancellation window #}
 {% if can_cancel %}
@@ -7,10 +7,15 @@
     {# Confirma Cancellation #}
     {% if confirm_cancel %}
       <h2>Cancel this {{ record_label }}?</h2>
-      <p class="section-note">
-        SGD {{ refund_dollars|floatformat:2 }} will be refunded to your card and any points you used will be returned.
-        Points earned from this {{ record_label }} will be removed. This can't be undone.
-      </p>
+      {% if not_paid %}
+        {# Pet sitting request that has not been paid yet: nothing to refund #}
+        <p class="section-note">You haven't paid for this {{ record_label }}, so nothing will be charged. This can't be undone.</p>
+      {% else %}
+        <p class="section-note">
+          SGD {{ refund_dollars|floatformat:2 }} will be refunded to your card and any points you used will be returned.
+          Points earned from this {{ record_label }} will be removed. This can't be undone.
+        </p>
+      {% endif %}
 
       {# Form to process payment + points refund and status update#}
       <form method="post" action="{{ cancel_url }}" class="profile-button-row">

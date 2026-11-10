@@ -17,4 +17,5 @@ urlpatterns = [
     path("requests/", views.my_sitting_requests, name="my_sitting_requests"),
     path("requests/<int:pk>/", views.request_detail, name="request_detail"),
     path("requests/<int:pk>/pay/", views.pay_for_request, name="pay_for_request"),
+    path("requests/<int:pk>/cancel/", views.cancel_request, name="cancel_request"),
 ]

@@ -42,15 +42,28 @@
         <a class="profile-button profile-button-outline" href="{% url 'user:add_address' %}">+ Add address</a>
       </div>
 
-      {% for address in customer.addresses.all %}
+      {# default address first #}
+      {% for address in customer.addresses.all|dictsortreversed:"is_default" %}
         <div class="address-row">
           <div class="address-copy">
-            <strong>{{ address.line1 }}{% if address.line2 %}, {{ address.line2 }}{% endif %}</strong>
+            <strong>
+              {{ address.line1 }}{% if address.line2 %}, {{ address.line2 }}{% endif %}
+              {% if address.is_default %}<span class="address-default">Default</span>{% endif %}
+            </strong>
             <span>{{ address.postal_code }}</span>
           </div>
           <div class="address-actions">
+            {% if not address.is_default %}
+              <form method="post" action="{% url 'user:set_default_address' address.id %}">
+                {% csrf_token %}
+                <button type="submit" class="address-link">Set as default</button>
+              </form>
+            {% endif %}
             <a href="{% url 'user:edit_address' address.id %}">Edit</a>
-            <a class="address-remove" href="#addresses">Remove</a>
+            <form method="post" action="{% url 'user:delete_address' address.id %}">
+              {% csrf_token %}
+              <button type="submit" class="address-link address-remove" onclick="return confirm('Remove this address?');">Remove</button>
+            </form>
           </div>
         </div>
       {% empty %}

@@ -42,6 +42,8 @@ urlpatterns = [
         EditAddressView.as_view(),
         name="edit_address",
     ),
+    path("profile/address/<int:address_id>/default/", views.set_default_address, name="set_default_address"),
+    path("profile/address/<int:address_id>/delete/", views.delete_address, name="delete_address"),
     path("bookings/", BookingListView.as_view(), name="bookings"),
     path("bookings/<int:booking_id>/", BookingDetailView.as_view(), name="booking_detail"),
     path("bookings/<int:booking_id>/cancel/", BookingCancelView.as_view(), name="booking_cancel"),
