@@ -165,6 +165,16 @@ def _format_start(start):
 def _format_check_out(check_out_date, end_time):
     return f"{_format_day(check_out_date)}, {end_time.astimezone(SGT):%H:%M}"
 
+# 90 -> "1 hr 30 min", 60 -> "1 hr", 45 -> "45 min"
+def _format_duration(minutes):
+    hours, mins = divmod(minutes, 60)
+    parts = []
+    if hours:
+        parts.append(f"{hours} hr")
+    if mins:
+        parts.append(f"{mins} min")
+    return " ".join(parts)
+
 
 # Booking summary: pet, service, outlet, when, nights, check-out, price.
 # Full price (points only applied at checkout) and check-out only if a slot is chosen.
@@ -173,11 +183,22 @@ def _summary(selection):
     price = selection.get("price_cents")
     start = selection.get("start")
     check_out = selection.get("check_out_date")
+    service = selection.get("service")
+
+    minutes = service.duration_minutes if service else None
+    
+    duration = _format_duration(minutes) if minutes and not check_out else None #calculate for non-boarding services only
+
+    # End Date and TIme for non-boarding services
+    end_time = _format_start(start + timedelta(minutes=minutes)) if (start and duration) else None
+    
     return {
         "pet": selection.get("pet"),
         "service": selection.get("service"),
         "outlet": selection.get("outlet"),
         "when": _format_start(start) if start else None,
+        "duration": duration,
+        "end_time": end_time,
         "nights": selection.get("nights"),
         "check_out": _format_check_out(check_out, selection["check_out_time"]) if check_out else None,
         "price_dollars": price / 100 if price is not None else None,

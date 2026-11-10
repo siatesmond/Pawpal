@@ -9,17 +9,29 @@
 
 <!-- Display the selected service in the checkout summary (book service only) -->
 {% block summary_items %}
-    <div class="checkout-summary-item">
-        <div class="checkout-summary-product">
-            <div class="checkout-summary-placeholder">{{ summary.service.name|first }}</div>
-        </div>
-        <div>
-            <strong>{{ summary.service.name }}</strong>
-            <span>For {{ summary.pet.name }}{% if summary.pet.breed %} ({{ summary.pet.breed }}){% endif %} · {{ summary.outlet.name }}</span>
-            <span>{% if summary.check_out %}Check-in {% endif %}{{ summary.when }}</span>
-            {% if summary.check_out %}<span>Check-out {{ summary.check_out }}</span>{% endif %}
-            {% if summary.nights and summary.nights > 1 %}<span>{{ summary.nights }} nights</span>{% endif %}
-        </div>
-        <strong>SGD {{ summary.price_dollars|floatformat:2 }}</strong>
+<div class="checkout-summary-item">
+    <div class="checkout-summary-product">
+        <div class="checkout-summary-placeholder">{{ summary.service.name|first }}</div>
     </div>
+    <div>
+        <strong>{{ summary.service.name }}</strong>
+        <span>For {{ summary.pet.name }}{% if summary.pet.breed %} ({{ summary.pet.breed }}){% endif %} · {{
+            summary.outlet.name }}</span>
+                {% if summary.check_out %}
+
+            {# Boarding: check-in, check-out and number of nights #}
+            <span>Check-in {{ summary.when }}</span>
+            <span>Check-out {{ summary.check_out }}</span>
+            {% if summary.nights and summary.nights > 1 %}<span>{{ summary.nights }} nights</span>{% endif %}
+        {% else %}
+
+            {# Other services: start, how long, and when it ends #}
+            <span>Starts {{ summary.when }}</span>
+            {% if summary.duration %}<span>Duration {{ summary.duration }}</span>{% endif %}
+            {% if summary.end_time %}<span>Ends {{ summary.end_time }}</span>{% endif %}
+        {% endif %}
+
+    </div>
+    <strong>SGD {{ summary.price_dollars|floatformat:2 }}</strong>
+</div>
 {% endblock %}

@@ -12,13 +12,25 @@
     <dd>{{ summary.outlet.name|default:"—" }}</dd>
   </div>
   <div>
-    <dt>{% if summary.check_out %}Check-in{% else %}Date &amp; time{% endif %}</dt>
+    <dt>{% if summary.check_out %}Check-in{% else %}Start Date &amp; time{% endif %}</dt>
     <dd>{{ summary.when|default:"Choose a time" }}</dd>
   </div>
-  {% if summary.check_out %}
+  {% if summary.duration %}
     <div>
-      <dt>Check-out</dt>
-      <dd>{{ summary.check_out }}</dd>
+      <dt>Duration</dt>
+      <dd>{{ summary.duration }}</dd>
     </div>
+  {% endif %}
+  {% if summary.end_time %}
+    <div>
+      <dt>End Date &amp;  Time</dt>
+      <dd>{{ summary.end_time }}</dd>
+    </div>
+  {% endif %}
+  {% if summary.check_out %}
+  <div>
+    <dt>Check-out</dt>
+    <dd>{{ summary.check_out }}</dd>
+  </div>
   {% endif %}
 </dl>
