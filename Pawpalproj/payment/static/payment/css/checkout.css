@@ -1,0 +1,202 @@
+.checkout-page {
+  max-width: 1180px;
+}
+
+.checkout-page .form-page-header {
+  grid-column: 1 / -1;
+}
+
+.checkout-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+  align-items: start;
+  gap: 2rem;
+}
+
+.checkout-form-card {
+  min-width: 0;
+}
+
+.checkout-summary {
+  margin-bottom: 0;
+  padding: 1.5rem 2.25rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.checkout-summary h2 {
+  margin: 0 0 1rem;
+  color: #111827;
+  font-size: 1.15rem;
+}
+
+.checkout-summary-item,
+.checkout-summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.checkout-summary-item div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.checkout-summary-item > .checkout-summary-product {
+  display: block;
+  flex: 0 0 56px;
+}
+
+.checkout-summary-item > .checkout-summary-product img,
+.checkout-summary-item > .checkout-summary-product .checkout-summary-placeholder {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+/* Letter box shown when there's no image. Needs ".checkout-summary-item" in the selector so it beats
+   ".checkout-summary-item div" above, which would otherwise make it a flex column (letter stuck at the top). */
+.checkout-summary-item .checkout-summary-placeholder,
+.checkout-summary-placeholder {
+  display: grid;
+  place-items: center;
+  background: #f1ece2;
+  color: var(--logo);
+  font-family: "Fraunces", serif;
+  font-size: 22px;
+}
+
+.checkout-summary-item > div:nth-child(2) {
+  flex: 1;
+}
+
+.checkout-summary-item span,
+.checkout-summary-empty {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.checkout-summary-total {
+  padding-bottom: 0;
+  border-bottom: 0;
+  color: #374151;
+}
+
+.checkout-summary-total strong {
+  color: #111827;
+  font-size: 1.1rem;
+}
+
+.checkout-points-earned strong {
+  color: #15803d;
+}
+
+.apply-points-btn {
+  margin-top: 8px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.apply-points-btn:hover {
+  background: #3d4b34;
+}
+
+.checkout-pay-btn {
+  width: 100%;
+  margin-top: 1.25rem;
+}
+
+.checkout-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1.5rem;
+  row-gap: 1.5rem;
+}
+
+.checkout-form > .form-group,
+.checkout-form > .form-error-summary,
+.checkout-form > .form-actions {
+  grid-column: 1 / -1;
+}
+
+.checkout-form > .form-group:has(#id_expiry),
+.checkout-form > .form-group:has(#id_cvv) {
+  grid-column: span 1;
+}
+
+.checkout-form .form-group:has(#id_delivery_method_0) {
+  display: block;
+}
+
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_delivery_address),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_use_new_address),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_new_address_line1),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_new_address_label),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_new_address_line2),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_new_address_postal_code),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_save_address),
+.checkout-form:has(input[name="delivery_method"][value="pickup"]:checked)
+  .form-group:has(#id_new_address_is_default) {
+  display: none;
+}
+
+.checkout-form:has(input[name="delivery_method"][value="delivery"]:checked)
+  .form-group:has(#id_pickup_outlet) {
+  display: none;
+}
+
+.checkout-form:not(:has(#id_use_new_address:checked))
+  .form-group:has(#id_new_address_label),
+.checkout-form:not(:has(#id_use_new_address:checked))
+  .form-group:has(#id_new_address_line1),
+.checkout-form:not(:has(#id_use_new_address:checked))
+  .form-group:has(#id_new_address_line2),
+.checkout-form:not(:has(#id_use_new_address:checked))
+  .form-group:has(#id_new_address_postal_code),
+.checkout-form:not(:has(#id_use_new_address:checked))
+  .form-group:has(#id_save_address),
+.checkout-form:not(:has(#id_use_new_address:checked))
+  .form-group:has(#id_new_address_is_default),
+.checkout-form:has(#id_use_new_address:checked)
+  .form-group:has(#id_delivery_address) {
+  display: none;
+}
+
+.checkout-form .form-actions {
+  margin-top: 0;
+}
+
+@media (max-width: 600px) {
+  .checkout-form {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .checkout-form > .form-group:has(#id_expiry),
+  .checkout-form > .form-group:has(#id_cvv) {
+    grid-column: 1 / -1;
+  }
+}

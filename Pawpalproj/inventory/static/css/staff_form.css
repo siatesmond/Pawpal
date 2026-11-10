@@ -6,25 +6,6 @@
   padding: 2rem 0;
 }
 
-.checkout-page {
-  max-width: 1180px;
-}
-
-.checkout-page .form-page-header {
-  grid-column: 1 / -1;
-}
-
-.checkout-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
-  align-items: start;
-  gap: 2rem;
-}
-
-.checkout-form-card {
-  min-width: 0;
-}
-
 .form-page-header h1 {
   font-size: 1.75rem;
   font-weight: 700;
@@ -54,6 +35,7 @@
   margin: 1.75rem 0;
 }
 
+<<<<<<< Updated upstream
 .checkout-summary {
   margin-bottom: 0;
   padding: 1.5rem 2.25rem;
@@ -113,10 +95,42 @@
 
 .checkout-summary-item span,
 .checkout-summary-empty {
+=======
+/* no picture can be wider than the card */
+.form-card img {
+  max-width: 100%;
+}
+
+/* Header at the top of an edit form: small photo + name + ID */
+.product-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.product-info .product-image {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  object-fit: cover;
+  background: #f9fafb;
+}
+
+.product-info h2 {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+}
+
+.product-info p {
+  margin: 0;
+>>>>>>> Stashed changes
   color: #6b7280;
   font-size: 0.85rem;
 }
 
+<<<<<<< Updated upstream
 .checkout-summary-total {
   padding-bottom: 0;
   border-bottom: 0;
@@ -218,22 +232,11 @@
   margin-top: 0;
 }
 
+=======
+>>>>>>> Stashed changes
 @media (max-width: 600px) {
   .form-page {
     padding: 1.5rem 1rem;
-  }
-
-  .checkout-form {
-    grid-template-columns: 1fr;
-  }
-
-  .checkout-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .checkout-form > .form-group:has(#id_expiry),
-  .checkout-form > .form-group:has(#id_cvv) {
-    grid-column: 1 / -1;
   }
 }
 
