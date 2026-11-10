@@ -132,34 +132,35 @@
               </ul>
           </div>
 
-          {# Medical, Behavior & Vaccination Information matching Pet #}
+          {# Medical, Behaviour & Vaccination information for the booked pet #}
+          {% with pet=selected_booking.pet %}
           <div class="detail-card-row-no-border" style="margin-top: 1rem;">
-            {% if selected_booking.pet.medical_notes %}
-              <p class="detail-text" style="color: #b45309; font-weight: bold; margin-bottom: 2px;">
-                Medical Notes
-              </p>
-              <p class="detail-text" style="margin-top: 0;">
-                {{ selected_booking.pet.medical_notes }}
-              </p>
-            {% endif %}
+          {# Medical Notes #}
+          <p class="detail-text" style="color: #b45309; font-weight: bold; margin-bottom: 2px;">
+          Medical Notes
+          </p>
+          <ul class="detail-text" style="list-style: none; padding: 0; margin: 0;">
+          <li><b>Allergies:</b> {{ pet.allergies|default:"—" }}</li>
+          <li><b>Conditions:</b> {{ pet.conditions|default:"—" }}</li>
+          <li><b>Medication:</b> {{ pet.medication|default:"—" }}</li>
+          </ul>
+          {# Behaviour Notes #}
+          <p class="detail-text" style="color: #076a48; font-weight: bold; margin-top: 0.75rem; margin-bottom: 2px;">
+           Behaviour Notes
+          </p>
+           <p class="detail-text" style="margin-top: 0;">
+          {{ pet.behaviour_notes|default:"—" }}
+           </p>
+          {# Last Vaccination #}
+          <p class="detail-text" style="color: #1c0846; font-weight: bold; margin-top: 0.75rem; margin-bottom: 2px;">
+          Last Vaccination
+          </p>
+          <p class="detail-text" style="margin-top: 0;">
+           {{ pet.last_vaccination_date|date:"d M Y"|default:"—" }}
+         </p>
+         </div>
+         {% endwith %}
 
-            <!-- Behaviour Notes -->
-            {% if selected_booking.pet.behaviour_notes %}
-              <p class="detail-text" style="color: #076a48; font-weight: bold; margin-top: 0.5rem; margin-bottom: 2px;">
-                <b>Behaviour Notes:</b>
-              </p>
-              <p class="detail-text" style="margin-top: 0;">
-                {{ selected_booking.pet.behaviour_notes }}
-              </p>
-            {% endif %}
-
-            <!-- Vaccination Date -->
-            {% if selected_booking.pet.last_vaccination_date %}
-              <p class="detail-text" style="color: #1c0846; font-weight: bold; margin-top: 0.5rem;">
-                <b>Last Vaccination:</b> {{ selected_booking.pet.last_vaccination_date|date:"d M Y" }}
-              </p>
-            {% endif %}
-          </div>
 
           <!-- Chronological Booking Updates Timeline -->
           <div class="booking-updates-section" style="margin-top: 1.5rem;">
