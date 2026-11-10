@@ -1,7 +1,6 @@
 from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib import messages
-from django.utils import timezone
 
 from django.db.models import Q, F, Count
 from django.db.models import Prefetch
@@ -241,16 +240,13 @@ def _sync_booking_status(booking):
         return
     
     booking.status = latest.new_status
-    
-    if booking.status == Booking.Status.CANCELLED:
-        booking.cancelled_at = booking.cancelled_at or timezone.now()
-    else:
-        booking.cancelled_at = None
-    booking.save(update_fields=["status", "cancelled_at"])
+    booking.save(update_fields=["status"])
 
-# staff can only edit or delete updates that were posted by staff, not by customers 
+
+# staff can only edit or delete updates that were posted by staff
+# staff cannot edit or delete updates if booking is cancelled by customer
 def _can_change_update(update):
-    return update.staff_id is not None
+    return update.staff_id is not None and update.booking.status != Booking.Status.CANCELLED
 
 
 # Edit an existing booking update (status, note, and add more photos)
@@ -261,7 +257,7 @@ def edit_booking_update(request, pk):
     )
     booking = update.booking
     if not _can_change_update(update):
-        messages.error(request, "Updates posted by the customer can't be edited.")
+        messages.error(request, "This update can no longer be edited.")
         return redirect(_staff_booking_url(booking))
 
     if request.method == "POST":
@@ -299,7 +295,7 @@ def delete_booking_update(request, pk):
     booking = update.booking
 
     if not _can_change_update(update):
-        messages.error(request, "Updates posted by the customer can't be deleted.")
+        messages.error(request, "This update can no longer be deleted.")
         return redirect(_staff_booking_url(booking))
 
     # Remove the image files too, not just the database rows
@@ -320,6 +316,11 @@ def update_booking(request, pk=None):
         Booking.objects.select_related("customer", "pet", "slot", "slot__service"),
         pk=pk,
     )
+    # Booking is cancelled by customer, staff cannot create any more booking updates
+    if booking.status == Booking.Status.CANCELLED:
+        messages.error(request, f"Booking #{booking.pk} is cancelled and can't be updated.")
+        return redirect(_staff_booking_url(booking))
+    
     if request.method == "POST":
         form = BookingUpdateForm(request.POST, request.FILES)
         if form.is_valid():
@@ -343,13 +344,6 @@ def update_booking(request, pk=None):
 
             # Update booking new status from the form input
             booking.status = booking_update.new_status
-
-            if booking.status == Booking.Status.CANCELLED:
-                if not booking.cancelled_at:
-                    booking.cancelled_at = timezone.now()
-            else:
-                booking.cancelled_at = None # Clear cancellation metadata if status changes back
-                booking.cancellation_fee_cents = 0
 
             booking.save()
 
