@@ -1,0 +1,53 @@
+/* Become a Pawpal sitter: banner photo and readable banner text */
+.signup-hero-photo {
+  width: 100%;
+  height: 220px;
+  border-radius: 16px;
+  object-fit: cover;
+  object-position: center 60%;
+  box-shadow: 0 10px 24px rgb(47 42 38 / 12%);
+}
+
+.sitter-hero .sitter-eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.sitter-hero h1 {
+  margin: 4px 0 12px;
+}
+
+.sitter-hero p:not(.sitter-eyebrow) {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.sitter-layout .sitter-card > h2 {
+  font-size: 24px;
+}
+
+.sitter-layout .sitter-card > .sitter-help {
+  margin: 6px 0 20px;
+  font-size: 14px;
+}
+
+/* side notes as white cards, the same as "How it works" */
+.sitter-aside .sitter-note {
+  padding: 18px 20px;
+  border: 1px solid #e3dccd;
+  border-radius: 16px;
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.sitter-aside .sitter-earnings {
+  font-size: 13px;
+}
+
+@media (max-width: 800px) {
+  .signup-hero-photo {
+    height: 180px;
+  }
+}

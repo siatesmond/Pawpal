@@ -1,7 +1,8 @@
 from core.models import Outlet
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
-from django.core.validators import FileExtensionValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator, RegexValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
@@ -24,13 +25,27 @@ pet_profile_images = FileSystemStorage(
 # OTP
 
 
+# Singapore phone numbers: exactly 8 digits, e.g. 91234567
+MOBILE_VALIDATOR = RegexValidator(r"^[0-9]{8}$", "Mobile number must be 8 digits, e.g. 91234567.")
+
+
+def check_email_domain(email):
+    # Django already checks the basic format; this also needs a dot after the @,
+    # so "amy@localhost" or "amy@gmail" are not accepted
+    domain = email.rsplit("@", 1)[-1]
+    if "." not in domain:
+        raise ValidationError("Enter a full email address, e.g. name@example.com.")
+
+
 class User(models.Model):
     username = models.CharField(max_length=150, unique=True)
-    email = models.EmailField(unique=True)
+    email = models.EmailField(unique=True, validators=[check_email_domain])
     password = models.CharField(max_length=128)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=30, blank=True)
-    mobile = models.CharField(max_length=20, blank=True)
+    mobile = models.CharField(
+        max_length=8, validators=[MOBILE_VALIDATOR], help_text="8 digits, e.g. 91234567"
+    )
     is_verified = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)

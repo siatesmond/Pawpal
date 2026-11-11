@@ -483,3 +483,8 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* "Email verified" badge stays its own size inside the form grid */
+.pp-field .verified {
+  align-self: flex-start;
+}

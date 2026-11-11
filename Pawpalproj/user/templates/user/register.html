@@ -4,7 +4,7 @@
 {% block title %}Register | Pawpal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'user/css/login_register.css' %}?v=2" />
+<link rel="stylesheet" href="{% static 'user/css/login_register.css' %}?v=5" />
 {% endblock %}
 
 {% block content %}
@@ -22,9 +22,23 @@
       <form method="post" class="login-form" novalidate>
         {% csrf_token %}
 
-        {{ form }}
+        {% if form.non_field_errors %}
+          <div class="pp-alert">{{ form.non_field_errors }}</div>
+        {% endif %}
 
-        <button type="submit" class="login-btn">Create account</button>
+        {# shared sign-up layout (theme.css): label, box, small hint, red error #}
+        <div class="pp-form-grid">
+          {% for field in form %}
+            <div class="pp-field{% if field.name != 'first_name' and field.name != 'last_name' %} pp-full{% endif %}{% if field.errors %} has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<small class="pp-hint">{{ field.help_text }}</small>{% endif %}
+              {% for error in field.errors %}<p class="pp-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+
+        <button type="submit" class="login-btn pp-submit">Create account</button>
       </form>
 
       <p class="login-hint">We'll send a verification code to your email — verify it before your first log in.</p>

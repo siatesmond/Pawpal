@@ -282,3 +282,192 @@
     font-size: 30px;
   }
 }
+
+
+/* Sign-up forms (customer register and pet sitter application): one look for both.
+   Two columns; .pp-full fields take the whole row; hint and error sit under the box. */
+.pp-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 14px;
+  margin-bottom: 20px;
+}
+
+.pp-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.pp-field.pp-full {
+  grid-column: 1 / -1;
+}
+
+.pp-field > label,
+.pp-field > .pp-label {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pp-field input[type="text"],
+.pp-field input[type="email"],
+.pp-field input[type="password"],
+.pp-field input[type="number"],
+.pp-field textarea,
+.pp-field select {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px solid #ddd5c6;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.pp-field textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.pp-field input:focus,
+.pp-field textarea:focus,
+.pp-field select:focus {
+  outline: none;
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgb(74 90 63 / 15%);
+}
+
+.pp-field input::placeholder,
+.pp-field textarea::placeholder {
+  color: #b3ab9d;
+}
+
+.pp-hint {
+  margin: -2px 0 0;
+  color: #8a8478;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.pp-error,
+.pp-field .errorlist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--danger);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pp-field.has-error input,
+.pp-field.has-error textarea,
+.pp-field.has-error select,
+.pp-field.has-error .pp-file {
+  border-color: var(--danger);
+}
+
+.pp-alert {
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: #f3dedb;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.pp-alert ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* tick boxes shown as chips (e.g. "Pets you can care for") */
+.pp-chips div,
+.pp-chips ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pp-chips label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid #ddd5c6;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.pp-chips label:has(input:checked) {
+  border-color: var(--green);
+  background: #eef2e8;
+  color: var(--green);
+}
+
+.pp-chips input {
+  margin: 0;
+  accent-color: var(--green);
+}
+
+/* file upload box */
+.pp-file {
+  padding: 14px;
+  border: 1px dashed #c9c3b6;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.pp-file input[type="file"] {
+  width: 100%;
+  font-size: 13px;
+}
+
+/* single tick box with its text on one line (e.g. terms) */
+.pp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.pp-check input {
+  margin: 2px 0 0;
+  accent-color: var(--green);
+}
+
+/* full-width main button at the end of a sign-up form */
+.pp-submit {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  margin-top: 4px;
+  font-size: 15px;
+}
+
+@media (max-width: 560px) {
+  .pp-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* a box that cannot be edited (e.g. email on My Profile) looks greyed out */
+.pp-field input:disabled {
+  background: #f3efe6;
+  color: var(--muted);
+  cursor: not-allowed;
+}

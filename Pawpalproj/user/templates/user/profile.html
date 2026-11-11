@@ -4,7 +4,7 @@
 {% block title %}My profile | Pawpal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}?v=2" />
 {% endblock %}
 
 {% block content %}
@@ -21,12 +21,18 @@
       <h2>Personal details</h2>
       <form method="post">
         {% csrf_token %}
-        <div class="profile-form-layout">
-          <div class="profile-fields">
-            {{ form }}
-            <div class="verification-note">
-              <span class="verified">✓ Verified</span>
+        {# shared form layout (theme.css): label, box, small hint, red error #}
+        <div class="pp-form-grid">
+          {% for field in form %}
+            <div class="pp-field{% if field.name == 'email' %} pp-full{% endif %}{% if field.errors %} has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<small class="pp-hint">{{ field.help_text }}</small>{% endif %}
+              {% for error in field.errors %}<p class="pp-error">{{ error }}</p>{% endfor %}
             </div>
+          {% endfor %}
+          <div class="pp-field pp-full">
+            <span class="verified">✓ Email verified</span>
           </div>
         </div>
         <div class="profile-button-row">
@@ -77,7 +83,19 @@
       <form method="post">
         {% csrf_token %}
         <input type="hidden" name="action" value="change_password">
-        <div class="password-fields">{{ password_form }}</div>
+        {% if password_form.non_field_errors %}
+          <div class="pp-alert">{{ password_form.non_field_errors }}</div>
+        {% endif %}
+        <div class="pp-form-grid">
+          {% for field in password_form %}
+            <div class="pp-field{% if field.name == 'current_password' %} pp-full{% endif %}{% if field.errors %} has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<small class="pp-hint">{{ field.help_text }}</small>{% endif %}
+              {% for error in field.errors %}<p class="pp-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
         <p class="reset-copy">
           Forgot your current password?
           <a href="{% url 'user:forgot_password' %}">Reset it with a code sent to your email</a>

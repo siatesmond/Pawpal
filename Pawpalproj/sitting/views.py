@@ -6,6 +6,10 @@ from zoneinfo import ZoneInfo
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from user.utils import send_mail_in_background
+from user.forms import check_password_strength
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
+
 from django.db.models import Q
 from django.shortcuts import redirect, render
 
@@ -19,7 +23,7 @@ from payment.services import (
     refund_payment,
 )
 from review.models import Review
-from user.models import OTP, Address, Customer, Pet, User
+from user.models import OTP, Address, Customer, Pet, User, check_email_domain
 from user.views import send_otp_code
 
 from .forms import PET_EXPERIENCE_CHOICES, SitterRegistrationForm, SitterReviewForm
@@ -28,6 +32,25 @@ from .onemap import address_to_coordinates, look_up_postal_code
 
 SGT = ZoneInfo("Asia/Singapore")
 PAYOUT_DAYS = 3  # payouts are sent 3 days after a job is completed
+
+
+def email_problem(email):
+    # the message for a badly written email, or "" when it looks right
+    try:
+        validate_email(email)
+        check_email_domain(email)
+    except ValidationError as error:
+        return error.messages[0]
+    return ""
+
+
+def password_problem(password):
+    # the message for a weak password, or "" when it is strong enough
+    try:
+        check_password_strength(password)
+    except ValidationError as error:
+        return error.messages[0]
+    return ""
 
 
 # Helpers
@@ -666,6 +689,8 @@ def profile(request):
 
             if not first_name or not email:
                 messages.error(request, "First name and email are required.")
+            elif email_problem(email):
+                messages.error(request, email_problem(email))
             elif User.objects.filter(email__iexact=email).exclude(pk=sitter.pk).exists():
                 messages.error(request, "Another account already uses this email.")
             elif not (mobile.isdigit() and len(mobile) == 8):
@@ -687,8 +712,8 @@ def profile(request):
 
             if not check_password(current, sitter.password):
                 messages.error(request, "Your current password is incorrect.")
-            elif len(new) < 8:
-                messages.error(request, "New password must be at least 8 characters.")
+            elif password_problem(new):
+                messages.error(request, password_problem(new))
             elif new != confirm:
                 messages.error(request, "New passwords do not match.")
             else:

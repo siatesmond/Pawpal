@@ -4,7 +4,8 @@ from django import forms
 from django.contrib.auth.hashers import make_password
 from django.core.validators import FileExtensionValidator, RegexValidator
 
-from user.models import User
+from user.forms import MOBILE_INPUT, PASSWORD_HELP, check_password_strength
+from user.models import MOBILE_VALIDATOR, User, check_email_domain
 
 from review.models import Review
 
@@ -24,8 +25,8 @@ PET_EXPERIENCE_CHOICES = [
 
 class SitterRegistrationForm(forms.Form):
     full_name = forms.CharField(max_length=61)
-    mobile = forms.CharField(max_length=20)
-    email = forms.EmailField()
+    mobile = forms.CharField(max_length=8, widget=MOBILE_INPUT, help_text="8 digits, e.g. 91234567")
+    email = forms.EmailField(validators=[check_email_domain])
     # Only the postal code is asked; the map position and area name come from OneMap
     postal_code = forms.CharField(
         max_length=6,
@@ -34,7 +35,7 @@ class SitterRegistrationForm(forms.Form):
         validators=[RegexValidator(r"^\d{6}$", "Enter a 6-digit Singapore postal code.")],
         widget=forms.TextInput(attrs={"inputmode": "numeric", "placeholder": "e.g. 529536"}),
     )
-    password = forms.CharField(min_length=8, widget=forms.PasswordInput)
+    password = forms.CharField(widget=forms.PasswordInput, help_text=PASSWORD_HELP)
     confirm_password = forms.CharField(widget=forms.PasswordInput)
     experience_years = forms.IntegerField(min_value=0, max_value=80)
     daily_rate = forms.DecimalField(
@@ -57,6 +58,29 @@ class SitterRegistrationForm(forms.Form):
     def __init__(self, *args, sitter=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.sitter = sitter
+
+        # clearer labels and example text, the same style as the customer sign-up
+        self.fields["full_name"].label = "Full name"
+        self.fields["experience_years"].label = "Years of experience"
+        self.fields["daily_rate"].label = "Daily rate (SGD)"
+        self.fields["daily_rate"].help_text = "What you charge per day. You keep 90% after Pawpal's 10% fee."
+        self.fields["pet_experience"].label = "Pets you can care for"
+        self.fields["bio"].label = "About you"
+        self.fields["bio"].help_text = "Tell pet owners about your experience and how you care for pets."
+        self.fields["id_document"].label = "ID document"
+        self.fields["id_document"].help_text = "NRIC or passport, as a PDF or photo (JPG, PNG), max 5 MB."
+        placeholders = {
+            "full_name": "e.g. Grace Koh",
+            "mobile": "e.g. 91234567",
+            "email": "name@example.com",
+            "password": "Create a password",
+            "confirm_password": "Type it again",
+            "experience_years": "e.g. 3",
+            "daily_rate": "e.g. 50.00",
+            "bio": "e.g. I grew up with dogs and have looked after senior pets for 3 years...",
+        }
+        for name, text in placeholders.items():
+            self.fields[name].widget.attrs["placeholder"] = text
         if sitter:
             for name in ("password", "confirm_password", "id_document", "terms"):
                 self.fields[name].required = False
@@ -85,10 +109,15 @@ class SitterRegistrationForm(forms.Form):
             raise forms.ValidationError("An account with this email already exists.")
         return email
 
+    def clean_password(self):
+        password = self.cleaned_data["password"]
+        check_password_strength(password)
+        return password
+
     def clean_mobile(self):
+        # same rule as every other form: exactly 8 digits
         mobile = self.cleaned_data["mobile"].strip()
-        if not mobile.replace("+", "").replace(" ", "").isdigit():
-            raise forms.ValidationError("Enter a valid mobile number.")
+        MOBILE_VALIDATOR(mobile)
         return mobile
 
     def clean_postal_code(self):
