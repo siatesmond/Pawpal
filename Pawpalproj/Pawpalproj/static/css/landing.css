@@ -174,46 +174,97 @@
 }
 
 .landing-service-card {
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  border-radius: 14px;
+  border: 1px solid #e6e0d4;
+  border-radius: 18px;
   background: #fff;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.landing-service-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgb(47 42 38 / 10%);
 }
 
 .landing-card-image {
-  display: grid;
-  height: 106px;
-  place-items: center;
+  position: relative;
+  height: 180px;
   background: #ded8cd;
-  color: #8d867d;
-  font-size: 10px;
+}
+
+.landing-card-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* category label on the photo */
+.landing-card-tag {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 92%);
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .landing-card-content {
-  padding: 10px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px 18px 18px;
 }
 
 .landing-card-content h3,
 .landing-product-card h3 {
-  margin: 0 0 4px;
+  margin: 0;
   color: var(--green);
   font-family: "Fraunces", serif;
-  font-size: 17px;
+  font-size: 19px;
   font-weight: 500;
+  line-height: 1.25;
 }
 
-.landing-card-content p,
-.landing-card-content strong,
-.landing-product-card p {
+.landing-card-content p {
+  margin: 0;
+  color: #6f6b60;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.landing-card-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.landing-card-foot strong {
   display: block;
-  margin: 4px 0;
-  font-size: 10px;
+  font-size: 15px;
+}
+
+.landing-card-foot small {
+  color: #7a716a;
+  font-size: 12px;
 }
 
 .landing-small-button {
-  margin-top: 8px;
-  padding: 7px 14px;
+  flex: none;
+  padding: 8px 14px;
   background: #aabd9e;
-  font-size: 10px;
+  color: #22301c;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .landing-story {
@@ -254,34 +305,57 @@
 }
 
 .landing-product-image {
-  display: grid;
-  height: 150px;
-  place-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-sizing: border-box;
+  height: 190px;
+  padding: 14px;
   overflow: hidden;
-  border-radius: 12px;
-  background: #ded8cd;
+  border-radius: 16px;
+  background: #fff;
   color: #8d867d;
   font-size: 10px;
 }
 
+/* show the whole product (bags and boxes were cut off with "cover") */
 .landing-product-image img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+
+.landing-product-card {
+  display: flex;
+  flex-direction: column;
 }
 
 .landing-product-card > small {
   display: block;
-  margin-top: 8px;
+  margin-top: 12px;
   color: #7a716a;
-  font-size: 8px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
+.landing-product-card h3 {
+  margin-top: 4px;
+  font-size: 17px;
+}
+
+.landing-product-card p {
+  margin: 6px 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
 .landing-product-card .landing-button {
-  min-height: 28px;
-  padding: 5px 14px;
-  font-size: 10px;
+  align-self: flex-start;
+  min-height: 34px;
+  margin-top: auto;
+  padding: 6px 18px;
+  font-size: 13px;
 }
 
 .landing-sitting {
@@ -359,5 +433,16 @@
 
   .landing-hero h1 {
     font-size: 40px;
+  }
+}
+
+/* Phones: one service card per row so the price and button have room */
+@media (max-width: 560px) {
+  .landing-service-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-card-image {
+    height: 200px;
   }
 }

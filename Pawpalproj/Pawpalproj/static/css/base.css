@@ -7,6 +7,15 @@
   --green: #4a5a3f;
   --beige-text: #f3efe4;
   --beige-link: #cfd5c4;
+
+  /* shared theme colours, used by every role's pages (see theme.css) */
+  --green-dark: #3d4b34;
+  --sage: #a9b59b;
+  --honey: var(--gold);  /* one gold everywhere */
+  --cream: #f7f4ec;
+  --muted: #7a716a;
+  --line: #e2dcd1;
+  --danger: #9b3d2e;
 }
 
 * {
@@ -89,8 +98,8 @@ main {
   border: 1px solid #9cc8a8;
   border-radius: 6px;
   padding: 7px 10px;
-  background: #ecfdf5;
-  color: #065f46;
+  background: #e3eedc;
+  color: #3f7a3a;
   font-size: 11px;
   line-height: 1.4;
 }

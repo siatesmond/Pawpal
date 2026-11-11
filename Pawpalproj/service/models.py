@@ -117,6 +117,7 @@ class Booking(models.Model):
     total_cents = models.PositiveIntegerField()
     cancellation_fee_cents = models.PositiveIntegerField(default=0)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancellation_reason = models.TextField(blank=True)  # written by the customer when cancelling
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

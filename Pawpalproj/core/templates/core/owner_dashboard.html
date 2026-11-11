@@ -3,7 +3,7 @@
 {% block title %}Business owner dashboard | Pawpal{% endblock %}
 
 {% block content %}
-{# Heading + filters (date range, outlet) + Export CSV #}
+{# Heading + filters (date range, outlet) #}
 <header class="owner-dash-head">
   <div>
     <h1>{{ greeting }}, {{ request.session.username }}</h1>
@@ -20,9 +20,7 @@
         {% endfor %}
       </select>
     </label>
-    <button type="submit" class="owner-btn-outline">Apply</button>
-    {# same filters + export=csv downloads the report #}
-    <button type="submit" name="export" value="csv" class="owner-btn-dark">Export CSV</button>
+    <button type="submit" class="owner-btn-dark">Apply</button>
   </form>
 </header>
 
@@ -43,11 +41,6 @@
     <strong>SGD {{ commission }}</strong>
     <small>from SGD {{ sitting_sales }} sitting sales</small>
   </article>
-  <article>
-    <span>New / returning customers</span>
-    <strong>{{ new_customers }} / {{ returning_customers }}</strong>
-    <small>{{ returning_percent }}% returning</small>
-  </article>
 </section>
 
 {# Revenue by stream chart + low stock #}
@@ -65,7 +58,17 @@
     {# each bar is 4 coloured blocks stacked; heights come from the view #}
     <div class="owner-stack-chart">
       {% for bar in chart %}
-        <div class="owner-stack-bar" title="SGD {{ bar.total }}">
+        {# tabindex lets keyboard users focus a bar to see its hover box too #}
+        <div class="owner-stack-bar" tabindex="0">
+          {# hover box: total and each stream for this month #}
+          <div class="owner-bar-tip">
+            <strong>{{ bar.full_label }}</strong>
+            <b>SGD {{ bar.total }}</b>
+            <span><i class="seg-services"></i>Services<em>SGD {{ bar.services }}</em></span>
+            <span><i class="seg-products"></i>Products<em>SGD {{ bar.products }}</em></span>
+            <span><i class="seg-delivery"></i>Delivery<em>SGD {{ bar.delivery }}</em></span>
+            <span><i class="seg-commission"></i>Sitting (10%)<em>SGD {{ bar.commission }}</em></span>
+          </div>
           <div class="owner-stack">
             <div class="seg-commission" style="height: {{ bar.commission_px }}px"></div>
             <div class="seg-delivery" style="height: {{ bar.delivery_px }}px"></div>
@@ -160,22 +163,23 @@
 <section class="owner-panel">
   <div class="owner-panel-head">
     <h2>Pet sitting commission</h2>
-    <span class="owner-small">Commission SGD {{ commission }} · paid to sitters SGD {{ paid_to_sitters }}</span>
+    <span class="owner-small">Counted when the customer pays · commission SGD {{ commission }} · sitters' share SGD {{ paid_to_sitters }}</span>
   </div>
   <table class="owner-table">
-    <thead><tr><th>Completed</th><th>Owner</th><th>Sitter</th><th>Job price</th><th>Commission (10%)</th><th>Paid to sitter</th></tr></thead>
+    <thead><tr><th>Paid on</th><th>Owner</th><th>Sitter</th><th>Status</th><th>Job price</th><th>Commission (10%)</th><th>Sitter's share</th></tr></thead>
     <tbody>
       {% for job in sitting_jobs %}
         <tr>
-          <td>{{ job.end_date|date:"j M Y" }}</td>
+          <td>{{ job.paid_on|date:"j M Y" }}</td>
           <td>{{ job.owner.first_name }} {{ job.owner.last_name }}</td>
           <td>{{ job.sitter.first_name }} {{ job.sitter.last_name }}</td>
+          <td><span class="status-pill status-{{ job.status }}">{{ job.get_status_display }}</span></td>
           <td>SGD {{ job.total_price_display }}</td>
           <td>SGD {{ job.commission_display }}</td>
           <td>SGD {{ job.sitter_payout_display }}</td>
         </tr>
       {% empty %}
-        <tr><td colspan="6" style="text-align: center;">No completed sitting jobs in this period.</td></tr>
+        <tr><td colspan="7" style="text-align: center;">No paid sitting jobs in this period.</td></tr>
       {% endfor %}
     </tbody>
   </table>

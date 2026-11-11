@@ -3,7 +3,7 @@
 
 {% block title %}My jobs | Pawpal{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
-<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}" /><link rel="stylesheet" href="{% static 'sitting/css/job_update.css' %}" />{% endblock %}
+<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}?v=2" /><link rel="stylesheet" href="{% static 'sitting/css/job_update.css' %}?v=3" />{% endblock %}
 
 {% block content %}
 <section class="sitter">
@@ -27,7 +27,7 @@
         {% for job in in_progress %}
           <article class="s-card">
             <div class="job-top">
-              <div class="job-who"><h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3><span class="pill pill-honey">In progress</span></div>
+              <div class="job-who"><h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3><span class="pill pill-honey">In progress</span>{% include "sitting/_owner_rating_pill.html" %}</div>
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} · Day {{ job.day_number }} of {{ job.number_of_days }}</span>
             </div>
             <div class="job-body">
@@ -36,6 +36,7 @@
                 <strong>{{ job.pet_list|join:" + " }}</strong>
                 <p>{{ job.care_requirements }}</p>
                 {% include "sitting/_pet_details.html" %}
+                {% include "sitting/_owner_reviews.html" %}
               </div>
               <div class="job-pay"><strong>You earn SGD {{ job.sitter_payout_display }}</strong><small>Job price SGD {{ job.total_price_display }} · 10% fee</small></div>
             </div>
@@ -66,7 +67,7 @@
         {% for job in upcoming %}
           <article class="s-card">
             <div class="job-top">
-              <div class="job-who"><h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3><span class="pill pill-sage">Accepted ✓</span></div>
+              <div class="job-who"><h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3><span class="pill pill-sage">Accepted ✓</span>{% include "sitting/_owner_rating_pill.html" %}</div>
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} ({{ job.number_of_days }} day{{ job.number_of_days|pluralize }})</span>
             </div>
             <div class="job-body">
@@ -76,6 +77,7 @@
                 <p>{% if job.can_start %}Starts today{% else %}Starts in {{ job.starts_in }} day{{ job.starts_in|pluralize }}{% endif %} · {{ job.care_requirements }}</p>
                 <span class="muted small">{{ job.location }}</span>
                 {% include "sitting/_pet_details.html" %}
+                {% include "sitting/_owner_reviews.html" %}
               </div>
               <div class="job-pay"><strong>You earn SGD {{ job.sitter_payout_display }}</strong><small>Job price SGD {{ job.total_price_display }} · 10% fee</small></div>
             </div>
@@ -94,6 +96,7 @@
                 <input type="hidden" name="request_id" value="{{ job.pk }}">
                 <input type="hidden" name="tab" value="{{ tab }}">
                 <input type="hidden" name="action" value="cancel">
+                <input type="text" name="reason" maxlength="200" class="cancel-reason-input" placeholder="Reason for cancelling (optional)">
                 <button type="submit" class="link-danger" onclick="return confirm('Cancel this job? The owner will be refunded.');">Cancel job</button>
               </form>
             </div>
@@ -109,7 +112,7 @@
         {% for job in pending %}
           <article class="s-card">
             <div class="job-top">
-              <div class="job-who"><h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3><span class="pill pill-cream">Awaiting owner</span></div>
+              <div class="job-who"><h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3><span class="pill pill-cream">Awaiting owner</span>{% include "sitting/_owner_rating_pill.html" %}</div>
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }} ({{ job.number_of_days }} day{{ job.number_of_days|pluralize }})</span>
             </div>
             <div class="job-body">
@@ -118,6 +121,7 @@
                 <strong>{{ job.pet_list|join:" + " }}</strong>
                 <p>Owner needs to confirm &amp; pay</p>
                 {% include "sitting/_pet_details.html" %}
+                {% include "sitting/_owner_reviews.html" %}
               </div>
               <div class="job-pay"><strong>You earn SGD {{ job.sitter_payout_display }}</strong><small>Job price SGD {{ job.total_price_display }} · 10% fee</small></div>
             </div>
@@ -137,47 +141,57 @@
       {# Completed: rate the owner #}
       {% if tab == "all" or tab == "completed" %}
         <div class="group-head"><h2>Completed</h2><span class="muted small">{{ completed|length }} job{{ completed|length|pluralize }}</span></div>
-        <div class="s-card">
-          <table class="earn-table" width="100%">
-            <thead><tr><th>Dates</th><th>Owner</th><th>Pets</th><th class="num">Payout</th><th class="num">Owner rating</th></tr></thead>
-            <tbody>
-              {% for job in completed %}
-                <tr>
-                  <td>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }}</td>
-                  <td>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</td>
-                  <td class="muted">{{ job.pet_list|join:" + " }}</td>
-                  <td class="num">SGD {{ job.sitter_payout_display }}</td>
-                  <td class="num">
-                    {% if job.owner_rating %}
-                      <span class="stars">{% for i in "12345" %}{% if forloop.counter <= job.owner_rating %}★{% else %}☆{% endif %}{% endfor %}</span>
-                    {% else %}
-                      <details>
-                        <summary class="pill pill-honey">Rate owner</summary>
-                        <form method="post">
-                          {% csrf_token %}
-                          <input type="hidden" name="request_id" value="{{ job.pk }}">
-                          <input type="hidden" name="tab" value="{{ tab }}">
-                          <input type="hidden" name="action" value="rate">
-                          <select name="owner_rating" required>
-                            <option value="">Stars</option>
-                            <option value="5">★★★★★ 5</option>
-                            <option value="4">★★★★ 4</option>
-                            <option value="3">★★★ 3</option>
-                            <option value="2">★★ 2</option>
-                            <option value="1">★ 1</option>
-                          </select>
-                          <textarea name="owner_feedback" placeholder="Optional comment"></textarea>
-                          <button type="submit" class="btn btn-dark">Save rating</button>
-                        </form>
-                      </details>
-                    {% endif %}
-                  </td>
-                </tr>
-              {% empty %}
-                <tr><td colspan="5" style="text-align: center;">No completed jobs yet.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="s-card done-list">
+          {% for job in completed %}
+            <div class="done-row">
+              <div class="done-main">
+                {% include "sitting/_pet_avatar.html" %}
+                <div class="done-info">
+                  <strong>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</strong>
+                  <span class="muted small">{{ job.pet_list|join:" + " }} · {{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }}</span>
+                </div>
+                <div class="done-pay">
+                  <strong>SGD {{ job.sitter_payout_display }}</strong>
+                  <span class="muted small">Your payout</span>
+                </div>
+              </div>
+
+              {% if job.owner_rating %}
+                {# already rated: show what I gave #}
+                <div class="done-rated">
+                  <span class="muted small">Your rating of {{ job.owner.first_name }}</span>
+                  <span class="stars">{% for i in "12345" %}{% if forloop.counter <= job.owner_rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+                  {% if job.owner_feedback %}<p>“{{ job.owner_feedback }}”</p>{% endif %}
+                </div>
+              {% else %}
+                {# rate the pet owner once, after the job #}
+                <details class="rate-box">
+                  <summary>☆ Rate {{ job.owner.first_name }}</summary>
+                  <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="request_id" value="{{ job.pk }}">
+                    <input type="hidden" name="tab" value="{{ tab }}">
+                    <input type="hidden" name="action" value="rate">
+                    <p class="rate-question">How was {{ job.owner.first_name }} as a pet owner?</p>
+                    {# stars are radio buttons; written 5 to 1 so the CSS can colour the stars to the left #}
+                    <div class="star-picker">
+                      {% for number in "54321" %}
+                        <input type="radio" id="rate-{{ job.pk }}-{{ number }}" name="owner_rating" value="{{ number }}" required>
+                        <label for="rate-{{ job.pk }}-{{ number }}" title="{{ number }} star{{ number|pluralize }}">★</label>
+                      {% endfor %}
+                    </div>
+                    <textarea name="owner_feedback" rows="2" placeholder="Optional: clear care notes? on time? easy to reach?"></textarea>
+                    <div class="rate-actions">
+                      <span class="muted small">Only you and Pawpal can see this rating.</span>
+                      <button type="submit" class="btn btn-dark">Save rating</button>
+                    </div>
+                  </form>
+                </details>
+              {% endif %}
+            </div>
+          {% empty %}
+            <p class="muted small">No completed jobs yet.</p>
+          {% endfor %}
           <a href="{% url 'sitting:sitter_earnings' %}" class="link small">View all completed jobs in Earnings →</a>
         </div>
       {% endif %}
@@ -192,6 +206,9 @@
               <span class="job-dates">{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }}</span>
             </div>
             <p class="muted">{{ job.pet_list|join:" + " }}</p>
+            {% if job.cancelled_by %}
+              <p class="small">Cancelled by {% if job.cancelled_by == "sitter" %}you{% else %}{{ job.get_cancelled_by_display }}{% endif %}{% if job.cancellation_reason %} · {{ job.cancellation_reason }}{% endif %}</p>
+            {% endif %}
           </article>
         {% empty %}
           <p class="muted small">No cancelled jobs.</p>

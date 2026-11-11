@@ -21,14 +21,14 @@
   margin-bottom: 0;
   padding: 1.5rem 2.25rem;
   background: white;
-  border: 1px solid #e5e7eb;
+  border: 1px solid #e2dcd1;
   border-radius: 14px;
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
 }
 
 .checkout-summary h2 {
   margin: 0 0 1rem;
-  color: #111827;
+  color: #2f2a26;
   font-size: 1.15rem;
 }
 
@@ -39,7 +39,7 @@
   align-items: center;
   gap: 1rem;
   padding: 0.85rem 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid #efeae0;
 }
 
 .checkout-summary-item div {
@@ -79,23 +79,23 @@
 
 .checkout-summary-item span,
 .checkout-summary-empty {
-  color: #6b7280;
+  color: #7a716a;
   font-size: 0.85rem;
 }
 
 .checkout-summary-total {
   padding-bottom: 0;
   border-bottom: 0;
-  color: #374151;
+  color: #3b3a33;
 }
 
 .checkout-summary-total strong {
-  color: #111827;
+  color: #2f2a26;
   font-size: 1.1rem;
 }
 
 .checkout-points-earned strong {
-  color: #15803d;
+  color: #3f7a3a;
 }
 
 .apply-points-btn {

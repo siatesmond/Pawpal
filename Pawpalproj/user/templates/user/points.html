@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% load static tz %}
+
+{% block title %}My points | Pawpal{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/points.css' %}" />
+{% endblock %}
+
+{% block content %}
+{# TIME_ZONE in settings is UTC, so show dates in Singapore time #}
+{% timezone "Asia/Singapore" %}
+<div class="profile-layout">
+  {% include "user/_account_sidebar.html" %}
+
+  <main class="profile-main">
+    <div class="profile-heading">
+      <h1>My points</h1>
+    </div>
+
+    {# Summary: balance, earned, used #}
+    <section class="points-summary">
+      <div class="points-stat points-stat-main">
+        <small>Balance</small>
+        <strong>{{ customer.point_balance }} pts</strong>
+        <span>= SGD {{ customer.get_point_value }} off your next order</span>
+      </div>
+      <div class="points-stat">
+        <small>Earned so far</small>
+        <strong>+{{ earned }}</strong>
+        <span>10 points for every SGD 1 you pay</span>
+      </div>
+      <div class="points-stat">
+        <small>Used or removed</small>
+        <strong>−{{ used }}</strong>
+        <span>100 points = SGD 1 off</span>
+      </div>
+    </section>
+
+    {# Every change, newest first #}
+    <section class="profile-panel">
+      <h2>Points history</h2>
+      {% if transactions %}
+        <ul class="points-list">
+          {% for transaction in transactions %}
+            <li class="points-row">
+              <span class="points-type points-type-{{ transaction.transaction_type|lower }}">
+                {% if transaction.transaction_type == "ADJUSTED" %}Adjusted by Pawpal{% else %}{{ transaction.get_transaction_type_display }}{% endif %}
+              </span>
+              <div class="points-info">
+                <strong>{{ transaction.reason }}</strong>
+                <small>{{ transaction.created_at|date:"j M Y, g:i A" }}</small>
+              </div>
+              <div class="points-amount">
+                <strong class="{% if transaction.points >= 0 %}points-plus{% else %}points-minus{% endif %}">{% if transaction.points >= 0 %}+{% endif %}{{ transaction.points }}</strong>
+                <small>Balance {{ transaction.balance_after }}</small>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="section-note">No points yet. You earn 10 points for every SGD 1 you pay for bookings, orders and pet sitting.</p>
+      {% endif %}
+    </section>
+  </main>
+</div>
+{% endtimezone %}
+{% endblock %}

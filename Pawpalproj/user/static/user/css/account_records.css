@@ -156,3 +156,20 @@
   background: #f3dedb;
   color: #9b3d2e;
 }
+
+/* Optional reason box in the cancel confirm (pet sitting) */
+.cancel-reason {
+  display: grid;
+  gap: 6px;
+  flex-basis: 100%;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cancel-reason input {
+  padding: 10px 12px;
+  border: 1px solid #ddd5c6;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 400;
+}

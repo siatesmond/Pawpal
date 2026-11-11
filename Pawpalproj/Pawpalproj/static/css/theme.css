@@ -1,0 +1,284 @@
+/* Shared look for every role (customer, staff, business owner, pet sitter).
+   Loaded last on every page, so these rules win over each page's own CSS.
+   Colours come from base.css :root. */
+
+
+/* Status labels: one colour per status, the same on every page */
+.status-pill,
+.record-status,
+.home-row .status {
+  font-weight: 600;
+}
+
+.status-pill.status-pending,
+.record-status-pending,
+.status.status-pending {
+  background: #fbf0d9;
+  color: #a8761c;
+}
+
+.status-pill.status-confirmed,
+.status-pill.status-accepted,
+.status-pill.status-approved,
+.record-status-confirmed,
+.status.status-confirmed {
+  background: #e3eedc;
+  color: #3f7a3a;
+}
+
+.status-pill.status-checked_in,
+.record-status-checked_in,
+.status.status-checked_in {
+  background: #e6e0f3;
+  color: #5b4a8a;
+}
+
+.status-pill.status-in_progress,
+.record-status-in_progress,
+.status.status-in_progress {
+  background: #fde7d2;
+  color: #b45f1c;
+}
+
+.status-pill.status-ready_for_pickup,
+.record-status-ready_for_pickup,
+.status.status-ready_for_pickup {
+  background: #d6efe9;
+  color: #1f7a66;
+}
+
+.status-pill.status-packed,
+.record-status-packed {
+  background: #efe6d6;
+  color: #8a5a1c;
+}
+
+.status-pill.status-out_for_delivery,
+.record-status-out_for_delivery {
+  background: #dde9f7;
+  color: #2f5f96;
+}
+
+.status-pill.status-completed,
+.record-status-completed {
+  background: #dce6f1;
+  color: #3b5a7a;
+}
+
+.status-pill.status-open {
+  background: #e7eef7;
+  color: #36506e;
+}
+
+.status-pill.status-cancelled,
+.status-pill.status-rejected,
+.record-status-cancelled {
+  background: #f3dedb;
+  color: var(--danger);
+}
+
+.status-pill.status-declined {
+  background: #f1ece4;
+  color: var(--muted);
+}
+
+/* pet sitter pages: same soft colours instead of solid green / orange */
+.pill-success {
+  background: #e3eedc;
+  color: #3f7a3a;
+}
+
+.pill-warning {
+  background: #fbf0d9;
+  color: #a8761c;
+}
+
+
+/* Buttons: four kinds, the same on every page
+   gold    = start something (Book now, View details, Add to cart)
+   green   = save or confirm (Save, Search, Filter, Pay, Approve)
+   outline = go back or a lighter option (Cancel, Clear, Continue shopping)
+   danger  = cannot be undone (Delete, Reject, Cancel booking) */
+
+.signup-btn,
+.home-btn,
+.landing-button-gold,
+.landing-small-button,
+.landing-product-card .landing-button,
+.profile-button-honey,
+.find-btn-honey,
+.view-details-btn,
+.update-stock-btn,
+.rec-add,
+.pet-book-button,
+.cart-btn {
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  background: var(--gold);
+  color: #2f2a26;
+  font-weight: 600;
+}
+
+.btn-dark,
+.owner-btn-dark,
+.save-btn,
+.search-btn,
+.apply-filters-btn,
+.checkout-btn,
+.checkout-pay-btn,
+.pay-btn,
+.login-btn,
+.add-product-btn,
+.profile-button-dark,
+.landing-button-dark,
+.edit-product-btn,
+.sitter-button,
+.application-find-jobs-button,
+.apply-points-btn,
+.success-home-btn,
+.owner-approve-button,
+.small-btn {
+  border: 1px solid var(--green);
+  border-radius: 999px;
+  background: var(--green);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn-outline,
+.owner-btn-outline,
+.home-btn-outline,
+.profile-button-outline,
+.landing-button-outline,
+.outline-btn,
+.cancel-btn,
+.clear-btn,
+.continue-shopping-btn,
+.sitter-outline-button {
+  border: 1px solid var(--text);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.owner-btn-danger,
+.cancel-button,
+.pet-delete-button,
+.owner-reject-button {
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* the landing page keeps its outline button white on the photo banner */
+.landing-hero .landing-button-outline {
+  background: #fff;
+}
+
+/* a sold-out product keeps its grey "Unavailable" look */
+.cart-btn.unavailable {
+  border-color: var(--line);
+  background: #efeae0;
+  color: var(--muted);
+}
+
+/* same small lift on hover for all of them */
+.signup-btn:hover,
+.home-btn:hover,
+.landing-button-gold:hover,
+.profile-button-honey:hover,
+.find-btn-honey:hover,
+.view-details-btn:hover,
+.update-stock-btn:hover,
+.rec-add:hover,
+.pet-book-button:hover,
+.btn-dark:hover,
+.owner-btn-dark:hover,
+.save-btn:hover,
+.search-btn:hover,
+.apply-filters-btn:hover,
+.checkout-btn:hover,
+.checkout-pay-btn:hover,
+.pay-btn:hover,
+.login-btn:hover,
+.add-product-btn:hover,
+.profile-button-dark:hover,
+.edit-product-btn:hover,
+.sitter-button:hover,
+.owner-approve-button:hover,
+.owner-btn-danger:hover,
+.cancel-button:hover,
+.pet-delete-button:hover,
+.owner-reject-button:hover {
+  filter: brightness(0.95);
+}
+
+.btn-outline:hover,
+.owner-btn-outline:hover,
+.home-btn-outline:hover,
+.profile-button-outline:hover,
+.outline-btn:hover,
+.cancel-btn:hover,
+.clear-btn:hover,
+.continue-shopping-btn:hover,
+.sitter-outline-button:hover {
+  background: var(--cream);
+}
+
+
+/* Page headings: same serif, colour and size on every page */
+.form-page-header h1,
+.profile-heading h1,
+.staff-header h1,
+.owner-dash-head h1,
+.sitter-head h1 {
+  font-family: "Fraunces", serif;
+  font-weight: 500;
+  color: var(--green);
+}
+
+/* pages with the top bar (customer and pet sitter) */
+.top-banner h1,
+.profile-heading h1,
+.address-form-panel h1,
+.cart-header h1,
+.find-hero h1,
+.sitter-head h1,
+.sitter-page-heading h1,
+.sitter-hero h1,
+.status-layout h1 {
+  font-size: 40px;
+}
+
+/* pages with the green sidebar (staff and business owner) */
+.staff-header h1,
+.form-page-header h1,
+.owner-dash-head h1,
+.staff-page-heading h1,
+.owner-sitter-toolbar h1,
+.owner-team-heading h1 {
+  font-size: 38px;
+}
+
+@media (max-width: 650px) {
+  .top-banner h1,
+  .profile-heading h1,
+  .address-form-panel h1,
+  .cart-header h1,
+  .find-hero h1,
+  .sitter-head h1,
+  .sitter-page-heading h1,
+  .sitter-hero h1,
+  .status-layout h1,
+  .staff-header h1,
+  .form-page-header h1,
+  .owner-dash-head h1,
+  .staff-page-heading h1,
+  .owner-sitter-toolbar h1,
+  .owner-team-heading h1 {
+    font-size: 30px;
+  }
+}

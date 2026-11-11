@@ -4,7 +4,7 @@
 {% block title %}Find jobs | Pawpal{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
-<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}" />
+<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}?v=2" />
 {# Leaflet: free map library, no API key needed #}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 {% endblock %}
@@ -161,6 +161,7 @@
           <div class="job-top">
             <div class="job-who">
               <h3>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</h3>
+              {% include "sitting/_owner_rating_pill.html" %}
               {% if job.distance is not None %}<span class="pill pill-cream">📍 {{ job.distance }} km</span>{% endif %}
               {% for pet in job.pet_list %}<span class="pill pill-outline pill-sm">{{ pet.get_pet_type_display }}</span>{% endfor %}
               {% if job.sent_to_me %}<span class="pill pill-honey">Sent to you</span>{% endif %}
@@ -176,6 +177,7 @@
 
               {# See the pet profile, medical and behaviour notes before accepting #}
               {% include "sitting/_pet_details.html" %}
+              {% include "sitting/_owner_reviews.html" %}
               <span class="muted small">{{ job.location }}</span>
             </div>
             <div class="job-pay"><strong>SGD {{ job.total_price_display }}</strong><small>You earn SGD {{ job.sitter_payout_display }} after 10% fee</small></div>

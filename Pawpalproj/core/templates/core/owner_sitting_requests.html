@@ -72,6 +72,9 @@
         <tr><td>Pets</td><td>{{ selected.pets.all|join:", " }}</td></tr>
         <tr><td>Location</td><td>{{ selected.location }}</td></tr>
         <tr><td>Care</td><td>{{ selected.care_requirements|default:"–" }}</td></tr>
+        {% if selected.status == "cancelled" %}
+          <tr><td>Cancelled by</td><td>{{ selected.get_cancelled_by_display|default:"–" }}{% if selected.cancellation_reason %} · {{ selected.cancellation_reason }}{% endif %}</td></tr>
+        {% endif %}
         <tr><td>Price</td><td>SGD {{ selected.total_price_display }}</td></tr>
         <tr><td>Pawpal 10%</td><td>SGD {{ selected.commission_display }} · sitter gets SGD {{ selected.sitter_payout_display }}</td></tr>
         <tr><td>Payment</td><td>{% if payment %}{{ payment.get_status_display }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}{% else %}Not paid yet{% endif %}</td></tr>

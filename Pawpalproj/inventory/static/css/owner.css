@@ -115,7 +115,7 @@
 
 .owner-metrics {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -251,7 +251,7 @@
 }
 
 .owner-detail-list li b {
-  color: #374151;
+  color: #3b3a33;
 }
 
 .owner-status-pill {
@@ -263,23 +263,23 @@
 }
 
 .owner-status-verified {
-  background: #dcfce7;
-  color: #15803d;
+  background: #e3eedc;
+  color: #3f7a3a;
 }
 
 .owner-status-unverified {
-  background: #fef3c7;
-  color: #a16207;
+  background: #fbf0d9;
+  color: #a8761c;
 }
 
 .owner-customer-status.status-approved {
-  background: #dcfce7 !important;
-  color: #15803d !important;
+  background: #e3eedc !important;
+  color: #3f7a3a !important;
 }
 
 .owner-customer-status.status-pending {
-  background: #fee2e2 !important;
-  color: #b91c1c !important;
+  background: #f3dedb !important;
+  color: #9b3d2e !important;
 }
 
 .owner-sitter-toolbar {
@@ -405,7 +405,7 @@
 }
 
 .owner-document-missing {
-  color: #b91c1c;
+  color: #9b3d2e;
 }
 
 .owner-sitter-actions {
@@ -768,7 +768,7 @@
 /* stream colours: olive, sage, honey, taupe */
 .seg-services { background: #55644a; }
 .seg-products { background: #a9b59b; }
-.seg-delivery { background: #f0c27b; }
+.seg-delivery { background: var(--gold); }
 .seg-commission { background: #9b8e83; }
 
 .owner-stack-chart {
@@ -794,6 +794,70 @@
   width: 44px;
   overflow: hidden;
   border-radius: 4px 4px 0 0;
+}
+
+/* Hover box above each bar */
+.owner-stack-bar {
+  position: relative;
+  cursor: default;
+  outline: none;
+}
+
+.owner-bar-tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  min-width: 190px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #2f3a2a;
+  color: #fff;
+  font-size: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+}
+
+.owner-stack-bar:hover .owner-bar-tip,
+.owner-stack-bar:focus .owner-bar-tip {
+  display: grid;
+  gap: 4px;
+}
+
+.owner-stack-bar:hover .owner-stack,
+.owner-stack-bar:focus .owner-stack {
+  opacity: 0.85;
+}
+
+.owner-bar-tip strong {
+  font-weight: 500;
+  color: #d9ddd2;
+}
+
+.owner-bar-tip b {
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.owner-bar-tip span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.owner-bar-tip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.owner-bar-tip em {
+  margin-left: auto;
+  padding-left: 12px;
+  font-style: normal;
 }
 
 .owner-table {
@@ -925,3 +989,15 @@ section.owner-panel {
 .status-pill.status-open { background: #e7eef7; color: #36506e; }
 .status-pill.status-accepted { background: #e5ead9; color: #4a5a3f; }
 .status-pill.status-declined { background: #f1ece4; color: #7a716a; }
+
+/* Dropdowns: hide the browser's arrow and draw our own with space on the right */
+.owner-dash-filters select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2355644a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 11px 7px;
+  cursor: pointer;
+}

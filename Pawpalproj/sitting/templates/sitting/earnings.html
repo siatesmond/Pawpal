@@ -8,16 +8,15 @@
 <section class="sitter">
   <div class="sitter-head">
     <div><h1>Earnings</h1><p>Your payouts after Pawpal’s 10% commission</p></div>
-    {# Choose the month to see; download it as CSV #}
+    {# Choose the month to see #}
     <form method="get" class="actions">
       <input type="month" name="month" value="{{ month_value }}" onchange="this.form.submit()">
-      <a href="?month={{ month_value }}&download=csv" class="btn btn-outline">Download statement</a>
     </form>
   </div>
 
   <div class="stats">
     <div class="s-card s-card-blue stat"><span class="eyebrow">Payout · {{ month_label }}</span><strong>SGD {{ month_payout }}</strong><span class="muted">from {{ month_jobs|length }} completed job{{ month_jobs|length|pluralize }}</span></div>
-    <div class="s-card stat"><span class="eyebrow">Pending payout</span><strong>SGD {{ pending_payout }}</strong><span class="muted">{{ pending_count }} job{{ pending_count|pluralize }} processing</span></div>
+    <div class="s-card stat"><span class="eyebrow">Pending payout</span><strong>SGD {{ pending_payout }}</strong><span class="muted">{{ pending_count }} completed job{{ pending_count|pluralize }}, sent 3 days after the last sitting day</span></div>
     <div class="s-card stat"><span class="eyebrow">Lifetime earnings</span><strong>SGD {{ lifetime_payout }}</strong><span class="muted">{{ lifetime_count }} job{{ lifetime_count|pluralize }} since {{ sitter.date_joined|date:"M Y" }}</span></div>
     <div class="s-card stat"><span class="eyebrow">Average rating</span><strong>{% if average_rating %}{{ average_rating }} ★{% else %}–{% endif %}</strong><span class="muted">from {{ review_count }} owner review{{ review_count|pluralize }}</span></div>
   </div>
@@ -38,7 +37,7 @@
                   <td class="num">{{ job.total_price_display }}</td>
                   <td class="num muted">– {{ job.commission_display }}</td>
                   <td class="num"><strong>{{ job.sitter_payout_display }}</strong></td>
-                  <td class="num">{% if job.is_paid %}<span class="pill pill-success pill-sm">Paid</span>{% else %}<span class="pill pill-cream pill-sm">Pending</span>{% endif %}</td>
+                  <td class="num">{% if job.is_paid %}<span class="pill pill-success pill-sm">Paid</span>{% else %}<span class="pill pill-cream pill-sm">Payout on {{ job.payout_date|date:"j M" }}</span>{% endif %}</td>
                 </tr>
               {% empty %}
                 <tr><td colspan="7" style="text-align: center;">No completed jobs in {{ month_label }}.</td></tr>

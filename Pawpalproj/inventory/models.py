@@ -149,6 +149,9 @@ class Order(models.Model):
     points_discount_cents = models.PositiveIntegerField(default=0)
     total_cents = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)
+    # filled in when the customer cancels the order
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancellation_reason = models.TextField(blank=True)
 
     def __str__(self):
         return f"Order {self.pk}"

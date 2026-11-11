@@ -8,10 +8,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'css/base.css' %}">
-  <link rel="stylesheet" href="{% static 'css/staff.css' %}">
-  <link rel="stylesheet" href="{% static 'css/owner.css' %}">
+  <link rel="stylesheet" href="{% static 'css/base.css' %}?v=2">
+  <link rel="stylesheet" href="{% static 'css/staff.css' %}?v=3">
+  {# ?v=5: add 1 to the number after editing owner.css so browsers load the new file instead of an old saved copy #}
+  <link rel="stylesheet" href="{% static 'css/owner.css' %}?v=5">
   {% block extra_css %}{% endblock %}
+  {# shared buttons, status colours and headings for every page (loaded last so it wins) #}
+  <link rel="stylesheet" href="{% static 'css/theme.css' %}">
 </head>
 <body class="owner-body">
   <aside class="owner-sidebar">

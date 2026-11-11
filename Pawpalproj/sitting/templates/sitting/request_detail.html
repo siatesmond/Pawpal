@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
 <link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
 <link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
-<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}" />
+<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}?v=2" />
 {% endblock %}
 
 {% block content %}
@@ -128,7 +128,7 @@
 
       {# Same cancel section as bookings and orders #}
       {% url 'sitting:cancel_request' job.pk as cancel_url %}
-      {% include "user/_cancel_section.html" with record_label="sitting request" cancel_url=cancel_url %}
+      {% include "user/_cancel_section.html" with record_label="sitting request" cancel_url=cancel_url ask_reason=True %}
     </div>
 
     <aside class="sitter-stack">
@@ -138,6 +138,9 @@
           <tr><td class="muted">Sitter</td><td>{% if job.sitter %}<a href="{% url 'sitting:sitter_public_profile' job.sitter.pk %}" class="link">{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.</a>{% else %}Open to all sitters{% endif %}</td></tr>
           <tr><td class="muted">Pets</td><td>{{ pets|join:", " }}</td></tr>
           <tr><td class="muted">Care</td><td>{{ job.care_requirements|default:"–" }}</td></tr>
+          {% if job.status == "cancelled" %}
+            <tr><td class="muted">Cancelled by</td><td>{% if job.cancelled_by == "customer" %}You{% else %}{{ job.get_cancelled_by_display|default:"–" }}{% endif %}{% if job.cancellation_reason %}<br><span class="muted small">{{ job.cancellation_reason }}</span>{% endif %}</td></tr>
+          {% endif %}
           <tr><td class="muted">Price</td><td>SGD {{ job.total_price_display }}{% if job.status == "open" and not job.sitter %} (estimate){% endif %}</td></tr>
           {% if payment %}<tr><td class="muted">Paid</td><td>SGD {{ paid_amount }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}</td></tr>{% endif %}
         </table>

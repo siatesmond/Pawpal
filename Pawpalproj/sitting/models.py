@@ -113,6 +113,15 @@ class SittingRequest(models.Model):
         null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)]
     )
     owner_feedback = models.TextField(blank=True)
+
+    # who cancelled the request and why (empty unless the status is Cancelled)
+    class CancelledBy(models.TextChoices):
+        CUSTOMER = "customer", "Customer"
+        SITTER = "sitter", "Pet sitter"
+        PAWPAL = "pawpal", "Pawpal (business owner)"
+
+    cancelled_by = models.CharField(max_length=20, choices=CancelledBy.choices, blank=True)
+    cancellation_reason = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

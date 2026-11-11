@@ -155,6 +155,14 @@
                         {{ selected.get_status_display }}
                       </span>
                   </li>
+                  {% if selected.status == "CANCELLED" %}
+                  <li>
+                      <b>Cancelled by:</b> Customer ({{ selected.customer.first_name }} {{ selected.customer.last_name }}){% if selected.cancelled_at %} on {{ selected.cancelled_at|date:"j M Y, g:i A" }}{% endif %}
+                  </li>
+                  <li>
+                      <b>Reason:</b> {{ selected.cancellation_reason|default:"No reason given" }}
+                  </li>
+                  {% endif %}
 
                   <li><u>Items:</u></li>
 

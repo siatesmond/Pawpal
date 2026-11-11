@@ -1,0 +1,135 @@
+/* My points page */
+.points-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.points-stat {
+  display: grid;
+  gap: 4px;
+  padding: 18px 20px;
+  border: 1px solid #e2dcd1;
+  border-radius: 20px;
+  background: #fff;
+}
+
+.points-stat-main {
+  background: #dce6f1;
+}
+
+.points-stat small {
+  font-size: 11px;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+.points-stat strong {
+  color: var(--green);
+  font-family: "Fraunces", serif;
+  font-size: 26px;
+  font-weight: 400;
+}
+
+.points-stat span {
+  color: #7a716a;
+  font-size: 12px;
+}
+
+.points-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.points-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid #eee8dc;
+}
+
+.points-row:first-child {
+  border-top: 0;
+}
+
+.points-type {
+  flex: none;
+  width: 130px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #f1ece2;
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.points-type-earned { background: #e4eedc; color: #3f6a35; }
+.points-type-redeemed { background: #f3e6d0; color: #8a5a17; }
+.points-type-refunded { background: #dce6f1; color: #3b5a7a; }
+.points-type-adjusted { background: #ece3f3; color: #5b4a8a; }
+
+.points-info {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.points-info strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.points-info small,
+.points-amount small {
+  color: #7a716a;
+  font-size: 12px;
+}
+
+.points-amount {
+  display: grid;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.points-amount strong {
+  font-size: 16px;
+}
+
+.points-plus { color: #3f6a35; }
+.points-minus { color: #9b3d2e; }
+
+/* sidebar card becomes a link to this page */
+a.profile-points {
+  color: inherit;
+  text-decoration: none;
+  transition: box-shadow 0.15s;
+}
+
+a.profile-points:hover {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.profile-points em {
+  margin-top: 4px;
+  color: var(--green);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+@media (max-width: 700px) {
+  .points-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .points-row {
+    flex-wrap: wrap;
+  }
+
+  .points-type {
+    width: auto;
+  }
+}

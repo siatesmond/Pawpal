@@ -1,0 +1,13 @@
+{# Comments past sitters left about this pet owner (no sitter names). Needs "job" #}
+{% if job.owner_ratings.comments %}
+  <details class="owner-reviews">
+    <summary class="link small">What other sitters said about {{ job.owner.first_name }} ({{ job.owner_ratings.comments|length }}) →</summary>
+    {% for comment in job.owner_ratings.comments %}
+      <div class="owner-review">
+        <span class="stars">{% for i in "12345" %}{% if forloop.counter <= comment.stars %}★{% else %}☆{% endif %}{% endfor %}</span>
+        <span class="muted small">{{ comment.date|date:"M Y" }}</span>
+        <p>“{{ comment.text }}”</p>
+      </div>
+    {% endfor %}
+  </details>
+{% endif %}

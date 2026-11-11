@@ -1,15 +1,19 @@
 <aside class="profile-sidebar">
   <h2>My account</h2>
   <nav>
-    <a href="{% url 'user:profile' %}" class="{% if active_account_page == 'profile' %}profile-active{% endif %}">Profile</a>
-    <a href="{% url 'user:pets' %}" class="{% if active_account_page == 'pets' %}profile-active{% endif %}">My pets</a>
+    <a href="{% url 'user:profile' %}" class="{% if active_account_page == 'profile' %}profile-active{% endif %}">My Profile</a>
+    <a href="{% url 'user:pets' %}" class="{% if active_account_page == 'pets' %}profile-active{% endif %}">My Pets</a>
     <a href="{% url 'user:bookings' %}" class="{% if active_account_page == 'bookings' %}profile-active{% endif %}">Bookings</a>
     <a href="{% url 'user:orders' %}" class="{% if active_account_page == 'orders' %}profile-active{% endif %}">Orders</a>
+    <a href="{% url 'sitting:my_sitting_requests' %}" class="{% if active_account_page == 'sitting' %}profile-active{% endif %}">Sitting Requests</a>
+    <a href="{% url 'user:points' %}" class="{% if active_account_page == 'points' %}profile-active{% endif %}">My Points</a>
   </nav>
 
-  <div class="profile-points" id="points">
+  {# click the card to see where the points came from #}
+  <a class="profile-points" id="points" href="{% url 'user:points' %}" style="color: inherit; text-decoration: none;">
     <small>POINTS BALANCE</small>
     <strong>{{ customer.point_balance }} pts</strong>
     <span>= SGD {{ customer.get_point_value }} off your next order</span>
-  </div>
+    <span style="margin-top: 4px; color: var(--green); font-size: 12px; font-weight: 600;">{% if active_account_page == "points" %}Your points history ↓{% else %}View points history →{% endif %}</span>
+  </a>
 </aside>

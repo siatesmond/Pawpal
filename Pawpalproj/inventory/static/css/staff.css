@@ -222,61 +222,61 @@
   display: inline-block;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #f3f4f6;
-  color: #4b5563;
+  background: #efeae0;
+  color: #5d574f;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
 }
 
 .status-pill.status-pending {
-  background: #fef3c7;
-  color: #a16207;
+  background: #fbf0d9;
+  color: #a8761c;
 }
 
 .status-pill.status-approved {
-  background: #dcfce7;
-  color: #15803d;
+  background: #e3eedc;
+  color: #3f7a3a;
 }
 
 .status-pill.status-confirmed {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #dce6f1;
+  color: #3b5a7a;
 }
 
 .status-pill.status-checked_in {
-  background: #ede9fe;
-  color: #6d28d9;
+  background: #e6e0f3;
+  color: #5b4a8a;
 }
 
 .status-pill.status-in_progress {
-  background: #ffedd5;
-  color: #c2410c;
+  background: #fde7d2;
+  color: #b45f1c;
 }
 
 .status-pill.status-ready_for_pickup {
-  background: #ccfbf1;
-  color: #0f766e;
+  background: #d6efe9;
+  color: #1f7a66;
 }
 
 .status-pill.status-packed {
-  background: #fef3c7;
-  color: #92400e;
+  background: #fbf0d9;
+  color: #8a5a1c;
 }
 
 .status-pill.status-out_for_delivery {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: #dce6f1;
+  color: #3b5a7a;
 }
 
 .status-pill.status-completed {
-  background: #dcfce7;
-  color: #15803d;
+  background: #e3eedc;
+  color: #3f7a3a;
 }
 
 .status-pill.status-cancelled {
-  background: #fee2e2;
-  color: #b91c1c;
+  background: #f3dedb;
+  color: #9b3d2e;
 }
 
 .cancel-btn,
@@ -290,8 +290,8 @@
 
 .cancel-btn {
   border: 1px solid #ddd;
-  color: #374151;
-  background: #e5e7eb;
+  color: #3b3a33;
+  background: #e2dcd1;
   padding: 10px 24px;
   border-radius: 999px;
   font-family: inherit;
@@ -476,10 +476,10 @@
 
 .update-action-btn {
   padding: 5px 14px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #d8d1c3;
   border-radius: 999px;
   background: #fff;
-  color: #374151;
+  color: #3b3a33;
   font-family: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -537,11 +537,30 @@ button.update-action-delete {
   flex: 1;
   min-width: 140px;
   padding: 8px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid #d8d1c3;
   border-radius: 8px;
   font-family: inherit;
 }
 
 .staff-filters .filter-btn {
   padding: 12px 22px;
+}
+
+/* Dropdowns: hide the browser's arrow and draw our own with space on the right */
+.staff-filters select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 42px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2355644a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  background-size: 12px 8px;
+  cursor: pointer;
+}
+
+/* View details / Update stock: keep the text on one line */
+.view-details-btn,
+.update-stock-btn {
+  display: inline-block;
+  white-space: nowrap;
 }

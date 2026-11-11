@@ -12,6 +12,7 @@ PROTECTED_PATHS = {
     "/user/pets/": ["customer"],
     "/user/bookings/": ["customer"],
     "/user/orders/": ["customer"],
+    "/user/points/": ["customer"],
     "/user/cart/": ["customer"],
     "/inventory/staff/": ["staff", "owner"],
     "/inventory/stock/": ["staff", "owner"],

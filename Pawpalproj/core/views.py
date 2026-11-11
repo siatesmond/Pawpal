@@ -1,4 +1,3 @@
-import csv
 import os
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal
@@ -11,7 +10,7 @@ from django.shortcuts import HttpResponse, redirect, render
 from django.utils import timezone
 from inventory.models import Brand, CartItem, Category, Order, OrderItem, Product
 from payment.models import Payment, PointsTransaction
-from payment.services import add_points, refund_payment
+from payment.services import add_points, points_earned, refund_payment
 from review.models import Review
 from service.models import Booking, BookingUpdate, Service, TimeSlot
 from sitting.models import PetSitter, SittingRequest, SittingUpdate
@@ -49,6 +48,13 @@ def outlet_time(hhmm):
     if Outlet._meta.get_field("opening_time").get_internal_type() == "TimeField":
         return time.fromisoformat(hhmm)
     return sg_datetime(0, hhmm)
+
+
+def clock_time(value):
+    """Outlet opening/closing as a plain Singapore time, whether it is stored as a time or a date-time."""
+    if isinstance(value, datetime):
+        return value.astimezone(SGT).time()
+    return value
 
 
 def set_created_at(model, pk, n_days_ago):
@@ -285,6 +291,96 @@ pet_sitters = [
         "daily_rate_cents": 3500,
         "application_status": "REJECTED",
         "rejection_reason": "ID document was unclear. Please re-apply with a clearer photo.",
+        "reviewed_by": "owner_lim",
+    },
+    {
+        "username": "sitter_wei",
+        "email": "wei@example.com",
+        "first_name": "Wei Ling",
+        "last_name": "Tan",
+        "mobile": "83456793",
+        "bio": "Retired teacher who has raised three dogs. Calm, patient and home most of the day.",
+        "postal_code": "569933",
+        "service_area": "Ang Mo Kio Avenue 3",
+        "latitude": "1.369236",
+        "longitude": "103.848693",
+        "experience_years": 8,
+        "pet_experience": "dogs, cats",
+        "daily_rate_cents": 6500,
+        "application_status": "APPROVED",
+        "rejection_reason": "",
+        "reviewed_by": "owner_lim",
+    },
+    {
+        "username": "sitter_ryan",
+        "email": "ryan@example.com",
+        "first_name": "Ryan",
+        "last_name": "Lim",
+        "mobile": "83456794",
+        "bio": "Works from home and loves long evening walks. Great with puppies and young dogs.",
+        "postal_code": "828761",
+        "service_area": "Punggol Central",
+        "latitude": "1.406410",
+        "longitude": "103.902130",
+        "experience_years": 2,
+        "pet_experience": "dogs",
+        "daily_rate_cents": 4800,
+        "application_status": "APPROVED",
+        "rejection_reason": "",
+        "reviewed_by": "owner_lim",
+    },
+    {
+        "username": "sitter_priya",
+        "email": "priya@example.com",
+        "first_name": "Priya",
+        "last_name": "Nair",
+        "mobile": "83456795",
+        "bio": "Cat fosterer for a local shelter. Comfortable giving medication and eye drops.",
+        "postal_code": "120441",
+        "service_area": "Commonwealth Avenue West",
+        "latitude": "1.314967",
+        "longitude": "103.764270",
+        "experience_years": 4,
+        "pet_experience": "cats",
+        "daily_rate_cents": 5200,
+        "application_status": "APPROVED",
+        "rejection_reason": "",
+        "reviewed_by": "owner_lim",
+    },
+    {
+        "username": "sitter_daniel",
+        "email": "daniel@example.com",
+        "first_name": "Daniel",
+        "last_name": "Ong",
+        "mobile": "83456796",
+        "bio": "Former groomer. Happy to brush long-haired pets and send daily photo updates.",
+        "postal_code": "310175",
+        "service_area": "Lorong 2 Toa Payoh",
+        "latitude": "1.333396",
+        "longitude": "103.847054",
+        "experience_years": 6,
+        "pet_experience": "dogs, cats",
+        "daily_rate_cents": 5800,
+        "application_status": "APPROVED",
+        "rejection_reason": "",
+        "reviewed_by": "owner_lim",
+    },
+    {
+        "username": "sitter_siti",
+        "email": "siti@example.com",
+        "first_name": "Siti",
+        "last_name": "Aminah",
+        "mobile": "83456797",
+        "bio": "Nursing student with flexible hours. Gentle with senior and anxious pets.",
+        "postal_code": "460018",
+        "service_area": "Bedok South Road",
+        "latitude": "1.320625",
+        "longitude": "103.934734",
+        "experience_years": 3,
+        "pet_experience": "dogs, cats",
+        "daily_rate_cents": 4500,
+        "application_status": "APPROVED",
+        "rejection_reason": "",
         "reviewed_by": "owner_lim",
     },
 ]
@@ -905,6 +1001,7 @@ orders = [
         "points_discount_cents": 0,
         "days_ago": 5,
         "items": [("Buddy Care Oatmeal pet shampoo 500ml", 1)],
+        "cancellation_reason": "Ordered the wrong size by mistake.",
     },
     {
         "ref": "O6",
@@ -1099,6 +1196,50 @@ time_slots = [
     },  # becomes full
 ]
 
+# Weekly timetable: loadData uses it to add a month of regular time slots at every
+# open outlet, on top of the hand-written slots above (which the bookings use).
+# days: 0 = Monday ... 6 = Sunday. "opening" means the outlet's opening time.
+TIMETABLE_DAYS = 31
+EVERY_DAY = [0, 1, 2, 3, 4, 5, 6]
+service_timetable = [
+    {
+        "service": "Basic Bath & Brush",
+        "times": ["10:00", "11:30", "14:00", "16:00"],
+        "days": EVERY_DAY,
+        "capacity": 3,
+    },
+    {
+        "service": "Full Grooming Package",
+        "times": ["10:00", "13:00", "16:00"],
+        "days": [1, 2, 3, 4, 5, 6],  # groomers rest on Mondays
+        "capacity": 2,
+    },
+    {
+        "service": "Daycare (Full Day)",
+        "times": ["opening"],
+        "days": [0, 1, 2, 3, 4, 5],  # Monday to Saturday
+        "capacity": 10,
+    },
+    {
+        "service": "Overnight Boarding",
+        "times": ["14:00"],  # check-in 2 pm, pick-up next day 12 pm
+        "days": EVERY_DAY,
+        "capacity": 5,
+    },
+    {
+        "service": "Puppy Training Session",
+        "times": ["10:00", "16:00"],
+        "days": [5, 6],  # weekend classes
+        "capacity": 4,
+    },
+    {
+        "service": "Puppy Training Session",
+        "times": ["19:00"],
+        "days": [2],  # Wednesday evening class
+        "capacity": 4,
+    },
+]
+
 bookings = [
     {
         "ref": "B1",
@@ -1179,6 +1320,7 @@ bookings = [
         "status": "CANCELLED",
         "points_discount_cents": 0,
         "days_ago": 3,
+        "cancellation_reason": "Snowy is unwell, will rebook next week.",
     },  # cancelled, refunded
     {
         "ref": "B9",
@@ -1264,6 +1406,7 @@ owner_coordinates = {
     "chloe_ng": ("1.436900", "103.786000"),  # Woodlands
 }
 
+# owner_rating / owner_feedback: the sitter's rating of the customer (pet owner) after the job
 sitting_requests = [
     {
         "ref": "R1",
@@ -1275,7 +1418,7 @@ sitting_requests = [
         "status": "completed",
         "care_requirements": "Feed twice a day. Luna is shy, give her space.",
         "owner_rating": 5,
-        "owner_feedback": "Grace sent photos every day. Will book again!",
+        "owner_feedback": "Amy left clear care notes for Mochi and Luna and was on time for pick-up.",
         "days_ago": 25,
     },
     {
@@ -1392,7 +1535,7 @@ sitting_requests = [
         "status": "completed",
         "care_requirements": "Coco is nervous around strangers. Give her quiet time.",
         "owner_rating": 5,
-        "owner_feedback": "Grace sent clear updates and took great care of Coco.",
+        "owner_feedback": "Chloe explained Coco's needs well and replied quickly to my updates.",
         "days_ago": 22,
     },
     {
@@ -1408,6 +1551,187 @@ sitting_requests = [
         "owner_feedback": "",
         "days_ago": 0,
     },
+    # More scenarios: cancelled in every way, finished jobs for the newer sitters,
+    # a request sent to one sitter, one waiting for payment and one declined
+    {
+        "ref": "R12",
+        "owner": "kumar_r",
+        "sitter": None,
+        "pets": ["Milo"],
+        "start_day": 10,
+        "days": 3,
+        "status": "cancelled",
+        "care_requirements": "Milo needs his heart medication at 8 am and 8 pm.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "cancelled_by": "customer",
+        "cancellation_reason": "My trip was postponed.",
+        "days_ago": 4,
+    },  # customer cancelled an open request (nothing paid)
+    {
+        "ref": "R13",
+        "owner": "amy_tan",
+        "sitter": "sitter_priya",
+        "pets": ["Luna"],
+        "start_day": 8,
+        "days": 4,
+        "status": "cancelled",
+        "care_requirements": "Luna hides under the bed at first. Leave food near her hiding spot.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "cancelled_by": "customer",
+        "cancellation_reason": "My sister can look after Luna instead.",
+        "days_ago": 6,
+    },  # customer cancelled after paying (refunded)
+    {
+        "ref": "R14",
+        "owner": "jason_lee",
+        "sitter": "sitter_ryan",
+        "pets": ["Bobby"],
+        "start_day": 5,
+        "days": 2,
+        "status": "cancelled",
+        "care_requirements": "Bobby pulls on the leash, use the harness by the door.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "cancelled_by": "sitter",
+        "cancellation_reason": "I have a family emergency that week. Sorry!",
+        "days_ago": 7,
+    },  # sitter cancelled a paid job (refunded)
+    {
+        "ref": "R15",
+        "owner": "nur_aisyah",
+        "sitter": None,
+        "pets": ["Kopi"],
+        "start_day": 14,
+        "days": 4,
+        "status": "cancelled",
+        "care_requirements": "Kopi only eats fish or turkey food. No chicken.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "cancelled_by": "pawpal",
+        "cancellation_reason": "Duplicate of another request for the same dates.",
+        "days_ago": 2,
+    },  # Pawpal removed a duplicate open request
+    {
+        "ref": "R16",
+        "owner": "chloe_ng",
+        "sitter": "sitter_daniel",
+        "pets": ["Coco"],
+        "start_day": 4,
+        "days": 1,
+        "status": "cancelled",
+        "care_requirements": "Coco gets nervous with loud noises, keep the TV low.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "cancelled_by": "pawpal",
+        "cancellation_reason": "Daniel is unwell. Please send a new request and we will help you find another sitter.",
+        "days_ago": 3,
+    },  # Pawpal cancelled when the sitter fell sick
+    {
+        "ref": "R17",
+        "owner": "kumar_r",
+        "sitter": "sitter_wei",
+        "pets": ["Milo"],
+        "start_day": -30,
+        "days": 4,
+        "status": "completed",
+        "care_requirements": "Heart medication twice a day. Short slow walks only.",
+        "owner_rating": 5,
+        "owner_feedback": "Kumar labelled every medicine clearly and was easy to reach.",
+        "days_ago": 36,
+    },
+    {
+        "ref": "R18",
+        "owner": "nur_aisyah",
+        "sitter": "sitter_daniel",
+        "pets": ["Snowy"],
+        "start_day": -25,
+        "days": 3,
+        "status": "completed",
+        "care_requirements": "Wipe Snowy's eyes every morning and brush her coat gently.",
+        "owner_rating": 4,
+        "owner_feedback": "Nur was friendly, but pick-up was about an hour late.",
+        "days_ago": 31,
+    },
+    {
+        "ref": "R19",
+        "owner": "nur_aisyah",
+        "sitter": "sitter_priya",
+        "pets": ["Kopi"],
+        "start_day": -12,
+        "days": 2,
+        "status": "completed",
+        "care_requirements": "Kopi is shy. Let her come to you.",
+        "owner_rating": 5,
+        "owner_feedback": "Nur left the fish-only food clearly marked. Very easy job.",
+        "days_ago": 18,
+    },
+    {
+        "ref": "R20",
+        "owner": "chloe_ng",
+        "sitter": "sitter_siti",
+        "pets": ["Coco"],
+        "start_day": -8,
+        "days": 2,
+        "status": "completed",
+        "care_requirements": "Coco has a sensitive stomach, feed the probiotic powder with meals.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 14,
+    },  # sitter has not rated the customer yet
+    {
+        "ref": "R21",
+        "owner": "jason_lee",
+        "sitter": "sitter_ryan",
+        "pets": ["Bobby"],
+        "start_day": -15,
+        "days": 3,
+        "status": "completed",
+        "care_requirements": "Two long walks a day.",
+        "owner_rating": 3,
+        "owner_feedback": "Bobby pulled very hard on walks and the leash was frayed. Jason did not mention it.",
+        "days_ago": 21,
+    },
+    {
+        "ref": "R22",
+        "owner": "amy_tan",
+        "sitter": "sitter_wei",
+        "pets": ["Mochi"],
+        "start_day": 12,
+        "days": 3,
+        "status": "open",
+        "care_requirements": "Mochi dislikes nail trimming, please skip it.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 1,
+    },  # sent to one sitter, waiting for her to accept
+    {
+        "ref": "R23",
+        "owner": "kumar_r",
+        "sitter": "sitter_siti",
+        "pets": ["Milo"],
+        "start_day": 7,
+        "days": 2,
+        "status": "pending",
+        "care_requirements": "Milo howls when left alone, a radio on helps.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 2,
+    },  # Siti accepted, waiting for Kumar to pay
+    {
+        "ref": "R24",
+        "owner": "amy_tan",
+        "sitter": "sitter_priya",
+        "pets": ["Mochi"],
+        "start_day": 16,
+        "days": 2,
+        "status": "declined",
+        "care_requirements": "Two walks a day.",
+        "owner_rating": None,
+        "owner_feedback": "",
+        "days_ago": 3,
+    },  # Priya declined (she looks after cats only)
 ]
 
 sitting_updates = [
@@ -1453,6 +1777,72 @@ sitting_updates = [
         "new_status": "completed",
         "note": "Coco was calm and happy at pick-up.",
     },
+    {
+        "request": "R13",
+        "sitter": "sitter_priya",
+        "new_status": "accepted",
+        "note": "Amy confirmed and paid.",
+    },
+    {
+        "request": "R13",
+        "sitter": "sitter_priya",
+        "new_status": "cancelled",
+        "note": "Amy cancelled this request. Reason: My sister can look after Luna instead.",
+    },
+    {
+        "request": "R14",
+        "sitter": "sitter_ryan",
+        "new_status": "cancelled",
+        "note": "Ryan cancelled the job. Reason: I have a family emergency that week. Sorry!",
+    },
+    {
+        "request": "R16",
+        "sitter": "sitter_daniel",
+        "new_status": "cancelled",
+        "note": "Cancelled by Pawpal: Daniel is unwell. Please send a new request and we will help you find another sitter.",
+    },
+    {
+        "request": "R17",
+        "sitter": "sitter_wei",
+        "new_status": "in_progress",
+        "note": "Milo had his morning medicine and a slow walk round the block.",
+    },
+    {
+        "request": "R17",
+        "sitter": "sitter_wei",
+        "new_status": "completed",
+        "note": "All four days done. Milo ate well and slept a lot.",
+    },
+    {
+        "request": "R18",
+        "sitter": "sitter_daniel",
+        "new_status": "completed",
+        "note": "Snowy's coat is tangle-free and her eyes are clean.",
+    },
+    {
+        "request": "R19",
+        "sitter": "sitter_priya",
+        "new_status": "completed",
+        "note": "Kopi came out to play on day two. Fish food only, as asked.",
+    },
+    {
+        "request": "R20",
+        "sitter": "sitter_siti",
+        "new_status": "completed",
+        "note": "Coco's tummy was fine. Probiotic given with every meal.",
+    },
+    {
+        "request": "R21",
+        "sitter": "sitter_ryan",
+        "new_status": "completed",
+        "note": "Bobby had lots of exercise. The leash is frayed, please replace it.",
+    },
+    {
+        "request": "R23",
+        "sitter": "sitter_siti",
+        "new_status": "pending",
+        "note": "Siti accepted your request.",
+    },
 ]
 
 # Mock data – payments, points and reviews
@@ -1480,10 +1870,37 @@ payments = [
     {"for": "R1", "status": "COMPLETED", "days_ago": 21},
     {"for": "R2", "status": "COMPLETED", "days_ago": 3},
     {"for": "R5", "status": "COMPLETED", "days_ago": 7},
+    {"for": "R8", "status": "COMPLETED", "days_ago": 1},
+    {"for": "R9", "status": "COMPLETED", "days_ago": 2},
+    {"for": "R10", "status": "COMPLETED", "days_ago": 21},
+    {"for": "R13", "status": "REFUNDED", "days_ago": 5},  # paid, then the customer cancelled
+    {"for": "R14", "status": "REFUNDED", "days_ago": 6},  # paid, then the sitter cancelled
 ]
 
-# Points rules for the demo: earn 1 point per $1 paid; 100 points = $1 off (1 point = 1 cent).
+# Points rules (same as checkout): earn 10 points per $1 paid; 1 point = 1 cent off.
 SIGN_UP_BONUS = 200
+
+# Points the business owner adjusted by hand (shown with the reason in the customer's points history)
+points_adjustments = [
+    {
+        "customer": "amy_tan",
+        "points": 100,
+        "reason": "Sorry! Mochi's grooming started 30 minutes late.",
+        "days_ago": 9,
+    },
+    {
+        "customer": "jason_lee",
+        "points": 150,
+        "reason": "Thank you for trying our new pet sitting service.",
+        "days_ago": 6,
+    },
+    {
+        "customer": "kumar_r",
+        "points": -50,
+        "reason": "Points given twice by mistake for an earlier order.",
+        "days_ago": 4,
+    },
+]
 
 reviews = [
     {
@@ -1515,6 +1932,36 @@ reviews = [
         "for": "R1",
         "rating": 5,
         "comment": "Grace was fantastic with both pets.",
+    },
+    {
+        "reviewer": "kumar_r",
+        "for": "R17",
+        "rating": 5,
+        "comment": "Wei Ling was so patient with Milo and never missed his medicine.",
+    },
+    {
+        "reviewer": "nur_aisyah",
+        "for": "R18",
+        "rating": 5,
+        "comment": "Daniel brushed Snowy every day, she has never looked better.",
+    },
+    {
+        "reviewer": "nur_aisyah",
+        "for": "R19",
+        "rating": 4,
+        "comment": "Priya was lovely with Kopi. Updates came a bit late in the evening.",
+    },
+    {
+        "reviewer": "chloe_ng",
+        "for": "R20",
+        "rating": 5,
+        "comment": "Siti sent photos twice a day and Coco was relaxed.",
+    },
+    {
+        "reviewer": "jason_lee",
+        "for": "R21",
+        "rating": 4,
+        "comment": "Ryan gave Bobby great walks. Thanks for telling me about the leash.",
     },
 ]
 
@@ -1731,7 +2178,10 @@ def loadData(request):
             delivery_fee_cents=delivery_fee,
             points_discount_cents=order["points_discount_cents"],
             total_cents=subtotal + delivery_fee - order["points_discount_cents"],
+            cancellation_reason=order.get("cancellation_reason", ""),
         )
+        if order["status"] == "CANCELLED":
+            new_order.cancelled_at = days_ago(order["days_ago"] - 1)
         new_order.save()
         set_created_at(Order, new_order.pk, order["days_ago"])
 
@@ -1780,6 +2230,42 @@ def loadData(request):
         new_slot.save()
         slots[slot["ref"]] = new_slot
 
+    # A month of regular slots from the weekly timetable
+    for day in range(TIMETABLE_DAYS):
+        weekday = (today() + timedelta(days=day)).weekday()
+        for outlet in Outlet.objects.filter(is_active=True):
+            opening = clock_time(outlet.opening_time)
+            closing = clock_time(outlet.closing_time)
+            for row in service_timetable:
+                if weekday not in row["days"]:
+                    continue
+                service = Service.objects.get(name=row["service"])
+                for hhmm in row["times"]:
+                    if hhmm == "opening":
+                        hhmm = opening.strftime("%H:%M")
+                    start = sg_datetime(day, hhmm)
+                    if service.duration_minutes:
+                        end = start + timedelta(minutes=service.duration_minutes)
+                        # must finish before the outlet closes
+                        if end.time() > closing:
+                            continue
+                    else:  # boarding: ends next day at 12:00
+                        end = sg_datetime(day + 1, "12:00")
+                    if start.time() < opening:
+                        continue
+                    # skip a slot the hand-written list already added
+                    if TimeSlot.objects.filter(outlet=outlet, service=service, start_time=start).exists():
+                        continue
+                    new_slot = TimeSlot(
+                        outlet=outlet,
+                        service=service,
+                        start_time=start,
+                        end_time=end,
+                        capacity=row["capacity"],
+                        booked_count=0,
+                    )
+                    new_slot.save()
+
     for booking in bookings:
         customer = Customer.objects.get(username=booking["customer"])
         slot = slots[booking["slot"]]
@@ -1809,6 +2295,7 @@ def loadData(request):
             total_cents=price - booking["points_discount_cents"],
             cancellation_fee_cents=0,
             cancelled_at=cancelled_at,
+            cancellation_reason=booking.get("cancellation_reason", ""),
         )
         new_booking.save()
         set_created_at(Booking, new_booking.pk, booking["days_ago"])
@@ -1854,6 +2341,8 @@ def loadData(request):
             total_price_cents=daily_rate * request_data["days"],
             owner_rating=request_data["owner_rating"],
             owner_feedback=request_data["owner_feedback"],
+            cancelled_by=request_data.get("cancelled_by", ""),
+            cancellation_reason=request_data.get("cancellation_reason", ""),
         )
         new_request.save()
         set_created_at(SittingRequest, new_request.pk, request_data["days_ago"])
@@ -1906,38 +2395,78 @@ def loadData(request):
         set_created_at(Payment, new_payment.pk, payment["days_ago"])
         payment_for[payment["for"]] = new_payment
 
-    # Points history
+    # A sitting request only becomes Accepted after the customer pays, so every
+    # accepted / in progress / completed request needs a payment. Add any missing one.
+    for request_data in sitting_requests:
+        job = created[request_data["ref"]]
+        paid_statuses = ["accepted", "in_progress", "completed"]
+        if job.status in paid_statuses and request_data["ref"] not in payment_for:
+            new_payment = Payment(
+                customer=job.owner,
+                sitting_request=job,
+                amount_cents=job.total_price_cents,
+                status="COMPLETED",
+            )
+            new_payment.save()
+            set_created_at(Payment, new_payment.pk, max(request_data["days_ago"] - 1, 0))
+            payment_for[request_data["ref"]] = new_payment
+
+    # Points history (same wording as the live app, dated on the payment day)
     for customer in Customer.objects.filter(is_verified=True):
-        PointsTransaction(
+        bonus = PointsTransaction(
             customer=customer,
             points=SIGN_UP_BONUS,
             transaction_type="EARNED",
             reason="Sign-up bonus",
-        ).save()
+        )
+        bonus.save()
+        set_created_at(PointsTransaction, bonus.pk, 60)
 
     for ref, payment in payment_for.items():
         target = created[ref]
+        payment.refresh_from_db(fields=["created_at"])  # its date was moved back after saving
+        if ref.startswith("B"):
+            label = f"{target.slot.service.name} booking #{target.pk}"
+        elif ref.startswith("O"):
+            label = f"order #{target.pk}"
+        else:
+            label = f"pet sitting #{target.pk}"
 
         # points used as a discount on this booking/order
         discount = getattr(target, "points_discount_cents", 0)
         if discount:
-            PointsTransaction(
+            redeemed = PointsTransaction(
                 customer=payment.customer,
                 points=-discount,
                 transaction_type="REDEEMED",
                 payment=payment,
-                reason=f"Redeemed for {ref}",
-            ).save()
+                reason=f"Redeemed on {label}",
+            )
+            redeemed.save()
+            PointsTransaction.objects.filter(pk=redeemed.pk).update(created_at=payment.created_at)
 
-        # points earned from completed payments (1 point per $1)
+        # points earned from completed payments (10 points per $1, same function as checkout)
         if payment.status == "COMPLETED" and payment.amount_cents >= 100:
-            PointsTransaction(
+            earned = PointsTransaction(
                 customer=payment.customer,
-                points=payment.amount_cents // 100,
+                points=points_earned(payment.amount_cents),
                 transaction_type="EARNED",
                 payment=payment,
-                reason=f"Earned from {ref}",
-            ).save()
+                reason=f"Earned from {label}",
+            )
+            earned.save()
+            PointsTransaction.objects.filter(pk=earned.pk).update(created_at=payment.created_at)
+
+    # points the business owner added or removed by hand, with a reason
+    for adjustment in points_adjustments:
+        new_adjustment = PointsTransaction(
+            customer=Customer.objects.get(username=adjustment["customer"]),
+            points=adjustment["points"],
+            transaction_type="ADJUSTED",
+            reason=adjustment["reason"],
+        )
+        new_adjustment.save()
+        set_created_at(PointsTransaction, new_adjustment.pk, adjustment["days_ago"])
 
     # point_balance = total of each customer's points history
     for customer in Customer.objects.all():
@@ -1968,55 +2497,6 @@ def loadData(request):
     return HttpResponse(summary)
 
 
-def load_staff_owner_data(request):
-    """Create or update only the demo business owner and staff accounts."""
-    owner_password = os.getenv("PAWPAL_OWNER_PASSWORD", DEMO_PASSWORD)
-    staff_password = os.getenv("PAWPAL_STAFF_PASSWORD", DEMO_PASSWORD)
-
-    outlet = Outlet.objects.filter(is_active=True).first()
-    if outlet is None:
-        outlet = Outlet.objects.create(
-            name="Pawpal Tampines",
-            address="10 Tampines Central 1, #01-15",
-            postal_code="529536",
-            phone="61234501",
-            opening_time=outlet_time("09:00"),
-            closing_time=outlet_time("21:00"),
-            is_active=True,
-        )
-
-    owner = BusinessOwner.objects.filter(email="pawpal.sg.demo@gmail.com").first()
-    if owner is None:
-        owner = BusinessOwner(username="owner_lim")
-    owner.email = "pawpal.sg.demo@gmail.com"
-    owner.first_name = "Grace"
-    owner.last_name = "Tan"
-    owner.mobile = "91234567"
-    owner.password = make_password(owner_password)
-    owner.is_verified = True
-    owner.is_active = True
-    owner.is_business_owner = True
-    owner.save()
-
-    staff = Staff.objects.filter(email="staff_test@pawpal.local").first()
-    if staff is None:
-        staff = Staff(username="staff_test")
-    staff.email = "staff_test@pawpal.local"
-    staff.first_name = "Staff"
-    staff.last_name = "Test"
-    staff.mobile = "90000000"
-    staff.password = make_password(staff_password)
-    staff.is_verified = True
-    staff.is_active = True
-    staff.is_staff = True
-    staff.outlet = outlet
-    staff.save()
-
-    return HttpResponse(
-        "Staff and business owner demo accounts loaded successfully. "
-        "Existing application data was not changed."
-    )
-
 
 # Business owner pages
 
@@ -2043,6 +2523,30 @@ def percent_change(now, before):
     return round((now - before) * 100 / before)
 
 
+def paid_sittings(start_date, end_date):
+    """Pet sitting jobs the customer paid for between the two dates.
+
+    Pawpal's 10% commission is counted on the day the customer pays,
+    the same as bookings and orders. A refunded payment is not counted.
+    """
+    payments = (
+        Payment.objects.filter(
+            status=Payment.Status.COMPLETED,
+            sitting_request__isnull=False,
+            created_at__date__gte=start_date,
+            created_at__date__lte=end_date,
+        )
+        .select_related("sitting_request__owner", "sitting_request__sitter")
+        .order_by("-created_at")
+    )
+    jobs = []
+    for payment in payments:
+        job = payment.sitting_request
+        job.paid_on = payment.created_at.astimezone(SGT).date()
+        jobs.append(job)
+    return jobs
+
+
 def revenue_for_period(start_date, end_date, outlet=None):
     """Add up revenue for one date range, split by stream.
 
@@ -2059,15 +2563,11 @@ def revenue_for_period(start_date, end_date, outlet=None):
         created_at__date__gte=start_date,
         created_at__date__lte=end_date,
     )
-    sittings = SittingRequest.objects.filter(
-        status=SittingRequest.Status.COMPLETED,
-        end_date__gte=start_date,
-        end_date__lte=end_date,
-    )
+    sittings = paid_sittings(start_date, end_date)
     if outlet is not None:
         bookings = bookings.filter(slot__outlet=outlet)
         orders = orders.filter(pickup_outlet=outlet)
-        sittings = sittings.none()
+        sittings = []  # pet sitting is not linked to an outlet
 
     services = 0
     for booking in bookings:
@@ -2207,27 +2707,6 @@ def owner_dashboard(request):
         product_counts.items(), key=lambda item: item[1], reverse=True
     )[:3]
 
-    # New vs returning customers
-    active_customer_ids = set()
-    for booking in period_bookings:
-        active_customer_ids.add(booking.customer_id)
-    for order in Order.objects.filter(
-        created_at__date__gte=start, created_at__date__lte=end
-    ):
-        active_customer_ids.add(order.customer_id)
-
-    new_customers = 0
-    returning_customers = 0
-    for customer in Customer.objects.filter(pk__in=active_customer_ids):
-        if customer.date_joined.date() >= start:
-            new_customers += 1  # joined during this period
-        else:
-            returning_customers += 1  # joined earlier and came back
-    active_total = new_customers + returning_customers
-    returning_percent = (
-        round(returning_customers * 100 / active_total) if active_total else 0
-    )
-
     # Points issued and redeemed
     points_issued = 0
     points_redeemed = 0
@@ -2240,116 +2719,10 @@ def owner_dashboard(request):
             points_redeemed += -transaction.points  # stored as a negative number
 
     # Pet sitting commission per job
-    sitting_jobs = (
-        SittingRequest.objects.filter(
-            status=SittingRequest.Status.COMPLETED,
-            end_date__gte=start,
-            end_date__lte=end,
-        )
-        .select_related("owner", "sitter")
-        .order_by("-end_date")
-    )
+    sitting_jobs = paid_sittings(start, end)
     paid_to_sitters = 0
     for job in sitting_jobs:
         paid_to_sitters += job.sitter_payout_cents
-
-    # Export CSV: download the same report (same dates and outlet) as a spreadsheet file
-    if request.GET.get("export") == "csv":
-
-        # 1. Put every line of the report into a list called rows.
-        #    Each line is a list of cells, e.g. ["Total", "900.00", 100]
-        rows = []
-        if outlet:
-            outlet_name = outlet.name
-        else:
-            outlet_name = "All outlets"
-        rows.append(["Pawpal report", f"{start} to {end}", outlet_name])
-        rows.append([])  # an empty line between sections
-
-        # Revenue by stream
-        rows.append(
-            [
-                "Revenue stream",
-                "Revenue (SGD)",
-                "Share (%)",
-                "Change vs previous period (%)",
-            ]
-        )
-        for row in breakdown:
-            change = row["change"]
-            if change is None:
-                change = ""  # nothing to compare with
-            rows.append([row["label"], row["amount"], row["share"], change])
-        total_change = percent_change(current["total"], previous["total"])
-        if total_change is None:
-            total_change = ""
-        rows.append(["Total", money(current["total"]), 100, total_change])
-        rows.append([])
-
-        # Revenue by outlet
-        rows.append(["Outlet", "Revenue (SGD)", "Bookings"])
-        for row in outlet_rows:
-            rows.append([row["name"], row["amount"], row["bookings"]])
-        rows.append([])
-
-        # Bookings by service and outlet
-        rows.append(["Service", "Outlet", "Bookings"])
-        for row in booking_volume_rows:
-            rows.append([row["service"], row["outlet"], row["count"]])
-        rows.append([])
-
-        # Top-selling products
-        rows.append(["Top product", "Quantity sold"])
-        for name, quantity in top_products:
-            rows.append([name, quantity])
-        rows.append([])
-
-        # Customers and points
-        rows.append(
-            ["New customers", new_customers, "Returning customers", returning_customers]
-        )
-        rows.append(
-            ["Points issued", points_issued, "Points redeemed", points_redeemed]
-        )
-        rows.append([])
-
-        # Pet sitting commission per job
-        rows.append(
-            [
-                "Sitting job end date",
-                "Owner",
-                "Sitter",
-                "Job price",
-                "Commission (10%)",
-                "Paid to sitter",
-            ]
-        )
-        for job in sitting_jobs:
-            rows.append(
-                [
-                    job.end_date,
-                    job.owner.first_name,
-                    job.sitter.first_name,
-                    job.total_price_display,
-                    job.commission_display,
-                    job.sitter_payout_display,
-                ]
-            )
-
-        # 2. An HttpResponse with content_type "text/csv" is a file, not a web page.
-        #    "attachment" tells the browser to download it with this file name.
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = (
-            f'attachment; filename="pawpal-report-{start}-to-{end}.csv"'
-        )
-
-        # 3. Write each line into the file. csv.writer (from Python's csv module)
-        #    puts commas between the cells, and quotes around a cell that has
-        #    its own comma, such as "48,920.00".
-        writer = csv.writer(response)
-        for row in rows:
-            writer.writerow(row)
-        return response
 
     # Stacked bar chart: last 6 months
     chart = []
@@ -2361,7 +2734,13 @@ def owner_dashboard(request):
         )
         month_end = next_month - timedelta(days=1)
         month_revenue = revenue_for_period(month_start, month_end, outlet)
-        chart.append({"label": month_start.strftime("%b"), "revenue": month_revenue})
+        chart.append(
+            {
+                "label": month_start.strftime("%b"),
+                "full_label": month_start.strftime("%B %Y"),  # shown in the hover box
+                "revenue": month_revenue,
+            }
+        )
 
     highest = 1
     for bar in chart:
@@ -2373,6 +2752,11 @@ def owner_dashboard(request):
         bar["delivery_px"] = int(bar["revenue"]["delivery"] * 180 / highest)
         bar["commission_px"] = int(bar["revenue"]["commission"] * 180 / highest)
         bar["total"] = money(bar["revenue"]["total"])
+        # amounts shown in the hover box
+        bar["services"] = money(bar["revenue"]["services"])
+        bar["products"] = money(bar["revenue"]["products"])
+        bar["delivery"] = money(bar["revenue"]["delivery"])
+        bar["commission"] = money(bar["revenue"]["commission"])
 
     # greeting in Singapore time
     hour = datetime.now(SGT).hour
@@ -2395,9 +2779,6 @@ def owner_dashboard(request):
         "booking_change": current["booking_count"] - previous["booking_count"],
         "commission": money(current["commission"]),
         "sitting_sales": money(current["sitting_sales"]),
-        "new_customers": new_customers,
-        "returning_customers": returning_customers,
-        "returning_percent": returning_percent,
         "breakdown": breakdown,
         "outlet_rows": outlet_rows,
         "booking_volume_rows": booking_volume_rows,
@@ -2634,6 +3015,8 @@ def owner_cancel_sitting(request, pk):
 
     reason = request.POST.get("reason", "").strip() or "Cancelled by Pawpal."
     job.status = SittingRequest.Status.CANCELLED
+    job.cancelled_by = SittingRequest.CancelledBy.PAWPAL
+    job.cancellation_reason = reason
     job.save()
     refund_payment(job, label=f"pet sitting #{job.pk}")  # gives back the money and points if paid
 

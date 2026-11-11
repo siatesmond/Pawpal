@@ -94,3 +94,29 @@
   color: #b42318;
   font-weight: 600;
 }
+
+/* What past sitters said about the pet owner */
+.owner-rating-pill {
+  white-space: nowrap;
+}
+
+.owner-reviews summary {
+  cursor: pointer;
+}
+
+.owner-review {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  margin-top: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.owner-review p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+}

@@ -15,10 +15,12 @@
       <h1>Hi, {{ request.session.username }} 👋</h1>
       <p>Here's what's happening with your pets.</p>
     </div>
-    <div class="points-card">
+    {# click to see where the points came from #}
+    <a class="points-card" href="{% url 'user:points' %}" style="color: inherit; text-decoration: none;">
       <span>Pawpal points</span>
       <strong>{{ customer.point_balance }}</strong>
-    </div>
+      <span>View history →</span>
+    </a>
   </div>
 </section>
 {% endblock %}

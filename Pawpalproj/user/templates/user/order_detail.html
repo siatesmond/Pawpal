@@ -71,5 +71,16 @@
     {% include "user/_payment_summary.html" %}
 
     {% url 'user:order_cancel' order.pk as cancel_url %}
-    {% include "user/_cancel_section.html" with record_label="order" cancel_url=cancel_url refund_dollars=total_dollars %}
+
+    {# Who cancelled, when and why #}
+    {% if order.status == "CANCELLED" %}
+      <section class="profile-panel">
+        <h2>Cancellation</h2>
+        <dl class="detail-list">
+          <div><dt>Cancelled by</dt><dd>You{% if order.cancelled_at %} on {{ order.cancelled_at|date:"D, j M Y · g:i A" }}{% endif %}</dd></div>
+          <div><dt>Reason</dt><dd>{{ order.cancellation_reason|default:"No reason given" }}</dd></div>
+        </dl>
+      </section>
+    {% endif %}
+    {% include "user/_cancel_section.html" with record_label="order" cancel_url=cancel_url refund_dollars=total_dollars ask_reason=True %}
 {% endblock %}

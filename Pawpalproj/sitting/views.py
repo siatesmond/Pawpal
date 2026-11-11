@@ -1,4 +1,3 @@
-import csv
 import math
 from datetime import date, datetime, time, timedelta
 from decimal import Decimal, InvalidOperation
@@ -8,7 +7,6 @@ from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from user.utils import send_mail_in_background
 from django.db.models import Q
-from django.http import HttpResponse
 from django.shortcuts import redirect, render
 
 from payment.forms import PaymentDetailsForm
@@ -217,6 +215,7 @@ def find_jobs(request):
     for job in jobs:
         job.pet_list = list(job.pets.all())
         job.sent_to_me = job.sitter_id == sitter.pk
+        job.owner_ratings = owner_rating_summary(job.owner)
 
         # distance from the sitter's service area to the owner's home
         job.distance = None
@@ -350,11 +349,24 @@ def my_jobs(request):
             if job.status != SittingRequest.Status.ACCEPTED:
                 messages.error(request, "Only upcoming jobs can be cancelled.")
             else:
+                reason = request.POST.get("reason", "").strip()
                 job.status = SittingRequest.Status.CANCELLED
+                job.cancelled_by = SittingRequest.CancelledBy.SITTER
+                job.cancellation_reason = reason
                 job.save()
-                record_update(job, sitter, job.status, f"{sitter.first_name} cancelled the job.")
-                email_owner(job, "Pawpal: your sitter cancelled", f"{sitter.first_name} cancelled your sitting job. Pawpal will refund you.")
-                messages.success(request, "Job cancelled. The owner has been notified.")
+                # the owner already paid for an upcoming job: refund the card and points
+                refund_payment(job, label=f"pet sitting #{job.pk}")
+                note = f"{sitter.first_name} cancelled the job."
+                if reason:
+                    note += f" Reason: {reason}"
+                record_update(job, sitter, job.status, note)
+                email_owner(
+                    job,
+                    "Pawpal: your sitter cancelled",
+                    f"{sitter.first_name} cancelled your sitting job. Pawpal has refunded you."
+                    + (f"\nReason: {reason}" if reason else ""),
+                )
+                messages.success(request, "Job cancelled. The owner has been notified and refunded.")
 
         elif action == "withdraw":
             # pending (owner has not confirmed) -> give the request back to other sitters
@@ -425,6 +437,7 @@ def my_jobs(request):
     for job in jobs:
         job.pet_list = list(job.pets.all())
         job.latest_update = job.updates.first()  # updates are newest first
+        job.owner_ratings = owner_rating_summary(job.owner)
 
         if job.status == SittingRequest.Status.IN_PROGRESS:
             # "Day 2 of 4" progress bar
@@ -516,8 +529,9 @@ def earnings(request):
     lifetime_payout = 0
 
     for job in completed_jobs:
-        # paid once PAYOUT_DAYS have passed since the last sitting day
-        job.is_paid = (today() - job.end_date).days > PAYOUT_DAYS
+        # the payout is sent once PAYOUT_DAYS have passed since the last sitting day
+        job.payout_date = job.end_date + timedelta(days=PAYOUT_DAYS + 1)
+        job.is_paid = today() >= job.payout_date
         job.pet_list = list(job.pets.all())
 
         lifetime_payout += job.sitter_payout_cents
@@ -530,21 +544,6 @@ def earnings(request):
             month_price += job.total_price_cents
             month_commission += job.commission_cents
             month_payout += job.sitter_payout_cents
-
-    # "Download statement" -> the selected month as a CSV file
-    if request.GET.get("download") == "csv":
-        response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="pawpal-earnings-{year}-{month:02d}.csv"'
-        writer = csv.writer(response)
-        writer.writerow(["Start", "End", "Owner", "Pets", "Job price", "Commission", "Payout", "Status"])
-        for job in month_jobs:
-            writer.writerow([
-                job.start_date, job.end_date, job.owner.first_name,
-                ", ".join(pet.name for pet in job.pet_list),
-                job.total_price_display, job.commission_display, job.sitter_payout_display,
-                "Paid" if job.is_paid else "Pending",
-            ])
-        return response
 
     # bar chart: payouts for the last 6 months
     chart = []
@@ -760,6 +759,22 @@ def sitter_rating(sitter):
     if not reviews:
         return None, 0
     return round(total / len(reviews), 1), len(reviews)
+
+
+def owner_rating_summary(owner):
+    # average stars sitters gave this pet owner after past jobs, plus the latest comments.
+    # Sitters only see the stars, comment and month, not who wrote it.
+    rated_jobs = SittingRequest.objects.filter(owner=owner, owner_rating__isnull=False).order_by("-end_date")
+    total = 0
+    comments = []
+    for job in rated_jobs:
+        total += job.owner_rating
+        if job.owner_feedback and len(comments) < 3:
+            comments.append({"stars": job.owner_rating, "text": job.owner_feedback, "date": job.end_date})
+    count = len(rated_jobs)
+    if count == 0:
+        return {"average": None, "count": 0, "comments": []}
+    return {"average": round(total / count, 1), "count": count, "comments": comments}
 
 
 def read_request_form(customer, data):
@@ -1033,17 +1048,24 @@ def cancel_request(request, pk):
         messages.error(request, "This sitting request can no longer be cancelled. Please contact Pawpal.")
         return redirect("sitting:request_detail", pk=job.pk)
 
+    reason = request.POST.get("reason", "").strip()
     job.status = SittingRequest.Status.CANCELLED
+    job.cancelled_by = SittingRequest.CancelledBy.CUSTOMER
+    job.cancellation_reason = reason
     job.save()
 
     # if the owner already paid: refund the card and give back the points (same as orders and bookings)
     refund_payment(job, label=f"pet sitting #{job.pk}")
 
     if job.sitter:
-        record_update(job, job.sitter, job.status, f"{customer.first_name} cancelled this request.")
+        note = f"{customer.first_name} cancelled this request."
+        if reason:
+            note += f" Reason: {reason}"
+        record_update(job, job.sitter, job.status, note)
         send_mail_in_background(
             "Pawpal: a sitting request was cancelled",
-            f"{customer.first_name} cancelled the request for {job.start_date:%d %b} to {job.end_date:%d %b}.",
+            f"{customer.first_name} cancelled the request for {job.start_date:%d %b} to {job.end_date:%d %b}."
+            + (f"\nReason: {reason}" if reason else ""),
             None,
             [job.sitter.email],
             fail_silently=True,

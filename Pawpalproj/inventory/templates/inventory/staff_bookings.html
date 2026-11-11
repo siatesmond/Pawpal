@@ -129,6 +129,14 @@
                         {{ selected_booking.get_status_display }}
                       </span>
                   </li>
+                  {% if selected_booking.status == "CANCELLED" %}
+                  <li>
+                      <b>Cancelled by:</b> Customer ({{ selected_booking.customer.first_name }} {{ selected_booking.customer.last_name }}){% if selected_booking.cancelled_at %} on {{ selected_booking.cancelled_at|date:"j M Y, g:i A" }}{% endif %}
+                  </li>
+                  <li>
+                      <b>Reason:</b> {{ selected_booking.cancellation_reason|default:"No reason given" }}
+                  </li>
+                  {% endif %}
               </ul>
           </div>
 

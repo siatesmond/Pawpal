@@ -550,7 +550,7 @@
   --cream: #f7f4ec;
   --blue: #dce6f1;
   --sage: #a9b59b;
-  --honey: #f0c27b;
+  --honey: var(--gold);  /* same gold as the rest of the site */
   --success: #5e8c61;
   --warning: #d9963b;
   --danger: #c0533f;

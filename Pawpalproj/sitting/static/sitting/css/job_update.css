@@ -23,3 +23,156 @@
   border-radius: 10px;
   object-fit: cover;
 }
+
+/* Completed jobs: one row per job, rate the pet owner underneath */
+.done-list {
+  display: grid;
+  gap: 0;
+}
+
+.done-row {
+  display: grid;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid #ece6da;
+}
+
+.done-row:first-child {
+  padding-top: 0;
+}
+
+.done-main {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.done-info {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.done-pay {
+  display: grid;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.done-rated {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--cream);
+}
+
+.done-rated p {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+}
+
+.rate-box summary {
+  display: inline-block;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--honey);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.rate-box summary::-webkit-details-marker {
+  display: none;
+}
+
+.rate-box[open] summary {
+  background: transparent;
+  padding-left: 0;
+}
+
+.rate-box form {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--cream);
+}
+
+.rate-question {
+  margin: 0;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.rate-box textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #ddd5c6;
+  border-radius: 10px;
+  background: #fff;
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+
+.rate-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Clickable stars */
+.star-picker {
+  display: inline-flex;
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.star-picker input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.star-picker label {
+  font-size: 30px;
+  line-height: 1;
+  color: #d9d2c3;
+  cursor: pointer;
+  transition: color 0.1s;
+}
+
+/* the chosen star and every star to its left */
+.star-picker input:checked ~ label,
+.star-picker label:hover,
+.star-picker label:hover ~ label {
+  color: var(--honey);
+}
+
+.star-picker input:focus-visible + label {
+  outline: 2px solid var(--green);
+  border-radius: 4px;
+}
+
+/* Optional reason when cancelling */
+.cancel-reason-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 12px;
+  border: 1px solid #ddd5c6;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+}

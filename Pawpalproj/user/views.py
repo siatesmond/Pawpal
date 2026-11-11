@@ -25,6 +25,7 @@ from .forms import (
     ResetPasswordForm,
 )
 from .models import OTP, Address, Customer, Pet, User
+from payment.models import PointsTransaction
 from .recommender import recommend_for_customer
 from .utils import get_current_customer
 
@@ -582,23 +583,66 @@ class BookingCancelView(View):
                 )
                 return redirect("user:booking_detail", booking.pk)
 
+            # the customer's reason is optional; it is shown to staff and the owner
+            reason = request.POST.get("reason", "").strip()
             booking.status = Booking.Status.CANCELLED
             booking.cancelled_at = timezone.now()
-            booking.save(update_fields=["status", "cancelled_at"])
+            booking.cancellation_reason = reason
+            booking.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
 
             # Increase the capacity in the time slot
             TimeSlot.objects.filter(pk=booking.slot_id, booked_count__gt=0).update(
                 booked_count=F("booked_count") - 1
             )
             # Create a BookingUpdate to update to Cancelled status
+            note = "Cancelled by the customer."
+            if reason:
+                note += f" Reason: {reason}"
             BookingUpdate.objects.create(
                 booking=booking,
-                new_status=Booking.Status.CANCELLED
+                new_status=Booking.Status.CANCELLED,
+                note=note,
             )
             refund_payment(booking, label=f"booking #{booking.pk}")
 
         messages.success(request, "Your booking has been cancelled and your payment will be refunded.")
         return redirect("user:booking_detail", booking.pk)
+
+# Points history: where every point came from or went to
+class PointsHistoryView(View):
+    template_name = "user/points.html"
+
+    def get(self, request, *args, **kwargs):
+        customer = get_object_or_404(Customer, pk=request.session["user_id"])
+
+        # oldest first, so each row can show the balance after it
+        transactions = list(
+            PointsTransaction.objects.filter(customer=customer).order_by("created_at", "pk")
+        )
+        balance = 0
+        earned = 0
+        used = 0
+        for transaction in transactions:
+            balance += transaction.points
+            transaction.balance_after = balance
+            if transaction.points > 0:
+                earned += transaction.points
+            else:
+                used += -transaction.points
+
+        transactions.reverse()  # newest at the top of the page
+        return render(
+            request,
+            self.template_name,
+            {
+                "customer": customer,
+                "transactions": transactions,
+                "earned": earned,
+                "used": used,
+                "active_account_page": "points",
+            },
+        )
+
 
 # CustomerOrders
 class OrderListView(View):
@@ -679,8 +723,11 @@ class OrderCancelView(View):
                 )
                 return redirect("user:order_detail", order.pk)
 
+            # the customer's reason is optional; it is shown to staff and the owner
             order.status = Order.Status.CANCELLED
-            order.save(update_fields=["status"])
+            order.cancelled_at = timezone.now()
+            order.cancellation_reason = request.POST.get("reason", "").strip()
+            order.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
 
             # Put the items back into stock
             for item in order.items.all():

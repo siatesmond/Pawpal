@@ -1,0 +1,6 @@
+{# How past sitters rated this pet owner. Needs "job" with owner_ratings #}
+{% if job.owner_ratings.average %}
+  <span class="pill pill-cream owner-rating-pill" title="Average rating from sitters who looked after this owner's pets">★ {{ job.owner_ratings.average }} · {{ job.owner_ratings.count }} sitter rating{{ job.owner_ratings.count|pluralize }}</span>
+{% else %}
+  <span class="pill pill-outline owner-rating-pill">New to pet sitting</span>
+{% endif %}

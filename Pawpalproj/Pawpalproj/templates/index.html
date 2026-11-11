@@ -4,7 +4,7 @@
 {% block title %}Pawpal | Care for every pet{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/landing.css' %}" />
+<link rel="stylesheet" href="{% static 'css/landing.css' %}?v=3" />
 {% endblock %}
 
 {% block content %}
@@ -18,7 +18,7 @@
         <a class="landing-button landing-button-gold" href="{% url 'user:login' %}?guest_notice=1">Book a service</a>
         <a class="landing-button landing-button-outline" href="{% url 'user:login' %}?guest_notice=1">Shop products</a>
       </div>
-      <small>➤ Earn 1 point for every SGD 1 spent</small>
+      <small>➤ Earn 10 points for every SGD 1 spent</small>
     </div>
     <div class="landing-image-placeholder">
       <img src="{% static 'image/home_banner.jpg' %}" alt="Dog being cared for by Pawpal">
@@ -33,12 +33,22 @@
     <div class="landing-service-grid">
       {% for service in services %}
         <article class="landing-service-card">
-          <div class="landing-card-image">Photo: {{ service.get_category_display|lower }}</div>
+          <div class="landing-card-image">
+            {% if service.photo %}
+              <img src="{% static service.photo %}" alt="{{ service.name }} at Pawpal">
+            {% endif %}
+            <span class="landing-card-tag">{{ service.get_category_display }}</span>
+          </div>
           <div class="landing-card-content">
-            <h3>{{ service.get_category_display }}</h3>
-            <p>{{ service.description|truncatewords:8 }}</p>
-            <strong>From SGD {{ service.price_cents|floatformat:0 }}</strong>
-            <a href="{% url 'user:login' %}?guest_notice=1" class="landing-small-button">Check availability</a>
+            <h3>{{ service.name }}</h3>
+            <p>{{ service.description }}</p>
+            <div class="landing-card-foot">
+              <div>
+                <strong>From SGD {{ service.price_from }}</strong>
+                <small>{{ service.length }}{% if service.category == "BOARDING" %} · per night{% endif %}</small>
+              </div>
+              <a href="{% url 'user:login' %}?guest_notice=1" class="landing-small-button">Check slots</a>
+            </div>
           </div>
         </article>
       {% empty %}
