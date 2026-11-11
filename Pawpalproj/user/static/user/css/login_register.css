@@ -3,7 +3,9 @@
 .login {
   display: grid;
   grid-template-columns: 2fr 1fr;   /* photo : form  (was 1fr 1fr) */
-  min-height: 640px;
+  /* fill the screen below the 42px navbar, so tall or wide screens have no empty gap
+     above the footer; never shorter than 640px */
+  min-height: max(640px, calc(100vh - 42px));
   background: var(--nav-bg);
 }
 
