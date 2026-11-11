@@ -125,6 +125,7 @@ def _create_order(customer, form, cart_items):
         subtotal_cents=subtotal_cents,
         points_discount_cents=discount_cents,
         total_cents=subtotal_cents - discount_cents,
+        status=Order.Status.CONFIRMED,  # payment succeeded, so the order is confirmed (same as bookings)
     )
 
     for item in cart_items:
