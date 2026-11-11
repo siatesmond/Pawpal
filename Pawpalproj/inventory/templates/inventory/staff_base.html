@@ -27,7 +27,6 @@
 
       <nav class="staff-nav">
         {% if request.session.user_type in "staff owner" %}
-        <a href="#" {% if active_page == "dashboard" %}class="active"{% endif %}>Today</a>
         <a href="{% url 'inventory:staff_bookings' %}" {% if active_page == "bookings" %}class="active"{% endif %}>Bookings</a>
         <a href="{% url 'inventory:staff_orders_stock' %}" {% if active_page == "orders" %}class="active"{% endif %}>Orders</a>
         <a href="{% url 'inventory:staff_products' %}" {% if active_page == "products" %}class="active"{% endif %}>Products</a>
