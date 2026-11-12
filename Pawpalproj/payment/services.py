@@ -1,6 +1,4 @@
 from datetime import timedelta
-
-from django.db.models import Sum
 from django.utils import timezone
 
 from .models import Payment, PointsTransaction
@@ -16,10 +14,9 @@ CANCEL_WINDOW = timedelta(hours=24)  # customers can cancel within 24 hours of b
 #   3. "Place order" validates, then the view creates its Order or Booking
 #      and calls record_payment() inside a transaction.
 
-# Customer's current points (sum of all their points transactions) 
-def get_points_balance(customer):
-    return customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
 
+def get_points_balance(customer):
+    return customer.point_balance
 
 # saves in PointsTrasaction and updates the Customer model 
 # ensures consistent points balance
