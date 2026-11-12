@@ -2,7 +2,7 @@ from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib import messages
 
-from django.db.models import Q, Count
+from django.db.models import Q
 
 from django.core.paginator import Paginator
 
@@ -522,9 +522,8 @@ def staff_orders_stock(request):
     status = request.GET.get("status", "")
     query = request.GET.get("query", "").strip()
 
-    all_orders = Order.objects.select_related("customer", "pickup_outlet").annotate(
-        item_count=Count("items")
-    )
+    all_orders = Order.objects.select_related("customer", "pickup_outlet").prefetch_related("items")
+    
     orders = all_orders.order_by("-created_at")
 
     # pick-up vs delivery

@@ -67,7 +67,7 @@
           <tr {% if selected.pk == order.pk %}class="selected-row" {% endif %}>
             <td><b>{{ order.pk }}</b></td>
             <td>{{ order.customer.pk }}</td>
-            <td>{{ order.item_count }}</td>
+            <td>{{ order.items.count }}</td>
             <td>{% if order.pickup_outlet %}Pick-up{% else %}Delivery{% endif %}</td>
             <td><span class="status-pill status-{{ order.status|lower }}">{{ order.get_status_display }}</span></td>
 
