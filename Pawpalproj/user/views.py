@@ -732,7 +732,7 @@ class OrderCancelView(View):
             order.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
 
             # Put the items back into stock
-            for item in order.items.select_realated("product"):
+            for item in order.items.select_related("product"):
                 product = item.product
                 product.stock_quantity += item.quantity
                 product.save(update_fields=["stock_quantity"])
