@@ -100,8 +100,7 @@ def bind_checkout_form(request, form_class, customer, points_balance, **form_kwa
         elif preview_points > points_balance:
             error = points_limit_message(points_balance)
         if error:
-            form.cleaned_data = {}  # an unbound form has no cleaned_data, which add_error() needs
-            form.add_error("points_to_redeem", error)
+            form.points_error = error #store err on form so the template can display it
         return form, preview_points
 
     # Any other POST (no recognised button): just show the page again, nothing saved
