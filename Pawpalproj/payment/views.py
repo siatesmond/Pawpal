@@ -42,7 +42,12 @@ def checkout(request):
                 return redirect("user:customer_cart")
 
             # Stock check: if any product's quantity exceeds its stock, show an error
-            short = next((i for i in cart_items if i.quantity > i.product.stock_quantity), None)
+            short = None
+            for item in cart_items:
+                if item.quantity > item.product.stock_quantity:
+                    short = item #first item that exceeds stock
+                    break
+
             if short:
                 form.add_error(
                     None,

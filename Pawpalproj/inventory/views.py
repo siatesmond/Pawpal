@@ -2,8 +2,7 @@ from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib import messages
 
-from django.db.models import Q, F, Count
-from django.db.models import Prefetch
+from django.db.models import Q
 
 from django.core.paginator import Paginator
 
@@ -197,17 +196,13 @@ def bookings(request):
     if selected_id:
         selected_booking = (
             Booking.objects.select_related("customer", "pet", "slot", "slot__service")
-            .prefetch_related( # use prefetch_related due to high number of related BookingUpdate objects and BookingUpdatePhoto objects
-                Prefetch(
-                    "updates",
-                    # Fetches all booking updates, pre-loading their photos
-                    queryset=BookingUpdate.objects.prefetch_related("photos").order_by("-created_at"),
-                    to_attr="ordered_updates",
-                ),
-            )
             .filter(pk=selected_id)
             .first()
         )
+
+    if selected_booking:
+        # Newest updates first, with all photos for every update
+        updates = selected_booking.updates.prefetch_related("photos").order_by("-created_at")
 
     return render(
         request,
@@ -223,6 +218,7 @@ def bookings(request):
             "outlet_filter": outlet_filter,
             "date_filter": date_filter,
             "status_choices": Booking.Status.choices,
+            "updates": updates,
         },
     )
 
@@ -526,9 +522,8 @@ def staff_orders_stock(request):
     status = request.GET.get("status", "")
     query = request.GET.get("query", "").strip()
 
-    all_orders = Order.objects.select_related("customer", "pickup_outlet").annotate(
-        item_count=Count("items")
-    )
+    all_orders = Order.objects.select_related("customer", "pickup_outlet").prefetch_related("items")
+    
     orders = all_orders.order_by("-created_at")
 
     # pick-up vs delivery
@@ -582,8 +577,11 @@ def staff_orders_stock(request):
         status_options = [(value, label) for value, label in Order.Status.choices if value in allowed]
 
     # stock panel: lowest stock first
-    low_count = Product.objects.filter(stock_quantity__lte=F("low_stock_level")).count()
     stock_products = Product.objects.order_by("stock_quantity")
+    low_count = 0
+    for product in stock_products:
+        if product.stock_quantity <= product.low_stock_level:
+            low_count += 1
 
     return render(
         request,

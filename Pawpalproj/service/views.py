@@ -5,15 +5,17 @@ from zoneinfo import ZoneInfo
 
 from django.contrib import messages
 from django.db import transaction
-from django.db.models import F, Min
+from django.db.models import F
 from django.shortcuts import HttpResponse, get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 
+from .models import Booking, Service, TimeSlot
+from user.models import Customer
 from core.models import Outlet
 from payment.forms import PaymentDetailsForm
 
-# Shard services for booking and payment
+# Shared services for booking and payment
 from payment.services import (
     bind_checkout_form,
     calculate_points_discount,
@@ -22,10 +24,8 @@ from payment.services import (
     points_earned,
     record_payment,
 )
-from user.models import Customer
 
-from .models import Booking, Service, TimeSlot
-
+# mock data
 services = [
     {
         "name": "Dog Grooming",
@@ -103,6 +103,21 @@ def _to_int(value, default=None):
     except (TypeError, ValueError):
         return default
 
+# Find item that matches pk
+def _find_by_pk(items, pk):
+    for item in items:
+        if item.pk == pk:
+            return item
+    return None
+
+#Number of boarding nights is kept between 1 and MAX_NIGHTS
+def _valid_nights(value):
+    nights = _to_int(value, 1)
+    if nights < 1:
+        nights = 1
+    if nights > MAX_NIGHTS:
+        nights = MAX_NIGHTS
+    return nights
 
 def _is_boarding(service):
     return service.category == Service.Category.BOARDING
@@ -130,7 +145,12 @@ def _validate_selection(customer, pet_id, service_id, outlet_id, slot_id, nights
     if slot is None:
         return None, "Sorry, that time is no longer available. Please pick another."
 
-    nights = min(max(_to_int(nights, 1), 1), MAX_NIGHTS) if _is_boarding(service) else 1
+    # Only boarding calculates price per night (other services count as 1)
+    if _is_boarding(service):
+        nights = _valid_nights(nights)
+    else:
+        nights = 1
+    
     price_cents = service.price_cents * nights
     day = slot.start_time.astimezone(SGT).date()
 
@@ -147,9 +167,7 @@ def _validate_selection(customer, pet_id, service_id, outlet_id, slot_id, nights
         "price_cents": price_cents,
     }, None
 
-# Get the query-string parameters that recreate a selection on the booking page
 def _selection_params(source):
-    """Query-string params that recreate a selection on the booking page."""
     keys = ["pet", "service", "outlet", "date", "slot", "nights"]
     return urlencode({k: source[k] for k in keys if source.get(k) not in (None, "")})
 
@@ -175,7 +193,6 @@ def _format_duration(minutes):
         parts.append(f"{mins} min")
     return " ".join(parts)
 
-
 # Booking summary: pet, service, outlet, when, nights, check-out, price.
 # Full price (points only applied at checkout) and check-out only if a slot is chosen.
 def _summary(selection):
@@ -186,11 +203,14 @@ def _summary(selection):
     service = selection.get("service")
 
     minutes = service.duration_minutes if service else None
-    
-    duration = _format_duration(minutes) if minutes and not check_out else None #calculate for non-boarding services only
 
-    # End Date and TIme for non-boarding services
-    end_time = _format_start(start + timedelta(minutes=minutes)) if (start and duration) else None
+    # Duration and End time only for non-boarding services
+    duration = None
+    end_time = None
+    if minutes and not check_out:
+        duration = _format_duration(minutes)
+        if start:
+            end_time = _format_start(start + timedelta(minutes=minutes))
     
     return {
         "pet": selection.get("pet"),
@@ -247,31 +267,47 @@ def book(request):
     today = timezone.now().astimezone(SGT).date()
 
     pets = list(customer.pets.all())
-    pet = next((p for p in pets if p.pk == _to_int(params.get("pet"))), pets[0] if pets else None)
+    pet = _find_by_pk(pets, _to_int(params.get("pet"))) 
+    if pet is None and pets:
+        pet = pets[0]  # default to first pet 
 
-    # Service cards: one per Service.Category, priced from the cheapest active service
-    min_prices = dict(
-        Service.objects.filter(is_active=True)
-        .values_list("category")
-        .annotate(Min("price_cents"))
-    )
-    category_cards = [
-        {
+    # Service cards: one per Service.Category, shows the cheapest in that category
+    min_prices = {}
+
+    for s in Service.objects.filter(is_active=True):
+        if s.category not in min_prices or s.price_cents < min_prices[s.category]:
+            min_prices[s.category] = s.price_cents
+
+    category_cards = []
+    for value, label in Service.Category.choices:
+        if value in min_prices:
+            from_dollars = min_prices[value] / 100
+        else:
+            from_dollars = None   # no active services, so the card shows "Unavailable"
+
+        category_cards.append({
             "value": value,
             "label": label,
             "initial": label[0],
             "unit": "night" if value == Service.Category.BOARDING else "",
-            "from_dollars": min_prices[value] / 100 if value in min_prices else None,
-        }
-        for value, label in Service.Category.choices
-    ]
+            "from_dollars": from_dollars,
+        })
+
 
     service = Service.objects.filter(pk=_to_int(params.get("service")), is_active=True).first()
     category = params.get("category")
+
+    # If no valid category was picked, use chosen package's category
     if category not in min_prices:
-        category = service.category if service else next(
-            (value for value, _ in Service.Category.choices if value in min_prices), None
-        )
+        if service:
+            category = service.category
+        else:
+            category = None
+            for value, label in Service.Category.choices:
+                if value in min_prices:
+                    category = value
+                    break
+
     packages = list(Service.objects.filter(is_active=True, category=category).order_by("price_cents"))
     if service not in packages:
         service = packages[0] if packages else None
@@ -279,18 +315,20 @@ def book(request):
         s.price_dollars = s.price_cents / 100
 
     outlets = list(Outlet.objects.filter(is_active=True).order_by("name"))
-    outlet = next((o for o in outlets if o.pk == _to_int(params.get("outlet"))), outlets[0] if outlets else None)
+    outlet = _find_by_pk(outlets, _to_int(params.get("outlet")))
+    if outlet is None and outlets:
+        outlet = outlets[0]  # default to first outlet  
 
-    nights = min(max(_to_int(params.get("nights"), 1), 1), MAX_NIGHTS)
+    nights = _valid_nights(params.get("nights"))
 
     # Days that have at least one open TimeSlot for this outlet and service
-    open_days = sorted({
-        start.astimezone(SGT).date()
-        for start in (
-            _open_slots(outlet, service).values_list("start_time", flat=True)
-            if service and outlet else []
-        )
-    })
+    open_days = []
+    if service and outlet:
+        for s in _open_slots(outlet, service):
+            d = s.start_time.astimezone(SGT).date()
+            if d not in open_days:
+                open_days.append(d)
+        open_days.sort()
 
     # Selected day: from params, otherwise the first day with an open slot
     try:
@@ -316,35 +354,43 @@ def book(request):
             s.past = s.start_time <= now
             s.available = s.capacity > s.booked_count and not s.past
             slots.append(s)
-    slot = next((s for s in slots if s.pk == _to_int(params.get("slot")) and s.available), None)
 
-    # Calendar: any day from today can be picked; days with open slots get a dot
+    # Check if the selected slot is still available 
+    slot = _find_by_pk(slots, _to_int(params.get("slot")))
+    if slot and not slot.available:
+        slot = None  # cannot select a full or past slot
+
+    # Cal cannot go back to month before current month 
     first_month = today.replace(day=1)
-    month_start = None
-    for raw in (params.get("nav"), params.get("month")):  # arrows send "nav"
-        try:
-            month_start = datetime.strptime(raw, "%Y-%m").date()
-            break
-        except (TypeError, ValueError):
-            continue
-    month_start = month_start or day.replace(day=1)
-    month_start = max(month_start, first_month)
 
-    open_day_set = set(open_days)
-    weeks = [
-        [
-            {
+    # Month shown on the calendar: from the arrows ("nav") or the URL ("month"),
+    # otherwise the month of the selected day
+    month_start = None
+    month_text = params.get("nav") or params.get("month")
+    if month_text:
+        try:
+            month_start = datetime.strptime(month_text, "%Y-%m").date()
+        except ValueError:
+            month_start = None
+    if month_start is None:
+        month_start = day.replace(day=1)
+    if month_start < first_month:
+        month_start = first_month
+
+    weeks = []
+    for week in calendar.Calendar(firstweekday=0).monthdatescalendar(month_start.year, month_start.month):
+        week_days = []
+        for d in week:
+            week_days.append({
                 "date": d,
                 "in_month": d.month == month_start.month,
                 "disabled": d < today,
-                "has_slots": d in open_day_set,
+                "has_slots": d in open_days,
                 "selected": d == day,
                 "today": d == today,
-            }
-            for d in week
-        ]
-        for week in calendar.Calendar(firstweekday=0).monthdatescalendar(month_start.year, month_start.month)
-    ]
+            })
+        weeks.append(week_days)
+
     prev_month = (month_start - timedelta(days=1)).replace(day=1)
     next_month = (month_start + timedelta(days=32)).replace(day=1)
 
@@ -352,11 +398,22 @@ def book(request):
     selection = None
     if pet and service and outlet and slot:
         selection, _ = _validate_selection(customer, pet.pk, service.pk, outlet.pk, slot.pk, nights)
+
     if selection is None:
-        price_cents = service.price_cents * (nights if _is_boarding(service) else 1) if service else None
+        # No time picked yet: show what is selected so far
+        price_cents = None
+        summary_nights = None
+        if service:
+            if _is_boarding(service):
+                price_cents = service.price_cents * nights
+                summary_nights = nights
+            else:
+                price_cents = service.price_cents
         selection = {
-            "pet": pet, "service": service, "outlet": outlet,
-            "nights": nights if service and _is_boarding(service) else None,
+            "pet": pet,
+            "service": service,
+            "outlet": outlet,
+            "nights": summary_nights,
             "price_cents": price_cents,
         }
 
@@ -454,7 +511,6 @@ def book_checkout(request):
             slot.booked_count += 1
             slot.save(update_fields=["booked_count"])
 
-            # GET, "Apply points", or a failed "Place booking"
             record_payment(
                 customer, form,
                 amount_cents=booking.total_cents,

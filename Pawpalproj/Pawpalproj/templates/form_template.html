@@ -68,6 +68,11 @@ Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit,
 
             <!-- Checkout only: preview the points discount without paying -->
             {% if field.name == "points_to_redeem" %}
+                {% if form.points_error %}
+                    <div class="form-error">
+                        {{ form.points_error }}
+                    </div>
+                {% endif %}
                 <button type="submit" name="action" value="preview_points" class="apply-points-btn" formnovalidate>
                     Apply points
                 </button>

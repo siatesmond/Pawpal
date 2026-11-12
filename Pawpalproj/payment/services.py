@@ -1,29 +1,25 @@
 from datetime import timedelta
-
-from django.db.models import F, Sum
 from django.utils import timezone
 
 from .models import Payment, PointsTransaction
 
-POINTS_PER_DOLLAR = 10  # points earned for each whole dollar paid
+POINTS_PER_DOLLAR = 10  # points earned for $1 paid
 CANCEL_WINDOW = timedelta(hours=24)  # customers can cancel within 24 hours of booking / ordering
 
 # Checkout logic shared by both shop products checkout and book service checkout.
 
 # Both checkouts process flows are similar
-#   1. Show a PaymentDetailsForm (points + card) next to a order/booking summary.
-#   2. "Apply points" re-renders the page with the discount, without validating.
+#   1. Show a PaymentDetailsForm (points + card fields) next to a order/booking summary.
+#   2. "Apply points" re-renders the page with the discount calculated on the total
 #   3. "Place order" validates, then the view creates its Order or Booking
 #      and calls record_payment() inside a transaction.
 
-# Customer's current points (sum of all their points transactions) 
+
 def get_points_balance(customer):
-    return customer.points_transactions.aggregate(total=Sum("points"))["total"] or 0
+    return customer.point_balance
 
-
-# Give or take points. Always use this instead of creating a PointsTransaction
-# directly: it saves the history row AND updates customer.point_balance,
-# so the profile, home page and navbar always show the same number.
+# saves in PointsTrasaction and updates the Customer model 
+# ensures consistent points balance
 def add_points(customer, points, transaction_type, reason, payment=None):
     PointsTransaction.objects.create(
         customer=customer,
@@ -32,10 +28,10 @@ def add_points(customer, points, transaction_type, reason, payment=None):
         payment=payment,
         reason=reason,
     )
-    # F() adds to the number already in the database (safe if two things happen at once)
-    type(customer).objects.filter(pk=customer.pk).update(point_balance=F("point_balance") + points)
-    customer.refresh_from_db(fields=["point_balance"])
 
+    # Update the customer's points balance 
+    customer.point_balance += points
+    customer.save(update_fields=["point_balance"])
 
 # Calculate the discount in cents for a given subtotal and points to redeem.
 # 1 point = 1 cent 
@@ -74,7 +70,6 @@ def payment_summary(record, subtotal_cents):
     }
 
 # Builds checkout form, called by both shop and service-booking checkouts
-# Returns (form, preview_points).
 def bind_checkout_form(request, form_class, customer, points_balance, **form_kwargs):
 
     # GET Empty form when the page is first loaded
@@ -105,8 +100,7 @@ def bind_checkout_form(request, form_class, customer, points_balance, **form_kwa
         elif preview_points > points_balance:
             error = points_limit_message(points_balance)
         if error:
-            form.cleaned_data = {}  # an unbound form has no cleaned_data, which add_error() needs
-            form.add_error("points_to_redeem", error)
+            form.points_error = error #store err on form so the template can display it
         return form, preview_points
 
     # Any other POST (no recognised button): just show the page again, nothing saved

@@ -174,7 +174,7 @@
           <div class="booking-updates-section" style="margin-top: 1.5rem;">
             <h3>Booking Updates & History</h3>
             
-            {% for update in selected_booking.ordered_updates %}
+            {% for update in updates%}
               <div class="update-card" style="border: 1px solid #e5e7eb; padding: 0.875rem; margin-top: 0.75rem; border-radius: 6px; background: #f9fafb;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
                   <b style="font-size: 0.9rem; color: #1f2937;">{{ update.get_new_status_display }}</b>
