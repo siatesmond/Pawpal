@@ -3,7 +3,6 @@ from django.urls import reverse
 from django.contrib import messages
 
 from django.db.models import Q, F, Count
-from django.db.models import Prefetch
 
 from django.core.paginator import Paginator
 
@@ -197,17 +196,13 @@ def bookings(request):
     if selected_id:
         selected_booking = (
             Booking.objects.select_related("customer", "pet", "slot", "slot__service")
-            .prefetch_related( # use prefetch_related due to high number of related BookingUpdate objects and BookingUpdatePhoto objects
-                Prefetch(
-                    "updates",
-                    # Fetches all booking updates, pre-loading their photos
-                    queryset=BookingUpdate.objects.prefetch_related("photos").order_by("-created_at"),
-                    to_attr="ordered_updates",
-                ),
-            )
             .filter(pk=selected_id)
             .first()
         )
+
+    if selected_booking:
+        # Newest updates first, with all photos for every update
+        updates = selected_booking.updates.prefetch_related("photos").order_by("-created_at")
 
     return render(
         request,
@@ -223,6 +218,7 @@ def bookings(request):
             "outlet_filter": outlet_filter,
             "date_filter": date_filter,
             "status_choices": Booking.Status.choices,
+            "updates": updates,
         },
     )
 
