@@ -2,7 +2,7 @@ from django.shortcuts import render, HttpResponse, get_object_or_404, redirect
 from django.urls import reverse
 from django.contrib import messages
 
-from django.db.models import Q, F, Count
+from django.db.models import Q, Count
 
 from django.core.paginator import Paginator
 
@@ -578,8 +578,11 @@ def staff_orders_stock(request):
         status_options = [(value, label) for value, label in Order.Status.choices if value in allowed]
 
     # stock panel: lowest stock first
-    low_count = Product.objects.filter(stock_quantity__lte=F("low_stock_level")).count()
     stock_products = Product.objects.order_by("stock_quantity")
+    low_count = 0
+    for product in stock_products:
+        if product.stock_quantity <= product.low_stock_level:
+            low_count += 1
 
     return render(
         request,
