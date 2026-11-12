@@ -22,8 +22,8 @@
         {% csrf_token %}
         {% if ask_reason %}
           {# saved with the cancellation so staff and the owner can see why #}
-          <label class="cancel-reason">Reason (optional)
-            <input type="text" name="reason" maxlength="200" placeholder="e.g. My plans changed">
+          <label class="cancel-reason">{{ cancel_form.reason.label }}
+            {{ cancel_form.reason }}
           </label>
         {% endif %}
         <button type="submit" class="profile-button cancel-button">Yes, cancel {{ record_label }}</button>

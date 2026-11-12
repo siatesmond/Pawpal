@@ -21,7 +21,7 @@
       <!-- Sort by Category dropdown list -->
       <div>
         <label for="category">Category</label>
-        <select id="category" name="category" onchange="this.form.submit()">
+        <select id="category" name="category">
           <option value="">All Categories</option>
           {% for cat in categories %}
           <option value="{{ cat.id }}" {% if category_id == cat.id|stringformat:"i" %}selected{% endif %}>{{ cat.name }}</option>
@@ -32,7 +32,7 @@
       <!-- Sort by Brand dropdown list -->
       <div>
         <label for="brand">Brand</label>
-        <select id="brand" name="brand" onchange="this.form.submit()">
+        <select id="brand" name="brand">
           <option value="">All Brands</option>
           {% for b in brands %}
           <option value="{{ b.id }}" {% if brand_id == b.id|stringformat:"i" %}selected{% endif %}>{{ b.name }}</option>
@@ -43,13 +43,15 @@
       <!-- Sort by Pet type dropdown list -->
       <div>
         <label for="pet_type">Pet Type</label>
-        <select id="pet_type" name="pet_type" onchange="this.form.submit()">
+        <select id="pet_type" name="pet_type">
           <option value="">All Pets</option>
           {% for value, label in pet_choices %}
           <option value="{{ value }}" {% if pet_type == value %}selected{% endif %}>{{ label }}</option>
           {% endfor %}
         </select>
       </div>
+
+      <button type="submit" class="save-btn filter-btn">Filter</button>
     </form>
 
     <!-- Add New Product btn -->

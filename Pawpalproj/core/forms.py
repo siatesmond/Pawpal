@@ -1,9 +1,15 @@
 from django import forms
-from django.contrib.auth.hashers import make_password
 
 from core.models import Outlet
 from user.forms import MOBILE_INPUT, PASSWORD_HELP, check_password_strength
 from user.models import Customer, Staff
+
+# Forms in this file (all used by the business owner):
+# OwnerCustomerForm   (edit a customer's details)
+# OwnerStaffEditForm  (edit a staff member and their outlet)
+# OwnerStaffForm      (add a new staff account)
+# PointsAdjustmentForm  (add or deduct a customer's points, with a reason)
+# RejectSitterForm      (the reason for rejecting a pet sitter application)
 
 
 class OwnerCustomerForm(forms.ModelForm):
@@ -82,10 +88,42 @@ class OwnerStaffForm(forms.ModelForm):
 
     def save(self, commit=True):
         staff = super().save(commit=False)
-        staff.password = make_password(self.cleaned_data["password"])
+        staff.set_password(self.cleaned_data["password"])
         staff.is_verified = True
         staff.is_active = True
         staff.is_staff = True
         if commit:
             staff.save()
         return staff
+
+
+class PointsAdjustmentForm(forms.Form):
+    points = forms.IntegerField(widget=forms.NumberInput(attrs={"placeholder": "e.g. 200 or -200"}))
+    reason = forms.CharField(
+        max_length=255,
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Goodwill for late pick-up"}),
+        error_messages={"required": "A reason is required for every points adjustment."},
+    )
+
+    def __init__(self, *args, customer=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.customer = customer
+
+    def clean_points(self):
+        points = self.cleaned_data["points"]
+        if points == 0:
+            raise forms.ValidationError("Enter a number of points to add (e.g. 200) or deduct (e.g. -200).")
+        # the balance can never go below 0
+        if self.customer and self.customer.point_balance + points < 0:
+            raise forms.ValidationError(
+                f"Cannot deduct {-points} points. The customer only has {self.customer.point_balance}."
+            )
+        return points
+
+
+class RejectSitterForm(forms.Form):
+    # shown to the applicant on their status page and in the email
+    rejection_reason = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": 2, "placeholder": "Reason for rejection"}),
+        error_messages={"required": "A rejection reason is required."},
+    )

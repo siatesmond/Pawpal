@@ -4,7 +4,7 @@
     <summary class="link small">What other sitters said about {{ job.owner.first_name }} ({{ job.owner_ratings.comments|length }}) →</summary>
     {% for comment in job.owner_ratings.comments %}
       <div class="owner-review">
-        <span class="stars">{% for i in "12345" %}{% if forloop.counter <= comment.stars %}★{% else %}☆{% endif %}{% endfor %}</span>
+        {% include "sitting/_stars.html" with rating=comment.stars %}
         <span class="muted small">{{ comment.date|date:"M Y" }}</span>
         <p>“{{ comment.text }}”</p>
       </div>

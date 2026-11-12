@@ -1,43 +1,35 @@
-Pawpal product recommender (logistic regression)
-Trained 10 Nov 2026 09:35
+Pawpal product recommender (Decision Tree)
+Trained 12 Nov 2026 15:22
 
-Products in catalogue: 27
-Synthetic customers:   3000
-(pet, product) rows:   40485  (train 30387, test 10098)
-Rows that were bought: 12.7%
+Training data: pet_purchases.csv, 10000 rows
+Train / test:  7000 / 3000
+Columns (X):   22
+Products (y):  27
 
-Best C from 5-fold CV: 0.1
-Cross-validation ROC-AUC: 0.912
+Best tree from 5-fold CV: max_depth=8, min_samples_leaf=20
+Tree size: 209 nodes, 105 leaves
 
-Test set results          Model   Popularity baseline
-ROC-AUC                   0.920   0.692
-Precision@3               0.530   0.299
+Training accuracy: 0.419
+Testing accuracy:  0.408  (the 1 product the tree picks first)
 
-Coefficients (after scaling, so they can be compared)
-Positive = more likely to buy, negative = less likely
-  due_for_restock        +0.586
-  likes_category         +0.487
-  popularity             +0.357
-  need_joint             +0.349
-  need_skin              +0.261
-  likes_brand            +0.238
-  need_digestion         +0.232
-  need_heart             +0.218
-  need_calming           +0.212
-  need_weight            +0.188
-  need_dental            +0.187
-  need_hairball          +0.178
-  need_eye               +0.165
-  life_stage_match       +0.161
-  category_food          +0.158
-  category_accessories   +0.064
-  bought_before          -0.001
-  category_health        -0.003
-  category_grooming      -0.029
-  category_treats        -0.065
-  bought_recently        -0.111
-  category_toys          -0.163
-  price_gap              -0.321
-  care_tag_not_needed    -0.353
-  already_owns_item      -0.401
-  life_stage_mismatch    -0.925
+Top-3 accuracy on the test pets (the bought product is one of the 3 we show)
+  Decision Tree:           0.709
+  Best sellers (no ML):    0.500
+
+Feature importances (how much each pet detail helps the tree)
+  pet_type_DOG           0.279
+  life_stage_SENIOR      0.123
+  need_digestion         0.081
+  need_joint             0.078
+  need_hairball          0.063
+  life_stage_ADULT       0.062
+  need_dental            0.060
+  need_skin              0.059
+  age_years              0.041
+  need_weight            0.036
+  weight_kg              0.030
+  need_calming           0.029
+  allergy_chicken        0.027
+  need_heart             0.023
+  allergy_fish           0.005
+  need_eye               0.003

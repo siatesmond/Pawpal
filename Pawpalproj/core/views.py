@@ -1,6 +1,4 @@
-import os
 from datetime import date, datetime, time, timedelta
-from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from django.contrib import messages
@@ -15,26 +13,81 @@ from review.models import Review
 from service.models import Booking, BookingUpdate, Service, TimeSlot
 from sitting.models import PetSitter, SittingRequest, SittingUpdate
 from user.models import Address, BusinessOwner, Customer, Pet, Staff, User
-from user.utils import send_mail_in_background
+from user.utils import send_mail_in_background, show_form_errors
 
 from core.models import Outlet
 
-from .forms import OwnerCustomerForm, OwnerStaffEditForm, OwnerStaffForm
+from user.forms import CancelReasonForm, read_cancel_reason
 
-# Helpers
+from .forms import (
+    OwnerCustomerForm,
+    OwnerStaffEditForm,
+    OwnerStaffForm,
+    PointsAdjustmentForm,
+    RejectSitterForm,
+)
+from .mock_data import (
+    DEMO_PASSWORD,
+    OWNER_PASSWORD,
+    outlets,
+    business_owners,
+    staff_members,
+    customers,
+    pet_sitters,
+    addresses,
+    pets,
+    categories,
+    brands,
+    products,
+    cart_items,
+    DELIVERY_FEE_CENTS,
+    orders,
+    services,
+    time_slots,
+    TIMETABLE_DAYS,
+    service_timetable,
+    bookings,
+    booking_updates,
+    owner_coordinates,
+    sitting_requests,
+    sitting_updates,
+    payments,
+    SIGN_UP_BONUS,
+    points_adjustments,
+    reviews,
+)
+
+
+# Pages in this file:
+# Load data:         loadData (/loadData/ fills the database with the demo data in mock_data.py)
+# Business owner (admin panel)
+#   Dashboard:         owner_dashboard
+#   Customers:         owner_customers, owner_edit_customer, owner_adjust_points
+#   Pet sitters:       owner_sitters, owner_review_sitter
+#   Sitting requests:  owner_sitting_requests, owner_cancel_sitting
+#   Staff:             owner_staff, owner_add_staff, owner_edit_staff, owner_toggle_staff
+
+
+# SETTINGS
 
 SGT = ZoneInfo("Asia/Singapore")
-DEMO_PASSWORD = "Pawpal123!"  # every demo account uses this password
-OWNER_PASSWORD = os.getenv("PAWPAL_OWNER_PASSWORD", DEMO_PASSWORD)
-STAFF_PASSWORD = os.getenv("PAWPAL_STAFF_PASSWORD", DEMO_PASSWORD)
 
+
+# SHARED HELPERS
 
 def today():
     return datetime.now(SGT).date()
 
 
+def money(cents):
+    # 4892000 -> "48,920.00"
+    return f"{cents / 100:,.2f}"
+
+
+# LOAD DATA
+
 def sg_datetime(day_offset, hhmm):
-    """day_offset days from today at HH:MM Singapore time, e.g. (2, "10:00")."""
+    # A date and time in Singapore, some days from today, e.g. (2, "10:00") = 2 days later at 10am
     day = today() + timedelta(days=day_offset)
     return datetime.combine(day, time.fromisoformat(hhmm), tzinfo=SGT)
 
@@ -44,1929 +97,23 @@ def days_ago(n):
 
 
 def outlet_time(hhmm):
-    """Works whether Outlet.opening_time is a TimeField or a DateTimeField."""
+    # Works when Outlet.opening_time is a time or a date and time
     if Outlet._meta.get_field("opening_time").get_internal_type() == "TimeField":
         return time.fromisoformat(hhmm)
     return sg_datetime(0, hhmm)
 
 
 def clock_time(value):
-    """Outlet opening/closing as a plain Singapore time, whether it is stored as a time or a date-time."""
+    # The outlet's opening or closing time as a plain Singapore time
+    # (works when it is saved as a time or a date and time)
     if isinstance(value, datetime):
         return value.astimezone(SGT).time()
     return value
 
 
 def set_created_at(model, pk, n_days_ago):
-    """auto_now_add always saves 'now', so move the date back afterwards."""
+    # auto_now_add always saves today, so change the date after saving
     model.objects.filter(pk=pk).update(created_at=days_ago(n_days_ago))
-
-
-# Mock data – core
-
-outlets = [
-    {
-        "name": "Pawpal Tampines",
-        "address": "10 Tampines Central 1, #01-15",
-        "postal_code": "529536",
-        "phone": "61234501",
-        "opening_time": "09:00",
-        "closing_time": "21:00",
-        "is_active": True,
-    },
-    {
-        "name": "Pawpal Jurong East",
-        "address": "50 Jurong Gateway Road, #02-08",
-        "postal_code": "608549",
-        "phone": "61234502",
-        "opening_time": "10:00",
-        "closing_time": "22:00",
-        "is_active": True,
-    },
-    {
-        "name": "Pawpal Bishan",
-        "address": "9 Bishan Place, #01-30",
-        "postal_code": "579837",
-        "phone": "61234503",
-        "opening_time": "09:00",
-        "closing_time": "20:00",
-        "is_active": True,
-    },
-    {
-        "name": "Pawpal Holland Village",
-        "address": "211 Holland Avenue, #01-02",
-        "postal_code": "278967",
-        "phone": "61234504",
-        "opening_time": "10:00",
-        "closing_time": "19:00",
-        "is_active": False,
-    },  # renovation
-]
-
-# Mock data – users
-
-business_owners = [
-    {
-        "username": "owner_lim",
-        "email": "pawpal.sg.demo@gmail.com",
-        "first_name": "Grace",
-        "last_name": "Tan",
-        "mobile": "91234567",
-    },
-]
-
-staff_members = [
-    {
-        "username": "staff_test",
-        "email": "staff_test@pawpal.local",
-        "first_name": "Staff",
-        "last_name": "Test",
-        "mobile": "90000000",
-        "outlet": "Pawpal Tampines",
-        "password": STAFF_PASSWORD,
-    },
-    {
-        "username": "staff_sarah",
-        "email": "sarah@pawpal.sg",
-        "first_name": "Sarah",
-        "last_name": "Goh",
-        "mobile": "92345678",
-        "outlet": "Pawpal Tampines",
-    },
-    {
-        "username": "staff_ravi",
-        "email": "ravi@pawpal.sg",
-        "first_name": "Ravi",
-        "last_name": "Kumar",
-        "mobile": "92345679",
-        "outlet": "Pawpal Tampines",
-    },
-    {
-        "username": "staff_mei",
-        "email": "mei@pawpal.sg",
-        "first_name": "Mei Ling",
-        "last_name": "Chua",
-        "mobile": "92345680",
-        "outlet": "Pawpal Jurong East",
-    },
-    {
-        "username": "staff_daniel",
-        "email": "daniel@pawpal.sg",
-        "first_name": "Daniel",
-        "last_name": "Teo",
-        "mobile": "92345681",
-        "outlet": "Pawpal Bishan",
-    },
-]
-
-customers = [
-    {
-        "username": "amy_tan",
-        "email": "amy.tan@example.com",
-        "first_name": "Amy",
-        "last_name": "Tan",
-        "mobile": "81234567",
-        "is_verified": True,
-    },
-    {
-        "username": "jason_lee",
-        "email": "jason.lee@example.com",
-        "first_name": "Jason",
-        "last_name": "Lee",
-        "mobile": "81234568",
-        "is_verified": True,
-    },
-    {
-        "username": "nur_aisyah",
-        "email": "nur.aisyah@example.com",
-        "first_name": "Nur",
-        "last_name": "Aisyah",
-        "mobile": "81234569",
-        "is_verified": True,
-    },
-    {
-        "username": "kumar_r",
-        "email": "kumar.r@example.com",
-        "first_name": "Kumar",
-        "last_name": "Rajan",
-        "mobile": "81234570",
-        "is_verified": True,
-    },
-    {
-        "username": "chloe_ng",
-        "email": "chloe.ng@example.com",
-        "first_name": "Chloe",
-        "last_name": "Ng",
-        "mobile": "81234571",
-        "is_verified": True,
-    },
-    # brand-new customer: no pets, bookings or orders (for the empty-state home page C1b)
-    {
-        "username": "ben_wong",
-        "email": "ben.wong@example.com",
-        "first_name": "Ben",
-        "last_name": "Wong",
-        "mobile": "81234572",
-        "is_verified": True,
-    },
-    # signed up but has not entered the OTP yet
-    {
-        "username": "zoe_lim",
-        "email": "zoe.lim@example.com",
-        "first_name": "Zoe",
-        "last_name": "Lim",
-        "mobile": "81234573",
-        "is_verified": False,
-    },
-]
-
-pet_sitters = [
-    {
-        "username": "sitter_grace",
-        "email": "grace@example.com",
-        "first_name": "Grace",
-        "last_name": "Koh",
-        "mobile": "83456789",
-        "bio": "Lifelong animal lover and former vet clinic assistant.",
-        "postal_code": "520201",
-        "service_area": "Tampines Street 21",
-        "latitude": "1.352895",
-        "longitude": "103.953586",
-        "experience_years": 5,
-        "pet_experience": "dogs, cats",
-        "daily_rate_cents": 6000,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_hafiz",
-        "email": "hafiz@example.com",
-        "first_name": "Hafiz",
-        "last_name": "Rahman",
-        "mobile": "83456790",
-        "bio": "Dog walker who loves big, energetic breeds.",
-        "postal_code": "600135",
-        "service_area": "Jurong Gateway Road",
-        "latitude": "1.333825",
-        "longitude": "103.739677",
-        "experience_years": 3,
-        "pet_experience": "dogs",
-        "daily_rate_cents": 5000,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_emily",
-        "email": "emily@example.com",
-        "first_name": "Emily",
-        "last_name": "Sim",
-        "mobile": "83456791",
-        "bio": "University student with two cats at home.",
-        "postal_code": "579837",
-        "service_area": "Bishan Place",
-        "latitude": "1.350422",
-        "longitude": "103.848826",
-        "experience_years": 1,
-        "pet_experience": "cats",
-        "daily_rate_cents": 4500,
-        "application_status": "PENDING",
-        "rejection_reason": "",
-        "reviewed_by": None,
-    },
-    {
-        "username": "sitter_marcus",
-        "email": "marcus@example.com",
-        "first_name": "Marcus",
-        "last_name": "Yeo",
-        "mobile": "83456792",
-        "bio": "Happy to look after any pet.",
-        "postal_code": "730888",
-        "service_area": "Woodlands Drive 50",
-        "latitude": "1.437705",
-        "longitude": "103.795269",
-        "experience_years": 0,
-        "pet_experience": "dogs, cats",
-        "daily_rate_cents": 3500,
-        "application_status": "REJECTED",
-        "rejection_reason": "ID document was unclear. Please re-apply with a clearer photo.",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_wei",
-        "email": "wei@example.com",
-        "first_name": "Wei Ling",
-        "last_name": "Tan",
-        "mobile": "83456793",
-        "bio": "Retired teacher who has raised three dogs. Calm, patient and home most of the day.",
-        "postal_code": "569933",
-        "service_area": "Ang Mo Kio Avenue 3",
-        "latitude": "1.369236",
-        "longitude": "103.848693",
-        "experience_years": 8,
-        "pet_experience": "dogs, cats",
-        "daily_rate_cents": 6500,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_ryan",
-        "email": "ryan@example.com",
-        "first_name": "Ryan",
-        "last_name": "Lim",
-        "mobile": "83456794",
-        "bio": "Works from home and loves long evening walks. Great with puppies and young dogs.",
-        "postal_code": "828761",
-        "service_area": "Punggol Central",
-        "latitude": "1.406410",
-        "longitude": "103.902130",
-        "experience_years": 2,
-        "pet_experience": "dogs",
-        "daily_rate_cents": 4800,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_priya",
-        "email": "priya@example.com",
-        "first_name": "Priya",
-        "last_name": "Nair",
-        "mobile": "83456795",
-        "bio": "Cat fosterer for a local shelter. Comfortable giving medication and eye drops.",
-        "postal_code": "120441",
-        "service_area": "Commonwealth Avenue West",
-        "latitude": "1.314967",
-        "longitude": "103.764270",
-        "experience_years": 4,
-        "pet_experience": "cats",
-        "daily_rate_cents": 5200,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_daniel",
-        "email": "daniel@example.com",
-        "first_name": "Daniel",
-        "last_name": "Ong",
-        "mobile": "83456796",
-        "bio": "Former groomer. Happy to brush long-haired pets and send daily photo updates.",
-        "postal_code": "310175",
-        "service_area": "Lorong 2 Toa Payoh",
-        "latitude": "1.333396",
-        "longitude": "103.847054",
-        "experience_years": 6,
-        "pet_experience": "dogs, cats",
-        "daily_rate_cents": 5800,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-    {
-        "username": "sitter_siti",
-        "email": "siti@example.com",
-        "first_name": "Siti",
-        "last_name": "Aminah",
-        "mobile": "83456797",
-        "bio": "Nursing student with flexible hours. Gentle with senior and anxious pets.",
-        "postal_code": "460018",
-        "service_area": "Bedok South Road",
-        "latitude": "1.320625",
-        "longitude": "103.934734",
-        "experience_years": 3,
-        "pet_experience": "dogs, cats",
-        "daily_rate_cents": 4500,
-        "application_status": "APPROVED",
-        "rejection_reason": "",
-        "reviewed_by": "owner_lim",
-    },
-]
-
-addresses = [
-    {
-        "customer": "amy_tan",
-        "label": "Home",
-        "is_default": True,
-        "line1": "Blk 123 Tampines Street 11",
-        "line2": "#05-67",
-        "postal_code": "521123",
-    },
-    {
-        "customer": "amy_tan",
-        "label": "Office",
-        "is_default": False,
-        "line1": "1 Raffles Place",
-        "line2": "#20-01 (Office)",
-        "postal_code": "048616",
-    },
-    {
-        "customer": "jason_lee",
-        "label": "Home",
-        "is_default": True,
-        "line1": "Blk 250 Jurong East Street 24",
-        "line2": "#08-12",
-        "postal_code": "600250",
-    },
-    {
-        "customer": "nur_aisyah",
-        "label": "Home",
-        "is_default": True,
-        "line1": "Blk 456 Bishan Street 13",
-        "line2": "#11-20",
-        "postal_code": "570456",
-    },
-    {
-        "customer": "kumar_r",
-        "label": "Home",
-        "is_default": True,
-        "line1": "18 Holland Grove Road",
-        "line2": "",
-        "postal_code": "278806",
-    },
-    {
-        "customer": "chloe_ng",
-        "label": "Home",
-        "is_default": True,
-        "line1": "Blk 789 Woodlands Drive 50",
-        "line2": "#03-15",
-        "postal_code": "730789",
-    },
-]
-
-pets = [
-    {
-        "owner": "amy_tan",
-        "name": "Mochi",
-        "photo": "pet-mochi.webp",
-        "pet_type": "DOG",
-        "breed": "Shiba Inu",
-        "date_of_birth": date(2023, 8, 14),
-        "weight_kg": Decimal("9.50"),
-        "allergies": "Pollen",
-        "conditions": "Seasonal skin allergies",
-        "medication": "Medicated shampoo (monthly)",
-        "medical_notes": "Gets itchy in the rainy season. Check paws and belly for redness.",
-        "behaviour_notes": "Independent and a bit stubborn. Dislikes nail trimming; use treats and go slowly.",
-        "last_vaccination_date": date(2026, 3, 12),
-    },
-    {
-        "owner": "amy_tan",
-        "name": "Luna",
-        "photo": "pet-luna.webp",
-        "pet_type": "CAT",
-        "breed": "British Shorthair",
-        "date_of_birth": date(2024, 5, 3),
-        "weight_kg": Decimal("4.80"),
-        "allergies": "",
-        "conditions": "",
-        "medication": "",
-        "medical_notes": "Healthy. Yearly check-up only.",
-        "behaviour_notes": "Calm, but gets stressed in carriers. Prefers a towel over the carrier.",
-        "last_vaccination_date": date(2026, 5, 20),
-    },
-    {
-        "owner": "jason_lee",
-        "name": "Bobby",
-        "photo": "pet-bobby.png",
-        "pet_type": "DOG",
-        "breed": "Golden Retriever",
-        "date_of_birth": date(2021, 9, 27),
-        "weight_kg": Decimal("31.20"),
-        "allergies": "",
-        "conditions": "Early-stage hip dysplasia",
-        "medication": "Joint supplement (daily)",
-        "medical_notes": "Avoid long stair climbs.",
-        "behaviour_notes": "Very friendly and food-motivated. Tends to jump up when excited.",
-        "last_vaccination_date": date(2026, 1, 15),
-    },
-    {
-        "owner": "nur_aisyah",
-        "name": "Kopi",
-        "photo": "pet-kopi.webp",
-        "pet_type": "CAT",
-        "breed": "Domestic Short Hair",
-        "date_of_birth": date(2022, 6, 9),
-        "weight_kg": Decimal("4.20"),
-        "allergies": "Chicken",
-        "conditions": "",
-        "medication": "",
-        "medical_notes": "Feed fish or turkey formulas only.",
-        "behaviour_notes": "Shy with strangers; hides under furniture. Approach slowly and let her come to you.",
-        "last_vaccination_date": date(2025, 11, 30),
-    },
-    {
-        "owner": "nur_aisyah",
-        "name": "Snowy",
-        "photo": "pet-snowy.webp",
-        "pet_type": "CAT",
-        "breed": "Persian",
-        "date_of_birth": date(2020, 12, 1),
-        "weight_kg": Decimal("5.10"),
-        "allergies": "",
-        "conditions": "Chronic eye discharge, prone to hairballs",
-        "medication": "Eye drops (as needed)",
-        "medical_notes": "Wipe around the eyes daily.",
-        "behaviour_notes": "Gentle but dislikes being brushed around the belly. Short grooming sessions work best.",
-        "last_vaccination_date": date(2026, 2, 8),
-    },
-    {
-        "owner": "kumar_r",
-        "name": "Milo",
-        "photo": "pet-milo.png",
-        "pet_type": "DOG",
-        "breed": "Beagle",
-        "date_of_birth": date(2019, 10, 18),
-        "weight_kg": Decimal("12.75"),
-        "allergies": "Beef",
-        "conditions": "Heart murmur",
-        "medication": "Heart medication (twice daily)",
-        "medical_notes": "Senior dog; avoid strenuous exercise.",
-        "behaviour_notes": "Howls when left alone. Will follow food smells, so keep treats out of reach.",
-        "last_vaccination_date": date(2026, 4, 2),
-    },
-    {
-        "owner": "chloe_ng",
-        "name": "Coco",
-        "photo": "pet-coco.webp",
-        "pet_type": "DOG",
-        "breed": "Maltese",
-        "date_of_birth": date(2024, 7, 22),
-        "weight_kg": Decimal("3.40"),
-        "allergies": "Chicken",
-        "conditions": "Sensitive stomach, tear staining",
-        "medication": "Probiotic powder with meals",
-        "medical_notes": "Clean around the eyes regularly.",
-        "behaviour_notes": "Barks at loud noises and unfamiliar dogs. Handle gently, small and fragile.",
-        "last_vaccination_date": date(2026, 6, 10),
-    },
-]
-# Mock data – inventory
-
-categories = ["Food", "Treats", "Toys", "Accessories", "Grooming", "Health"]
-
-brands = [
-    "Black Hawk",
-    "Royal Canin",
-    "Buddy Bites",
-    "Health Extension",
-    "Pet Mrkt",
-    "Gnawlers",
-    "Feline Natural",
-    "Buddy Care",
-]
-
-# ingredients, care_tags and life_stage are used by the product recommender
-products = [
-    {
-        "name": "Pet Mrkt XL Lightweight Pet Cart Trolley Stroller Pram",
-        "category": "Accessories",
-        "brand": "Pet Mrkt",
-        "pet_type": "DOG",
-        "description": "Up to 30kg",
-        "price_cents": 20900,
-        "stock_quantity": 6,
-        "image": "PM-XL-Lightweight-Pet-Trolley-Stroller.jpg",
-        "ingredients": "",
-        "care_tags": "joint",
-        "life_stage": "SENIOR",
-    },
-    {
-        "name": "Buddy Bites Adult Dog Fresh Lamb Kibbles",
-        "category": "Food",
-        "brand": "Buddy Bites",
-        "pet_type": "DOG",
-        "description": "Balanced everyday nutrition for adult dogs, with lamb as the first ingredient.",
-        "price_cents": 3280,
-        "stock_quantity": 8,
-        "image": "BB-Fresh-Lamb-Adult-Dog-Food.webp",
-        "ingredients": "lamb, rice",
-        "care_tags": "",
-        "life_stage": "ADULT",
-    },
-    {
-        "name": "Royal Canin Mini Puppy Wet Dog Food",
-        "category": "Food",
-        "brand": "Royal Canin",
-        "pet_type": "DOG",
-        "description": "1.5kg. Complete feed for dogs. For small breed puppies (adult weight from 1 to 10 kg)",
-        "price_cents": 2990,
-        "stock_quantity": 0,
-        "image": "RC-Puppy-Mini-Food.png",
-        "ingredients": "chicken, rice",
-        "care_tags": "",
-        "life_stage": "YOUNG",
-    },
-    {
-        "name": "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
-        "category": "Treats",
-        "brand": "Feline Natural",
-        "pet_type": "CAT",
-        "description": "50g. Chicken Healthy Bites. Treat your cat with the wholesome goodness of Feline Natural Healthy Bites. Delicious, healthy morsels made with all-natural premium ingredients. ",
-        "price_cents": 1390,
-        "stock_quantity": 15,
-        "image": "FN-Chicken-Healthy-Bites-Cats-Treats.png",
-        "ingredients": "chicken",
-        "care_tags": "",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Pet Mrkt Rough & Tough Crocodile Dog Toy",
-        "category": "Toys",
-        "brand": "Pet Mrkt",
-        "pet_type": "DOG",
-        "description": "Durable cotton plush for gentle chewing.",
-        "price_cents": 2700,
-        "stock_quantity": 8,
-        "image": "PM-Rough-and-Tough-Crocodile-Dog-Toy.png",
-        "ingredients": "",
-        "care_tags": "calming",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Gnawlers Lallipop Freeze-Dried Chicken & Apple Cat Treats",
-        "category": "Treats",
-        "brand": "Gnawlers",
-        "pet_type": "CAT",
-        "description": "Naturally sourced Vitamins and Minerals.",
-        "price_cents": 150,
-        "stock_quantity": 3,
-        "image": "G-Lallipop-Freeze-Dried-Chicken-Apple-Cat-Treats.webp",
-        "ingredients": "chicken, apple",
-        "care_tags": "",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Buddy Care Oatmeal pet shampoo 500ml",
-        "category": "Grooming",
-        "brand": "Buddy Care",
-        "pet_type": "DOG",
-        "description": "500ml. Shampoo for Dogs With Irritated Skin.",
-        "price_cents": 1690,
-        "stock_quantity": 4,
-        "image": "BC-Oatmeal-Shampoo.png",
-        "ingredients": "oatmeal",
-        "care_tags": "skin",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Black Hawk Adult Lamb & Rice Dog Food 3kg",
-        "category": "Food",
-        "brand": "Black Hawk",
-        "pet_type": "DOG",
-        "description": "Gentle lamb and rice recipe for adult dogs with sensitive skin and tummies.",
-        "price_cents": 4590,
-        "stock_quantity": 12,
-        "image": "BH-lamb-rice-food.jpg",
-        "ingredients": "lamb, rice",
-        "care_tags": "skin, digestion",
-        "life_stage": "ADULT",
-    },
-    {
-        "name": "Health Extension Puppy Little Bites 1.8kg",
-        "category": "Food",
-        "brand": "Health Extension",
-        "pet_type": "DOG",
-        "description": "Small kibbles for growing puppies, with DHA for brain development.",
-        "price_cents": 2650,
-        "stock_quantity": 10,
-        "image": "HE-Puppy-Little-Bites.webp",
-        "ingredients": "chicken, brown rice",
-        "care_tags": "",
-        "life_stage": "YOUNG",
-    },
-    {
-        "name": "Gnawlers Lallipop Freeze-Dried Chicken Cat Treats",
-        "category": "Treats",
-        "brand": "Gnawlers",
-        "pet_type": "CAT",
-        "description": "Single-ingredient freeze-dried chicken on a stick.",
-        "price_cents": 150,
-        "stock_quantity": 20,
-        "image": "G-Lallipop-Freeze-Dried-Chicken-Cat-Treats.webp",
-        "ingredients": "chicken",
-        "care_tags": "",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Royal Canin Mature Senior Dog Food 3kg",
-        "category": "Food",
-        "brand": "Royal Canin",
-        "pet_type": "DOG",
-        "description": "For dogs aged 7 and above. Supports joints and a healthy heart.",
-        "price_cents": 5290,
-        "stock_quantity": 7,
-        "image": "RC-Mature-Senior-Dog-Food.webp",
-        "ingredients": "chicken, rice",
-        "care_tags": "joint, heart",
-        "life_stage": "SENIOR",
-    },
-    {
-        "name": "Buddy Care Hip & Joint Chews for Dogs (60 pcs)",
-        "category": "Health",
-        "brand": "Buddy Care",
-        "pet_type": "DOG",
-        "description": "Glucosamine and chondroitin chews for stiff or ageing joints.",
-        "price_cents": 3490,
-        "stock_quantity": 9,
-        "image": "BC-Hip-Joint-Chews-Dogs.png",
-        "ingredients": "chicken, glucosamine",
-        "care_tags": "joint",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Buddy Care Omega-3 Fish Oil for Dogs 250ml",
-        "category": "Health",
-        "brand": "Buddy Care",
-        "pet_type": "DOG",
-        "description": "Pump onto meals for a shiny coat, calm skin and a healthy heart.",
-        "price_cents": 2890,
-        "stock_quantity": 10,
-        "image": "BC-Omega-3-Fish-Oil-Dogs.png",
-        "ingredients": "fish",
-        "care_tags": "skin, heart",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Gnawlers Dental Chews for Dogs (7 pcs)",
-        "category": "Treats",
-        "brand": "Gnawlers",
-        "pet_type": "DOG",
-        "description": "Daily chew that scrubs away plaque and freshens breath.",
-        "price_cents": 1290,
-        "stock_quantity": 25,
-        "image": "G-Dental-Chews-Dogs.webp",
-        "ingredients": "rice, mint",
-        "care_tags": "dental",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Health Extension Sensitive Stomach Turkey Dog Food 2kg",
-        "category": "Food",
-        "brand": "Health Extension",
-        "pet_type": "DOG",
-        "description": "Single protein turkey and potato recipe for dogs with a sensitive stomach.",
-        "price_cents": 4890,
-        "stock_quantity": 6,
-        "image": "HE-Sensitive-Stomach-Turkey-Dog-Food.webp",
-        "ingredients": "turkey, potato",
-        "care_tags": "digestion, skin",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Buddy Care Gentle Eye & Tear Stain Wipes for Dogs",
-        "category": "Grooming",
-        "brand": "Buddy Care",
-        "pet_type": "DOG",
-        "description": "100 soft wipes for daily cleaning around the eyes.",
-        "price_cents": 1190,
-        "stock_quantity": 15,
-        "image": "BC-Tear-Stain-Eye-Wipes-Dogs.png",
-        "ingredients": "aloe",
-        "care_tags": "eye",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Pet Mrkt Orthopedic Memory Foam Dog Bed",
-        "category": "Accessories",
-        "brand": "Pet Mrkt",
-        "pet_type": "DOG",
-        "description": "Thick memory foam that eases pressure on sore hips and joints.",
-        "price_cents": 8900,
-        "stock_quantity": 4,
-        "image": "PM-Orthopedic-Memory-Foam-Dog-Bed.webp",
-        "ingredients": "",
-        "care_tags": "joint",
-        "life_stage": "SENIOR",
-    },
-    {
-        "name": "Pet Mrkt Interactive Puzzle Feeder for Dogs",
-        "category": "Toys",
-        "brand": "Pet Mrkt",
-        "pet_type": "DOG",
-        "description": "Slows down fast eaters and keeps busy minds calm.",
-        "price_cents": 2490,
-        "stock_quantity": 7,
-        "image": "PM-Interactive-Puzzle-Feeder.webp",
-        "ingredients": "",
-        "care_tags": "weight, calming, digestion",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Feline Natural Fish & Lamb Feast Cat Food 1kg",
-        "category": "Food",
-        "brand": "Feline Natural",
-        "pet_type": "CAT",
-        "description": "Chicken-free recipe with fish and lamb for adult cats.",
-        "price_cents": 3990,
-        "stock_quantity": 8,
-        "image": "FN-Fish-Lamb-Feast-Cat-Food.webp",
-        "ingredients": "fish, lamb",
-        "care_tags": "",
-        "life_stage": "ADULT",
-    },
-    {
-        "name": "Royal Canin Hairball Care Cat Food 2kg",
-        "category": "Food",
-        "brand": "Royal Canin",
-        "pet_type": "CAT",
-        "description": "Extra fibre helps hair pass through the gut naturally.",
-        "price_cents": 4290,
-        "stock_quantity": 6,
-        "image": "RC-Hairball-Care-Cat-Food.webp",
-        "ingredients": "chicken, rice, fibre",
-        "care_tags": "hairball, digestion",
-        "life_stage": "ADULT",
-    },
-    {
-        "name": "Royal Canin Kitten Dry Food 2kg",
-        "category": "Food",
-        "brand": "Royal Canin",
-        "pet_type": "CAT",
-        "description": "For kittens up to 12 months, supports healthy growth.",
-        "price_cents": 3590,
-        "stock_quantity": 9,
-        "image": "RC-Kitten-Dry-Food.png",
-        "ingredients": "chicken, rice",
-        "care_tags": "",
-        "life_stage": "YOUNG",
-    },
-    {
-        "name": "Buddy Bites Senior Cat Turkey Formula 1.5kg",
-        "category": "Food",
-        "brand": "Buddy Bites",
-        "pet_type": "CAT",
-        "description": "Easy-to-digest turkey recipe with joint support for cats aged 10 and above.",
-        "price_cents": 3790,
-        "stock_quantity": 5,
-        "image": "BB-Senior-Cat-Turkey-Formula.png",
-        "ingredients": "turkey, rice",
-        "care_tags": "joint, digestion",
-        "life_stage": "SENIOR",
-    },
-    {
-        "name": "Buddy Care Malt Hairball Paste for Cats 100g",
-        "category": "Health",
-        "brand": "Buddy Care",
-        "pet_type": "CAT",
-        "description": "Tasty malt paste that helps cats pass hairballs.",
-        "price_cents": 1590,
-        "stock_quantity": 10,
-        "image": "BC-Malt-Hairball-Paste-Cats.webp",
-        "ingredients": "malt",
-        "care_tags": "hairball",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Buddy Care Gentle Eye Wipes for Cats",
-        "category": "Grooming",
-        "brand": "Buddy Care",
-        "pet_type": "CAT",
-        "description": "Chamomile wipes for daily cleaning of eye discharge.",
-        "price_cents": 1190,
-        "stock_quantity": 12,
-        "image": "BC-Eye-Wipes-Cats.webp",
-        "ingredients": "chamomile",
-        "care_tags": "eye",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Feline Natural Tuna Bites Cat Treats 50g",
-        "category": "Treats",
-        "brand": "Feline Natural",
-        "pet_type": "CAT",
-        "description": "Freeze-dried tuna treats, chicken free.",
-        "price_cents": 1490,
-        "stock_quantity": 14,
-        "image": "FN-Tuna-Bites-Cat-Treats.webp",
-        "ingredients": "fish",
-        "care_tags": "",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Pet Mrkt Feather Wand Cat Toy",
-        "category": "Toys",
-        "brand": "Pet Mrkt",
-        "pet_type": "CAT",
-        "description": "Gets indoor cats moving and helps keep a healthy weight.",
-        "price_cents": 890,
-        "stock_quantity": 18,
-        "image": "PM-Feather-Wand-Cat-Toy.png",
-        "ingredients": "",
-        "care_tags": "weight",
-        "life_stage": "ALL",
-    },
-    {
-        "name": "Pet Mrkt Catnip Kicker Toy",
-        "category": "Toys",
-        "brand": "Pet Mrkt",
-        "pet_type": "CAT",
-        "description": "Soft kicker filled with catnip for relaxed play.",
-        "price_cents": 1290,
-        "stock_quantity": 11,
-        "image": "PM-Catnip-Kicker-Toy.webp",
-        "ingredients": "catnip",
-        "care_tags": "calming",
-        "life_stage": "ALL",
-    },
-]
-
-cart_items = [
-    {
-        "customer": "amy_tan",
-        "product": "Buddy Bites Adult Dog Fresh Lamb Kibbles",
-        "quantity": 1,
-    },
-    {
-        "customer": "amy_tan",
-        "product": "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
-        "quantity": 2,
-    },
-    {
-        "customer": "chloe_ng",
-        "product": "Pet Mrkt Rough & Tough Crocodile Dog Toy",
-        "quantity": 1,
-    },
-]
-
-DELIVERY_FEE_CENTS = 500
-
-# "ref" is only used inside loadData to link payments and reviews to this order
-orders = [
-    {
-        "ref": "O1",
-        "customer": "amy_tan",
-        "pickup_outlet": None,
-        "delivery_address": "Blk 123 Tampines Street 11",
-        "est_delivery_in_days": -17,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 20,
-        "items": [
-            ("Buddy Bites Adult Dog Fresh Lamb Kibbles", 1),
-            ("Pet Mrkt Rough & Tough Crocodile Dog Toy", 1),
-        ],
-    },
-    {
-        "ref": "O2",
-        "customer": "jason_lee",
-        "pickup_outlet": "Pawpal Jurong East",
-        "delivery_address": None,
-        "est_delivery_in_days": None,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 12,
-        "items": [
-            ("Pet Mrkt Rough & Tough Crocodile Dog Toy", 1),
-            ("Buddy Care Oatmeal pet shampoo 500ml", 1),
-        ],
-    },
-    {
-        "ref": "O3",
-        "customer": "nur_aisyah",
-        "pickup_outlet": None,
-        "delivery_address": "Blk 456 Bishan Street 13",
-        "est_delivery_in_days": 2,
-        "status": "CONFIRMED",
-        "points_discount_cents": 200,
-        "days_ago": 1,
-        "items": [
-            (
-                "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
-                2,
-            ),
-            ("Gnawlers Lallipop Freeze-Dried Chicken & Apple Cat Treats", 1),
-        ],
-    },
-    {
-        "ref": "O4",
-        "customer": "kumar_r",
-        "pickup_outlet": "Pawpal Bishan",
-        "delivery_address": None,
-        "est_delivery_in_days": None,
-        "status": "PENDING",
-        "points_discount_cents": 0,
-        "days_ago": 0,
-        "items": [("Pet Mrkt XL Lightweight Pet Cart Trolley Stroller Pram", 1)],
-    },
-    {
-        "ref": "O5",
-        "customer": "chloe_ng",
-        "pickup_outlet": None,
-        "delivery_address": "Blk 789 Woodlands Drive 50",
-        "est_delivery_in_days": None,
-        "status": "CANCELLED",
-        "points_discount_cents": 0,
-        "days_ago": 5,
-        "items": [("Buddy Care Oatmeal pet shampoo 500ml", 1)],
-        "cancellation_reason": "Ordered the wrong size by mistake.",
-    },
-    {
-        "ref": "O6",
-        "customer": "amy_tan",
-        "pickup_outlet": "Pawpal Tampines",
-        "delivery_address": None,
-        "est_delivery_in_days": None,
-        "status": "CONFIRMED",
-        "points_discount_cents": 0,
-        "days_ago": 0,
-        "items": [
-            (
-                "Feline Natural Chicken Healthy Bites Grain-Free Freeze-Dried Cat Treats",
-                1,
-            ),
-            ("Gnawlers Lallipop Freeze-Dried Chicken & Apple Cat Treats", 1),
-        ],
-    },
-    {
-        "ref": "O7",
-        "customer": "jason_lee",
-        "pickup_outlet": "Pawpal Jurong East",
-        "delivery_address": None,
-        "est_delivery_in_days": None,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 35,
-        "items": [
-            ("Buddy Care Hip & Joint Chews for Dogs (60 pcs)", 1),
-            ("Black Hawk Adult Lamb & Rice Dog Food 3kg", 1),
-        ],
-    },
-    {
-        "ref": "O8",
-        "customer": "kumar_r",
-        "pickup_outlet": "Pawpal Bishan",
-        "delivery_address": None,
-        "est_delivery_in_days": None,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 40,
-        "items": [
-            ("Gnawlers Dental Chews for Dogs (7 pcs)", 2),
-            ("Royal Canin Mature Senior Dog Food 3kg", 1),
-        ],
-    },
-    {
-        "ref": "O9",
-        "customer": "chloe_ng",
-        "pickup_outlet": None,
-        "delivery_address": "Blk 789 Woodlands Drive 50",
-        "est_delivery_in_days": -25,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 28,
-        "items": [
-            ("Health Extension Sensitive Stomach Turkey Dog Food 2kg", 1),
-            ("Buddy Care Gentle Eye & Tear Stain Wipes for Dogs", 1),
-        ],
-    },
-]
-
-# Mock data – services and bookings
-
-services = [
-    {
-        "name": "Basic Bath & Brush",
-        "category": "GROOMING",
-        "duration_minutes": 60,
-        "price_cents": 4500,
-        "description": "Shampoo, blow-dry, brushing and nail trim.",
-    },
-    {
-        "name": "Full Grooming Package",
-        "category": "GROOMING",
-        "duration_minutes": 120,
-        "price_cents": 8500,
-        "description": "Bath, haircut and styling, ear cleaning and nail trim.",
-    },
-    {
-        "name": "Daycare (Full Day)",
-        "category": "DAYCARE",
-        "duration_minutes": 480,
-        "price_cents": 5500,
-        "description": "Supervised play, rest and meals from 9am to 5pm.",
-    },
-    {
-        "name": "Overnight Boarding",
-        "category": "BOARDING",
-        "duration_minutes": None,
-        "price_cents": 7000,
-        "description": "Price per night. Includes meals and two walks a day.",
-    },
-    {
-        "name": "Puppy Training Session",
-        "category": "OTHER",
-        "duration_minutes": 60,
-        "price_cents": 6000,
-        "description": "One-to-one basic obedience session with a trainer.",
-    },
-]
-
-# day = days from today (negative = past). Boarding slots end the next day at 12:00.
-time_slots = [
-    {
-        "ref": "S1",
-        "outlet": "Pawpal Tampines",
-        "service": "Basic Bath & Brush",
-        "day": -10,
-        "start": "10:00",
-        "capacity": 3,
-    },
-    {
-        "ref": "S2",
-        "outlet": "Pawpal Jurong East",
-        "service": "Full Grooming Package",
-        "day": -6,
-        "start": "14:00",
-        "capacity": 2,
-    },
-    {
-        "ref": "S3",
-        "outlet": "Pawpal Bishan",
-        "service": "Daycare (Full Day)",
-        "day": -3,
-        "start": "09:00",
-        "capacity": 10,
-    },
-    {
-        "ref": "S4",
-        "outlet": "Pawpal Tampines",
-        "service": "Overnight Boarding",
-        "day": -14,
-        "start": "14:00",
-        "capacity": 5,
-    },
-    {
-        "ref": "S5",
-        "outlet": "Pawpal Tampines",
-        "service": "Full Grooming Package",
-        "day": 2,
-        "start": "11:00",
-        "capacity": 2,
-    },
-    {
-        "ref": "S6",
-        "outlet": "Pawpal Jurong East",
-        "service": "Basic Bath & Brush",
-        "day": 3,
-        "start": "10:00",
-        "capacity": 3,
-    },
-    {
-        "ref": "S7",
-        "outlet": "Pawpal Bishan",
-        "service": "Puppy Training Session",
-        "day": 5,
-        "start": "16:00",
-        "capacity": 4,
-    },
-    {
-        "ref": "S8",
-        "outlet": "Pawpal Tampines",
-        "service": "Daycare (Full Day)",
-        "day": 1,
-        "start": "09:00",
-        "capacity": 10,
-    },
-    {
-        "ref": "S9",
-        "outlet": "Pawpal Tampines",
-        "service": "Basic Bath & Brush",
-        "day": 7,
-        "start": "15:00",
-        "capacity": 3,
-    },  # empty
-    {
-        "ref": "S10",
-        "outlet": "Pawpal Jurong East",
-        "service": "Overnight Boarding",
-        "day": 10,
-        "start": "14:00",
-        "capacity": 5,
-    },  # empty
-    {
-        "ref": "S11",
-        "outlet": "Pawpal Bishan",
-        "service": "Full Grooming Package",
-        "day": 4,
-        "start": "10:00",
-        "capacity": 1,
-    },  # becomes full
-]
-
-# Weekly timetable: loadData uses it to add a month of regular time slots at every
-# open outlet, on top of the hand-written slots above (which the bookings use).
-# days: 0 = Monday ... 6 = Sunday. "opening" means the outlet's opening time.
-TIMETABLE_DAYS = 31
-EVERY_DAY = [0, 1, 2, 3, 4, 5, 6]
-service_timetable = [
-    {
-        "service": "Basic Bath & Brush",
-        "times": ["10:00", "11:30", "14:00", "16:00"],
-        "days": EVERY_DAY,
-        "capacity": 3,
-    },
-    {
-        "service": "Full Grooming Package",
-        "times": ["10:00", "13:00", "16:00"],
-        "days": [1, 2, 3, 4, 5, 6],  # groomers rest on Mondays
-        "capacity": 2,
-    },
-    {
-        "service": "Daycare (Full Day)",
-        "times": ["opening"],
-        "days": [0, 1, 2, 3, 4, 5],  # Monday to Saturday
-        "capacity": 10,
-    },
-    {
-        "service": "Overnight Boarding",
-        "times": ["14:00"],  # check-in 2 pm, pick-up next day 12 pm
-        "days": EVERY_DAY,
-        "capacity": 5,
-    },
-    {
-        "service": "Puppy Training Session",
-        "times": ["10:00", "16:00"],
-        "days": [5, 6],  # weekend classes
-        "capacity": 4,
-    },
-    {
-        "service": "Puppy Training Session",
-        "times": ["19:00"],
-        "days": [2],  # Wednesday evening class
-        "capacity": 4,
-    },
-]
-
-bookings = [
-    {
-        "ref": "B1",
-        "customer": "amy_tan",
-        "pet": "Mochi",
-        "slot": "S1",
-        "nights": None,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 14,
-    },
-    {
-        "ref": "B2",
-        "customer": "jason_lee",
-        "pet": "Bobby",
-        "slot": "S2",
-        "nights": None,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 9,
-    },
-    {
-        "ref": "B3",
-        "customer": "nur_aisyah",
-        "pet": "Kopi",
-        "slot": "S3",
-        "nights": None,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 6,
-    },
-    {
-        "ref": "B4",
-        "customer": "kumar_r",
-        "pet": "Milo",
-        "slot": "S4",
-        "nights": 3,
-        "status": "COMPLETED",
-        "points_discount_cents": 0,
-        "days_ago": 18,
-    },
-    {
-        "ref": "B5",
-        "customer": "amy_tan",
-        "pet": "Luna",
-        "slot": "S5",
-        "nights": None,
-        "status": "CONFIRMED",
-        "points_discount_cents": 400,
-        "days_ago": 2,
-    },  # used 400 points
-    {
-        "ref": "B6",
-        "customer": "jason_lee",
-        "pet": "Bobby",
-        "slot": "S6",
-        "nights": None,
-        "status": "PENDING",
-        "points_discount_cents": 0,
-        "days_ago": 0,
-    },  # waiting for payment
-    {
-        "ref": "B7",
-        "customer": "chloe_ng",
-        "pet": "Coco",
-        "slot": "S7",
-        "nights": None,
-        "status": "CONFIRMED",
-        "points_discount_cents": 0,
-        "days_ago": 1,
-    },
-    {
-        "ref": "B8",
-        "customer": "nur_aisyah",
-        "pet": "Snowy",
-        "slot": "S8",
-        "nights": None,
-        "status": "CANCELLED",
-        "points_discount_cents": 0,
-        "days_ago": 3,
-        "cancellation_reason": "Snowy is unwell, will rebook next week.",
-    },  # cancelled, refunded
-    {
-        "ref": "B9",
-        "customer": "chloe_ng",
-        "pet": "Coco",
-        "slot": "S11",
-        "nights": None,
-        "status": "CONFIRMED",
-        "points_discount_cents": 0,
-        "days_ago": 1,
-    },  # fills S11 (capacity 1)
-    {
-        "ref": "B10",
-        "customer": "amy_tan",
-        "pet": "Mochi",
-        "slot": "S8",
-        "nights": None,
-        "status": "CONFIRMED",
-        "points_discount_cents": 0,
-        "days_ago": 1,
-    },
-]
-
-booking_updates = [
-    {
-        "booking": "B1",
-        "staff": "staff_sarah",
-        "new_status": "CONFIRMED",
-        "note": "Booking confirmed. See you soon!",
-    },
-    {
-        "booking": "B1",
-        "staff": "staff_sarah",
-        "new_status": "COMPLETED",
-        "note": "Mochi was a good boy! Bath and brush done, nails trimmed.",
-    },
-    {
-        "booking": "B2",
-        "staff": "staff_mei",
-        "new_status": "COMPLETED",
-        "note": "Full groom done. Bobby's coat is shiny.",
-    },
-    {
-        "booking": "B3",
-        "staff": "staff_daniel",
-        "new_status": "COMPLETED",
-        "note": "Kopi napped most of the day and ate well.",
-    },
-    {
-        "booking": "B4",
-        "staff": "staff_ravi",
-        "new_status": "CONFIRMED",
-        "note": "Milo checked in for boarding.",
-    },
-    {
-        "booking": "B4",
-        "staff": "staff_ravi",
-        "new_status": "COMPLETED",
-        "note": "Milo checked out. Ate all meals, walked twice daily.",
-    },
-    {
-        "booking": "B5",
-        "staff": "staff_sarah",
-        "new_status": "CONFIRMED",
-        "note": "Slot confirmed for Luna's full groom.",
-    },
-    {
-        "booking": "B8",
-        "staff": "staff_sarah",
-        "new_status": "CANCELLED",
-        "note": "Cancelled by customer more than 24h before. Full refund.",
-    },
-]
-
-# Mock data – pet sitting
-
-# Map position of each owner's home, used by the sitter "Distance" filter
-owner_coordinates = {
-    "amy_tan": ("1.353600", "103.945000"),  # Tampines
-    "jason_lee": ("1.333100", "103.742400"),  # Jurong East
-    "nur_aisyah": ("1.351700", "103.848600"),  # Bishan
-    "kumar_r": ("1.311700", "103.795800"),  # Holland Grove
-    "chloe_ng": ("1.436900", "103.786000"),  # Woodlands
-}
-
-# owner_rating / owner_feedback: the sitter's rating of the customer (pet owner) after the job
-sitting_requests = [
-    {
-        "ref": "R1",
-        "owner": "amy_tan",
-        "sitter": "sitter_grace",
-        "pets": ["Mochi", "Luna"],
-        "start_day": -20,
-        "days": 3,
-        "status": "completed",
-        "care_requirements": "Feed twice a day. Luna is shy, give her space.",
-        "owner_rating": 5,
-        "owner_feedback": "Amy left clear care notes for Mochi and Luna and was on time for pick-up.",
-        "days_ago": 25,
-    },
-    {
-        "ref": "R2",
-        "owner": "jason_lee",
-        "sitter": "sitter_hafiz",
-        "pets": ["Bobby"],
-        "start_day": 6,
-        "days": 2,
-        "status": "accepted",
-        "care_requirements": "Two long walks daily. Bobby pulls on the leash.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 3,
-    },
-    {
-        "ref": "R3",
-        "owner": "nur_aisyah",
-        "sitter": None,
-        "pets": ["Kopi", "Snowy"],
-        "start_day": 14,
-        "days": 4,
-        "status": "open",
-        "care_requirements": "Snowy needs her coat brushed daily.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 1,
-    },
-    {
-        "ref": "R4",
-        "owner": "chloe_ng",
-        "sitter": "sitter_grace",
-        "pets": ["Coco"],
-        "start_day": 3,
-        "days": 1,
-        "status": "pending",
-        "care_requirements": "Coco gets anxious with loud noises.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 1,
-    },
-    {
-        "ref": "R5",
-        "owner": "kumar_r",
-        "sitter": "sitter_hafiz",
-        "pets": ["Milo"],
-        "start_day": -2,
-        "days": 5,
-        "status": "in_progress",
-        "care_requirements": "Joint supplement with breakfast.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 7,
-    },
-    {
-        "ref": "R6",
-        "owner": "jason_lee",
-        "sitter": "sitter_grace",
-        "pets": ["Bobby"],
-        "start_day": 9,
-        "days": 2,
-        "status": "declined",
-        "care_requirements": "Two walks a day.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 2,
-    },
-    {
-        "ref": "R7",
-        "owner": "amy_tan",
-        "sitter": None,
-        "pets": ["Mochi"],
-        "start_day": 20,
-        "days": 4,
-        "status": "open",
-        "care_requirements": "Morning and evening meals. Daily photo update requested.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 0,
-    },
-    {
-        "ref": "R8",
-        "owner": "jason_lee",
-        "sitter": "sitter_grace",
-        "pets": ["Bobby"],
-        "start_day": 28,
-        "days": 3,
-        "status": "accepted",
-        "care_requirements": "Two walks daily and fresh water.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 1,
-    },
-    {
-        "ref": "R9",
-        "owner": "nur_aisyah",
-        "sitter": "sitter_grace",
-        "pets": ["Kopi"],
-        "start_day": -1,
-        "days": 3,
-        "status": "in_progress",
-        "care_requirements": "Keep the litter box clean and feed at 8am and 7pm.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 2,
-    },
-    {
-        "ref": "R10",
-        "owner": "chloe_ng",
-        "sitter": "sitter_grace",
-        "pets": ["Coco"],
-        "start_day": -18,
-        "days": 2,
-        "status": "completed",
-        "care_requirements": "Coco is nervous around strangers. Give her quiet time.",
-        "owner_rating": 5,
-        "owner_feedback": "Chloe explained Coco's needs well and replied quickly to my updates.",
-        "days_ago": 22,
-    },
-    {
-        "ref": "R11",
-        "owner": "kumar_r",
-        "sitter": None,
-        "pets": ["Milo"],
-        "start_day": 35,
-        "days": 5,
-        "status": "open",
-        "care_requirements": "Give joint supplements with breakfast and take short walks.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 0,
-    },
-    # More scenarios: cancelled in every way, finished jobs for the newer sitters,
-    # a request sent to one sitter, one waiting for payment and one declined
-    {
-        "ref": "R12",
-        "owner": "kumar_r",
-        "sitter": None,
-        "pets": ["Milo"],
-        "start_day": 10,
-        "days": 3,
-        "status": "cancelled",
-        "care_requirements": "Milo needs his heart medication at 8 am and 8 pm.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "cancelled_by": "customer",
-        "cancellation_reason": "My trip was postponed.",
-        "days_ago": 4,
-    },  # customer cancelled an open request (nothing paid)
-    {
-        "ref": "R13",
-        "owner": "amy_tan",
-        "sitter": "sitter_priya",
-        "pets": ["Luna"],
-        "start_day": 8,
-        "days": 4,
-        "status": "cancelled",
-        "care_requirements": "Luna hides under the bed at first. Leave food near her hiding spot.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "cancelled_by": "customer",
-        "cancellation_reason": "My sister can look after Luna instead.",
-        "days_ago": 6,
-    },  # customer cancelled after paying (refunded)
-    {
-        "ref": "R14",
-        "owner": "jason_lee",
-        "sitter": "sitter_ryan",
-        "pets": ["Bobby"],
-        "start_day": 5,
-        "days": 2,
-        "status": "cancelled",
-        "care_requirements": "Bobby pulls on the leash, use the harness by the door.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "cancelled_by": "sitter",
-        "cancellation_reason": "I have a family emergency that week. Sorry!",
-        "days_ago": 7,
-    },  # sitter cancelled a paid job (refunded)
-    {
-        "ref": "R15",
-        "owner": "nur_aisyah",
-        "sitter": None,
-        "pets": ["Kopi"],
-        "start_day": 14,
-        "days": 4,
-        "status": "cancelled",
-        "care_requirements": "Kopi only eats fish or turkey food. No chicken.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "cancelled_by": "pawpal",
-        "cancellation_reason": "Duplicate of another request for the same dates.",
-        "days_ago": 2,
-    },  # Pawpal removed a duplicate open request
-    {
-        "ref": "R16",
-        "owner": "chloe_ng",
-        "sitter": "sitter_daniel",
-        "pets": ["Coco"],
-        "start_day": 4,
-        "days": 1,
-        "status": "cancelled",
-        "care_requirements": "Coco gets nervous with loud noises, keep the TV low.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "cancelled_by": "pawpal",
-        "cancellation_reason": "Daniel is unwell. Please send a new request and we will help you find another sitter.",
-        "days_ago": 3,
-    },  # Pawpal cancelled when the sitter fell sick
-    {
-        "ref": "R17",
-        "owner": "kumar_r",
-        "sitter": "sitter_wei",
-        "pets": ["Milo"],
-        "start_day": -30,
-        "days": 4,
-        "status": "completed",
-        "care_requirements": "Heart medication twice a day. Short slow walks only.",
-        "owner_rating": 5,
-        "owner_feedback": "Kumar labelled every medicine clearly and was easy to reach.",
-        "days_ago": 36,
-    },
-    {
-        "ref": "R18",
-        "owner": "nur_aisyah",
-        "sitter": "sitter_daniel",
-        "pets": ["Snowy"],
-        "start_day": -25,
-        "days": 3,
-        "status": "completed",
-        "care_requirements": "Wipe Snowy's eyes every morning and brush her coat gently.",
-        "owner_rating": 4,
-        "owner_feedback": "Nur was friendly, but pick-up was about an hour late.",
-        "days_ago": 31,
-    },
-    {
-        "ref": "R19",
-        "owner": "nur_aisyah",
-        "sitter": "sitter_priya",
-        "pets": ["Kopi"],
-        "start_day": -12,
-        "days": 2,
-        "status": "completed",
-        "care_requirements": "Kopi is shy. Let her come to you.",
-        "owner_rating": 5,
-        "owner_feedback": "Nur left the fish-only food clearly marked. Very easy job.",
-        "days_ago": 18,
-    },
-    {
-        "ref": "R20",
-        "owner": "chloe_ng",
-        "sitter": "sitter_siti",
-        "pets": ["Coco"],
-        "start_day": -8,
-        "days": 2,
-        "status": "completed",
-        "care_requirements": "Coco has a sensitive stomach, feed the probiotic powder with meals.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 14,
-    },  # sitter has not rated the customer yet
-    {
-        "ref": "R21",
-        "owner": "jason_lee",
-        "sitter": "sitter_ryan",
-        "pets": ["Bobby"],
-        "start_day": -15,
-        "days": 3,
-        "status": "completed",
-        "care_requirements": "Two long walks a day.",
-        "owner_rating": 3,
-        "owner_feedback": "Bobby pulled very hard on walks and the leash was frayed. Jason did not mention it.",
-        "days_ago": 21,
-    },
-    {
-        "ref": "R22",
-        "owner": "amy_tan",
-        "sitter": "sitter_wei",
-        "pets": ["Mochi"],
-        "start_day": 12,
-        "days": 3,
-        "status": "open",
-        "care_requirements": "Mochi dislikes nail trimming, please skip it.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 1,
-    },  # sent to one sitter, waiting for her to accept
-    {
-        "ref": "R23",
-        "owner": "kumar_r",
-        "sitter": "sitter_siti",
-        "pets": ["Milo"],
-        "start_day": 7,
-        "days": 2,
-        "status": "pending",
-        "care_requirements": "Milo howls when left alone, a radio on helps.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 2,
-    },  # Siti accepted, waiting for Kumar to pay
-    {
-        "ref": "R24",
-        "owner": "amy_tan",
-        "sitter": "sitter_priya",
-        "pets": ["Mochi"],
-        "start_day": 16,
-        "days": 2,
-        "status": "declined",
-        "care_requirements": "Two walks a day.",
-        "owner_rating": None,
-        "owner_feedback": "",
-        "days_ago": 3,
-    },  # Priya declined (she looks after cats only)
-]
-
-sitting_updates = [
-    {
-        "request": "R1",
-        "sitter": "sitter_grace",
-        "new_status": "in_progress",
-        "note": "Picked up the keys. Mochi and Luna have settled in.",
-    },
-    {
-        "request": "R1",
-        "sitter": "sitter_grace",
-        "new_status": "completed",
-        "note": "All done! Both pets were fed and happy.",
-    },
-    {
-        "request": "R5",
-        "sitter": "sitter_hafiz",
-        "new_status": "in_progress",
-        "note": "Day 1: Milo enjoyed a long walk at the park.",
-    },
-    {
-        "request": "R5",
-        "sitter": "sitter_hafiz",
-        "new_status": "",
-        "note": "Day 2: Ate all his food and took his supplement.",
-    },
-    {
-        "request": "R9",
-        "sitter": "sitter_grace",
-        "new_status": "in_progress",
-        "note": "Kopi settled in well and finished dinner.",
-    },
-    {
-        "request": "R9",
-        "sitter": "sitter_grace",
-        "new_status": "",
-        "note": "Litter box cleaned and morning meal given.",
-    },
-    {
-        "request": "R10",
-        "sitter": "sitter_grace",
-        "new_status": "completed",
-        "note": "Coco was calm and happy at pick-up.",
-    },
-    {
-        "request": "R13",
-        "sitter": "sitter_priya",
-        "new_status": "accepted",
-        "note": "Amy confirmed and paid.",
-    },
-    {
-        "request": "R13",
-        "sitter": "sitter_priya",
-        "new_status": "cancelled",
-        "note": "Amy cancelled this request. Reason: My sister can look after Luna instead.",
-    },
-    {
-        "request": "R14",
-        "sitter": "sitter_ryan",
-        "new_status": "cancelled",
-        "note": "Ryan cancelled the job. Reason: I have a family emergency that week. Sorry!",
-    },
-    {
-        "request": "R16",
-        "sitter": "sitter_daniel",
-        "new_status": "cancelled",
-        "note": "Cancelled by Pawpal: Daniel is unwell. Please send a new request and we will help you find another sitter.",
-    },
-    {
-        "request": "R17",
-        "sitter": "sitter_wei",
-        "new_status": "in_progress",
-        "note": "Milo had his morning medicine and a slow walk round the block.",
-    },
-    {
-        "request": "R17",
-        "sitter": "sitter_wei",
-        "new_status": "completed",
-        "note": "All four days done. Milo ate well and slept a lot.",
-    },
-    {
-        "request": "R18",
-        "sitter": "sitter_daniel",
-        "new_status": "completed",
-        "note": "Snowy's coat is tangle-free and her eyes are clean.",
-    },
-    {
-        "request": "R19",
-        "sitter": "sitter_priya",
-        "new_status": "completed",
-        "note": "Kopi came out to play on day two. Fish food only, as asked.",
-    },
-    {
-        "request": "R20",
-        "sitter": "sitter_siti",
-        "new_status": "completed",
-        "note": "Coco's tummy was fine. Probiotic given with every meal.",
-    },
-    {
-        "request": "R21",
-        "sitter": "sitter_ryan",
-        "new_status": "completed",
-        "note": "Bobby had lots of exercise. The leash is frayed, please replace it.",
-    },
-    {
-        "request": "R23",
-        "sitter": "sitter_siti",
-        "new_status": "pending",
-        "note": "Siti accepted your request.",
-    },
-]
-
-# Mock data – payments, points and reviews
-
-# for = which booking (B), order (O) or sitting request (R) the payment is for
-payments = [
-    {"for": "B1", "status": "COMPLETED", "days_ago": 14},
-    {"for": "B2", "status": "COMPLETED", "days_ago": 9},
-    {"for": "B3", "status": "COMPLETED", "days_ago": 6},
-    {"for": "B4", "status": "COMPLETED", "days_ago": 18},
-    {"for": "B5", "status": "COMPLETED", "days_ago": 2},
-    {"for": "B6", "status": "PENDING", "days_ago": 0},
-    {"for": "B7", "status": "COMPLETED", "days_ago": 1},
-    {"for": "B8", "status": "REFUNDED", "days_ago": 3},
-    {"for": "B9", "status": "COMPLETED", "days_ago": 1},
-    {"for": "B10", "status": "COMPLETED", "days_ago": 1},
-    {"for": "O1", "status": "COMPLETED", "days_ago": 20},
-    {"for": "O2", "status": "COMPLETED", "days_ago": 12},
-    {"for": "O3", "status": "COMPLETED", "days_ago": 1},
-    {"for": "O5", "status": "REFUNDED", "days_ago": 5},
-    {"for": "O6", "status": "COMPLETED", "days_ago": 0},
-    {"for": "O7", "status": "COMPLETED", "days_ago": 35},
-    {"for": "O8", "status": "COMPLETED", "days_ago": 40},
-    {"for": "O9", "status": "COMPLETED", "days_ago": 28},
-    {"for": "R1", "status": "COMPLETED", "days_ago": 21},
-    {"for": "R2", "status": "COMPLETED", "days_ago": 3},
-    {"for": "R5", "status": "COMPLETED", "days_ago": 7},
-    {"for": "R8", "status": "COMPLETED", "days_ago": 1},
-    {"for": "R9", "status": "COMPLETED", "days_ago": 2},
-    {"for": "R10", "status": "COMPLETED", "days_ago": 21},
-    {"for": "R13", "status": "REFUNDED", "days_ago": 5},  # paid, then the customer cancelled
-    {"for": "R14", "status": "REFUNDED", "days_ago": 6},  # paid, then the sitter cancelled
-]
-
-# Points rules (same as checkout): earn 10 points per $1 paid; 1 point = 1 cent off.
-SIGN_UP_BONUS = 200
-
-# Points the business owner adjusted by hand (shown with the reason in the customer's points history)
-points_adjustments = [
-    {
-        "customer": "amy_tan",
-        "points": 100,
-        "reason": "Sorry! Mochi's grooming started 30 minutes late.",
-        "days_ago": 9,
-    },
-    {
-        "customer": "jason_lee",
-        "points": 150,
-        "reason": "Thank you for trying our new pet sitting service.",
-        "days_ago": 6,
-    },
-    {
-        "customer": "kumar_r",
-        "points": -50,
-        "reason": "Points given twice by mistake for an earlier order.",
-        "days_ago": 4,
-    },
-]
-
-reviews = [
-    {
-        "reviewer": "amy_tan",
-        "for": "B1",
-        "rating": 5,
-        "comment": "Mochi came back smelling amazing!",
-    },
-    {
-        "reviewer": "jason_lee",
-        "for": "B2",
-        "rating": 4,
-        "comment": "Great groom, a short wait at pick-up.",
-    },
-    {
-        "reviewer": "nur_aisyah",
-        "for": "B3",
-        "rating": 5,
-        "comment": "Kopi was relaxed when I picked her up.",
-    },
-    {
-        "reviewer": "kumar_r",
-        "for": "B4",
-        "rating": 4,
-        "comment": "Milo was well cared for. Daily updates were nice.",
-    },
-    {
-        "reviewer": "amy_tan",
-        "for": "R1",
-        "rating": 5,
-        "comment": "Grace was fantastic with both pets.",
-    },
-    {
-        "reviewer": "kumar_r",
-        "for": "R17",
-        "rating": 5,
-        "comment": "Wei Ling was so patient with Milo and never missed his medicine.",
-    },
-    {
-        "reviewer": "nur_aisyah",
-        "for": "R18",
-        "rating": 5,
-        "comment": "Daniel brushed Snowy every day, she has never looked better.",
-    },
-    {
-        "reviewer": "nur_aisyah",
-        "for": "R19",
-        "rating": 4,
-        "comment": "Priya was lovely with Kopi. Updates came a bit late in the evening.",
-    },
-    {
-        "reviewer": "chloe_ng",
-        "for": "R20",
-        "rating": 5,
-        "comment": "Siti sent photos twice a day and Coco was relaxed.",
-    },
-    {
-        "reviewer": "jason_lee",
-        "for": "R21",
-        "rating": 4,
-        "comment": "Ryan gave Bobby great walks. Thanks for telling me about the leash.",
-    },
-]
-
-
-# Load data view
 
 
 def loadData(request):
@@ -2278,11 +425,9 @@ def loadData(request):
                 days=booking["nights"]
             )
 
-        cancelled_at = (
-            days_ago(booking["days_ago"] - 1)
-            if booking["status"] == "CANCELLED"
-            else None
-        )
+        cancelled_at = None
+        if booking["status"] == "CANCELLED":
+            cancelled_at = days_ago(booking["days_ago"] - 1)
 
         new_booking = Booking(
             customer=customer,
@@ -2470,17 +615,26 @@ def loadData(request):
 
     # point_balance = total of each customer's points history
     for customer in Customer.objects.all():
-        total = sum(t.points for t in customer.points_transactions.all())
+        total = 0
+        for transaction in customer.points_transactions.all():
+            total += transaction.points
         customer.point_balance = total
         customer.save()
 
     # Reviews
     for review in reviews:
+        # "B1" = a booking, "R1" = a sitting request
         target = created[review["for"]]
+        booking = None
+        sitting_request = None
+        if review["for"].startswith("B"):
+            booking = target
+        if review["for"].startswith("R"):
+            sitting_request = target
         new_review = Review(
             reviewer=Customer.objects.get(username=review["reviewer"]),
-            booking=target if review["for"].startswith("B") else None,
-            sitting_request=target if review["for"].startswith("R") else None,
+            booking=booking,
+            sitting_request=sitting_request,
             rating=review["rating"],
             comment=review["comment"],
         )
@@ -2497,8 +651,10 @@ def loadData(request):
     return HttpResponse(summary)
 
 
+# BUSINESS OWNER PAGES
 
-# Business owner pages
+
+# Dashboard
 
 PAID_STATUSES = ["CONFIRMED", "COMPLETED"]  # orders that count as revenue
 
@@ -2510,10 +666,15 @@ PAID_BOOKING_STATUSES = [
     Booking.Status.COMPLETED,
 ]
 
+# Sort orders for the dashboard tables (used with sort(key=...))
+def row_count(row):
+    return row["count"]
 
-def money(cents):
-    # 4892000 -> "48,920.00"
-    return f"{cents / 100:,.2f}"
+
+def pair_count(pair):
+    # pair is (name, count), e.g. ("Grooming", 12) -> 12
+    name, count = pair
+    return count
 
 
 def percent_change(now, before):
@@ -2524,11 +685,9 @@ def percent_change(now, before):
 
 
 def paid_sittings(start_date, end_date):
-    """Pet sitting jobs the customer paid for between the two dates.
-
-    Pawpal's 10% commission is counted on the day the customer pays,
-    the same as bookings and orders. A refunded payment is not counted.
-    """
+    # Pet sitting jobs the customer paid for between the two dates.
+    # Pawpal's 10% cut is counted on the day the customer pays, same as bookings and orders.
+    # Refunded payments are not counted.
     payments = (
         Payment.objects.filter(
             status=Payment.Status.COMPLETED,
@@ -2548,11 +707,9 @@ def paid_sittings(start_date, end_date):
 
 
 def revenue_for_period(start_date, end_date, outlet=None):
-    """Add up revenue for one date range, split by stream.
-
-    Services and products are linked to an outlet; delivery orders and
-    pet sitting are not, so they are left out when one outlet is chosen.
-    """
+    # Add up the revenue for one date range, split by type.
+    # Delivery orders and pet sitting do not belong to an outlet,
+    # so they are left out when one outlet is picked.
     bookings = Booking.objects.filter(
         status__in=PAID_BOOKING_STATUSES,
         created_at__date__gte=start_date,
@@ -2630,7 +787,7 @@ def owner_dashboard(request):
     previous_start = previous_end - timedelta(days=number_of_days - 1)
     previous = revenue_for_period(previous_start, previous_end, outlet)
 
-    # Revenue breakdown table: one row per stream
+    # Revenue breakdown table: one row per type of revenue
     breakdown = []
     streams = [
         ("services", "Service bookings"),
@@ -2639,7 +796,9 @@ def owner_dashboard(request):
         ("commission", "Pet sitting commission (10%)"),
     ]
     for key, label in streams:
-        share = round(current[key] * 100 / current["total"]) if current["total"] else 0
+        share = 0
+        if current["total"]:
+            share = round(current[key] * 100 / current["total"])
         breakdown.append(
             {
                 "label": label,
@@ -2683,11 +842,9 @@ def owner_dashboard(request):
         booking_volume_rows.append(
             {"service": service_name, "outlet": outlet_name, "count": count}
         )
-    booking_volume_rows.sort(key=lambda row: row["count"], reverse=True)
+    booking_volume_rows.sort(key=row_count, reverse=True)
 
-    top_services = sorted(
-        service_counts.items(), key=lambda item: item[1], reverse=True
-    )[:3]
+    top_services = sorted(service_counts.items(), key=pair_count, reverse=True)[:3]
 
     # Top-selling products
     period_items = OrderItem.objects.filter(
@@ -2703,9 +860,7 @@ def owner_dashboard(request):
         product_counts[item.product.name] = (
             product_counts.get(item.product.name, 0) + item.quantity
         )
-    top_products = sorted(
-        product_counts.items(), key=lambda item: item[1], reverse=True
-    )[:3]
+    top_products = sorted(product_counts.items(), key=pair_count, reverse=True)[:3]
 
     # Points issued and redeemed
     points_issued = 0
@@ -2760,11 +915,12 @@ def owner_dashboard(request):
 
     # greeting in Singapore time
     hour = datetime.now(SGT).hour
-    greeting = (
-        "Good morning"
-        if hour < 12
-        else "Good afternoon" if hour < 18 else "Good evening"
-    )
+    if hour < 12:
+        greeting = "Good morning"
+    elif hour < 18:
+        greeting = "Good afternoon"
+    else:
+        greeting = "Good evening"
 
     context = {
         "active_page": "dashboard",
@@ -2797,6 +953,8 @@ def owner_dashboard(request):
     return render(request, "core/owner_dashboard.html", context)
 
 
+# Customers
+
 def owner_customers(request):
     query = request.GET.get("query", "").strip()
     customers = Customer.objects.all()
@@ -2812,14 +970,15 @@ def owner_customers(request):
     selected_id = request.GET.get("customer", "")
     if not selected_id.isdigit():
         first_customer = customers.first()
-        selected_id = first_customer.pk if first_customer else None
-    selected_customer = (
-        Customer.objects.prefetch_related("pets", "addresses")
-        .filter(pk=selected_id)
-        .first()
-        if selected_id
-        else None
-    )
+        selected_id = None
+        if first_customer:
+            selected_id = first_customer.pk
+
+    selected_customer = None
+    if selected_id:
+        selected_customer = (
+            Customer.objects.prefetch_related("pets", "addresses").filter(pk=selected_id).first()
+        )
 
     # The selected customer's pets, bookings, orders and points history
     customer_bookings = []
@@ -2849,46 +1008,9 @@ def owner_customers(request):
             "customer_orders": customer_orders,
             "points_history": points_history,
             "query": query,
+            "points_form": PointsAdjustmentForm(),
         },
     )
-
-
-def owner_adjust_points(request, pk):
-    # Add or deduct points with a reason; it shows in the points history
-    back_to_customer = f"/admin-panel/customers/?customer={pk}"
-    if request.method != "POST":
-        return redirect(back_to_customer)
-
-    try:
-        customer = Customer.objects.get(pk=pk)
-    except Customer.DoesNotExist:
-        messages.error(request, "Customer not found.")
-        return redirect("core:owner_customers")
-
-    reason = request.POST.get("reason", "").strip()
-    try:
-        points = int(request.POST.get("points", ""))
-    except ValueError:
-        points = 0
-
-    if points == 0:
-        messages.error(
-            request, "Enter a number of points to add (e.g. 200) or deduct (e.g. -200)."
-        )
-    elif not reason:
-        messages.error(request, "A reason is required for every points adjustment.")
-    elif customer.point_balance + points < 0:
-        messages.error(
-            request,
-            f"Cannot deduct {-points} points. The customer only has {customer.point_balance}.",
-        )
-    else:
-        add_points(customer, points, PointsTransaction.Type.ADJUSTED, reason)
-        messages.success(
-            request, f"{points:+d} points saved. New balance: {customer.point_balance}."
-        )
-
-    return redirect(back_to_customer)
 
 
 def owner_edit_customer(request, pk):
@@ -2918,6 +1040,33 @@ def owner_edit_customer(request, pk):
     )
 
 
+def owner_adjust_points(request, pk):
+    # Add or deduct points with a reason; it shows in the points history
+    back_to_customer = f"/admin-panel/customers/?customer={pk}"
+    if request.method != "POST":
+        return redirect(back_to_customer)
+
+    try:
+        customer = Customer.objects.get(pk=pk)
+    except Customer.DoesNotExist:
+        messages.error(request, "Customer not found.")
+        return redirect("core:owner_customers")
+
+    form = PointsAdjustmentForm(request.POST, customer=customer)
+    if not form.is_valid():
+        show_form_errors(request, form)
+    else:
+        points = form.cleaned_data["points"]
+        add_points(customer, points, PointsTransaction.Type.ADJUSTED, form.cleaned_data["reason"])
+        messages.success(
+            request, f"{points:+d} points saved. New balance: {customer.point_balance}."
+        )
+
+    return redirect(back_to_customer)
+
+
+# Pet sitters (applications)
+
 def owner_sitters(request):
     sitters = PetSitter.objects.order_by("application_status", "first_name")
     return render(
@@ -2932,9 +1081,85 @@ def owner_sitters(request):
             "pending_count": sitters.filter(
                 application_status=PetSitter.Status.PENDING
             ).count(),
+            # auto_id=False: the same box is shown once per applicant, so it has no id
+            "reject_form": RejectSitterForm(auto_id=False),
         },
     )
 
+
+def owner_review_sitter(request, pk):
+    # Approve / Reject buttons send a POST; just opening the URL goes back to the list
+    if request.method != "POST":
+        return redirect("core:owner_sitters")
+
+    try:
+        sitter = PetSitter.objects.get(pk=pk)
+    except PetSitter.DoesNotExist:
+        messages.error(request, "Pet sitter not found.")
+        return redirect("core:owner_sitters")
+
+    action = request.POST.get("action")
+    owner = BusinessOwner.objects.get(
+        pk=request.session["user_id"]
+    )  # the middleware already checked this is the owner
+    if action == "approve":
+        sitter.application_status = PetSitter.Status.APPROVED
+        sitter.rejection_reason = ""
+        sitter.reviewed_by = owner
+        sitter.save(
+            update_fields=[
+                "application_status",
+                "rejection_reason",
+                "reviewed_by",
+            ]
+        )
+        # Tell the applicant by email
+        send_mail_in_background(
+            "Pawpal: your pet sitter application is approved",
+            f"Hi {sitter.first_name}, your application was approved. "
+            "Log in to Pawpal to start accepting sitting jobs.",
+            None,
+            [sitter.email],
+            fail_silently=True,
+        )
+        messages.success(
+            request, "Pet sitter application approved. The applicant has been emailed."
+        )
+    elif action == "reject":
+        form = RejectSitterForm(request.POST)
+        if not form.is_valid():
+            show_form_errors(request, form)
+        else:
+            reason = form.cleaned_data["rejection_reason"]
+            sitter.application_status = PetSitter.Status.REJECTED
+            sitter.rejection_reason = reason
+            sitter.reviewed_by = owner
+            sitter.save(
+                update_fields=[
+                    "application_status",
+                    "rejection_reason",
+                    "reviewed_by",
+                ]
+            )
+            send_mail_in_background(
+                "Pawpal: update on your pet sitter application",
+                f"Hi {sitter.first_name}, your application was not approved.\n"
+                f"Reason: {reason}\n"
+                "You can update and resubmit it from your application page.",
+                None,
+                [sitter.email],
+                fail_silently=True,
+            )
+            messages.success(
+                request,
+                "Pet sitter application rejected. The applicant has been emailed.",
+            )
+    else:
+        messages.error(request, "Invalid sitter review action.")
+    return redirect(f"/admin-panel/pet-sitters/?sitter={sitter.pk}")
+
+
+# Sitting requests
 
 def owner_sitting_requests(request):
     # Every pet sitting request and sitter job, with status tabs, search and a sitter filter
@@ -2994,6 +1219,7 @@ def owner_sitting_requests(request):
             "updates": updates,
             "payment": payment,
             "can_cancel": selected is not None and selected.status in ["open", "pending", "accepted"],
+            "cancel_form": CancelReasonForm(placeholder="e.g. Sitter is unwell"),
         },
     )
 
@@ -3013,7 +1239,9 @@ def owner_cancel_sitting(request, pk):
         messages.error(request, "Only requests that have not started can be cancelled.")
         return redirect(f"/admin-panel/sitting-requests/?request={job.pk}")
 
-    reason = request.POST.get("reason", "").strip() or "Cancelled by Pawpal."
+    reason = read_cancel_reason(request)
+    if not reason:
+        reason = "Cancelled by Pawpal."
     job.status = SittingRequest.Status.CANCELLED
     job.cancelled_by = SittingRequest.CancelledBy.PAWPAL
     job.cancellation_reason = reason
@@ -3033,76 +1261,7 @@ def owner_cancel_sitting(request, pk):
     return redirect(f"/admin-panel/sitting-requests/?request={job.pk}")
 
 
-def owner_review_sitter(request, pk):
-    # Approve / Reject buttons send a POST; just opening the URL goes back to the list
-    if request.method != "POST":
-        return redirect("core:owner_sitters")
-
-    try:
-        sitter = PetSitter.objects.get(pk=pk)
-    except PetSitter.DoesNotExist:
-        messages.error(request, "Pet sitter not found.")
-        return redirect("core:owner_sitters")
-
-    action = request.POST.get("action")
-    owner = BusinessOwner.objects.get(
-        pk=request.session["user_id"]
-    )  # the middleware already checked this is the owner
-    if action == "approve":
-        sitter.application_status = PetSitter.Status.APPROVED
-        sitter.rejection_reason = ""
-        sitter.reviewed_by = owner
-        sitter.save(
-            update_fields=[
-                "application_status",
-                "rejection_reason",
-                "reviewed_by",
-            ]
-        )
-        # Tell the applicant by email
-        send_mail_in_background(
-            "Pawpal: your pet sitter application is approved",
-            f"Hi {sitter.first_name}, your application was approved. "
-            "Log in to Pawpal to start accepting sitting jobs.",
-            None,
-            [sitter.email],
-            fail_silently=True,
-        )
-        messages.success(
-            request, "Pet sitter application approved. The applicant has been emailed."
-        )
-    elif action == "reject":
-        reason = request.POST.get("rejection_reason", "").strip()
-        if not reason:
-            messages.error(request, "A rejection reason is required.")
-        else:
-            sitter.application_status = PetSitter.Status.REJECTED
-            sitter.rejection_reason = reason
-            sitter.reviewed_by = owner
-            sitter.save(
-                update_fields=[
-                    "application_status",
-                    "rejection_reason",
-                    "reviewed_by",
-                ]
-            )
-            send_mail_in_background(
-                "Pawpal: update on your pet sitter application",
-                f"Hi {sitter.first_name}, your application was not approved.\n"
-                f"Reason: {reason}\n"
-                "You can update and resubmit it from your application page.",
-                None,
-                [sitter.email],
-                fail_silently=True,
-            )
-            messages.success(
-                request,
-                "Pet sitter application rejected. The applicant has been emailed.",
-            )
-    else:
-        messages.error(request, "Invalid sitter review action.")
-    return redirect(f"/admin-panel/pet-sitters/?sitter={sitter.pk}")
-
+# Staff
 
 def owner_staff(request):
     return render(
@@ -3115,22 +1274,6 @@ def owner_staff(request):
             ),
         },
     )
-
-
-def owner_toggle_staff(request, pk):
-    if request.method != "POST":
-        return redirect("core:owner_staff")
-    try:
-        staff = Staff.objects.get(pk=pk)
-    except Staff.DoesNotExist:
-        messages.error(request, "Staff member not found.")
-        return redirect("core:owner_staff")
-
-    staff.is_active = not staff.is_active
-    staff.save(update_fields=["is_active"])
-    action = "activated" if staff.is_active else "deactivated"
-    messages.success(request, f"{staff.first_name or staff.username} was {action}.")
-    return redirect("core:owner_staff")
 
 
 def owner_add_staff(request):
@@ -3183,3 +1326,22 @@ def owner_edit_staff(request, pk):
             "page_text": "Update the details or move this staff member to another outlet.",
         },
     )
+
+
+def owner_toggle_staff(request, pk):
+    if request.method != "POST":
+        return redirect("core:owner_staff")
+    try:
+        staff = Staff.objects.get(pk=pk)
+    except Staff.DoesNotExist:
+        messages.error(request, "Staff member not found.")
+        return redirect("core:owner_staff")
+
+    staff.is_active = not staff.is_active
+    staff.save(update_fields=["is_active"])
+    if staff.is_active:
+        action = "activated"
+    else:
+        action = "deactivated"
+    messages.success(request, f"{staff.first_name or staff.username} was {action}.")
+    return redirect("core:owner_staff")

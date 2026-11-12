@@ -1,21 +1,27 @@
-# Product recommender (logistic regression)
+# Product recommender (Decision Tree)
 #
-# The same feature builder is used when training (management command
-# train_recommender) and when showing recommendations on the customer home page,
-# so the model always sees the features in the same order.
+# Same idea as the Decision Tree in the course notebook:
+#   X = the pet's details (pet type, age, weight, life stage, health needs, allergy)
+#   y = the product the owner bought for that pet
+#
+# Training: python manage.py make_training_data  -> user/ml/pet_purchases.csv
+#           python manage.py train_recommender   -> user/ml/recommender.joblib
+# This file turns a real pet into the same columns, asks the tree for each
+# product's chance, then shows the top 3 that pass the safety rules.
 
-import math
 from pathlib import Path
 
 import joblib
-import numpy as np
+import pandas as pd
 from django.conf import settings
 from django.utils import timezone
 
 from inventory.models import CartItem, Order, OrderItem, Product
 
-MODEL_PATH = Path(settings.BASE_DIR) / "user" / "ml" / "recommender.joblib"
-REPORT_PATH = Path(settings.BASE_DIR) / "user" / "ml" / "report.txt"
+ML_FOLDER = Path(settings.BASE_DIR) / "user" / "ml"
+DATA_PATH = ML_FOLDER / "pet_purchases.csv"
+MODEL_PATH = ML_FOLDER / "recommender.joblib"
+REPORT_PATH = ML_FOLDER / "report.txt"
 
 
 # Pet health needs and the words in the pet's notes that point to them
@@ -50,32 +56,15 @@ NEED_REASONS = {
     "calming": "Helps {name} stay calm",
 }
 
-# ingredients we look for when a pet has a food allergy
+# food allergies we look for (in the allergies box and the notes)
 ALLERGY_WORDS = ["chicken", "beef", "fish", "lamb", "turkey", "pork", "dairy", "egg", "grain"]
-
-CATEGORIES = ["Food", "Treats", "Toys", "Accessories", "Grooming", "Health"]
 
 # used up and bought again; toys and accessories are bought once
 CONSUMABLE_CATEGORIES = ["Food", "Treats", "Grooming", "Health"]
 
-RESTOCK_DAYS = 21  # a consumable bought this long ago is probably running out
-RECENT_DAYS = 14  # bought this recently, probably still has plenty
-
-FEATURE_NAMES = (
-    ["need_" + need for need in NEEDS]
-    + ["care_tag_not_needed", "life_stage_match", "life_stage_mismatch"]
-    + ["category_" + category.lower() for category in CATEGORIES]
-    + [
-        "bought_before",
-        "due_for_restock",
-        "bought_recently",
-        "already_owns_item",
-        "likes_category",
-        "likes_brand",
-        "popularity",
-        "price_gap",
-    ]
-)
+# used when a pet has no birthday or weight saved
+DEFAULT_AGE = 4
+DEFAULT_WEIGHT = {"DOG": 12, "CAT": 4.5}
 
 
 # Small helpers
@@ -95,28 +84,20 @@ def pet_type_name(pet_type):
     return "cat"
 
 
-def life_stage_of(pet):
-    text = (pet.medical_notes + " " + pet.conditions).lower()
-    if "senior" in text:
-        return "SENIOR"
-    if not pet.date_of_birth:
-        return "ADULT"
-
-    age = (timezone.localdate() - pet.date_of_birth).days / 365.25
-    if age < 1:
+def life_stage_for(pet_type, age_years):
+    # puppy/kitten under 1; dogs are seniors from 7, cats from 10 (dogs age faster)
+    if age_years < 1:
         return "YOUNG"
-
-    # dogs age faster than cats
     senior_age = 7
-    if pet.pet_type == "CAT":
+    if pet_type == "CAT":
         senior_age = 10
-    if age >= senior_age:
+    if age_years >= senior_age:
         return "SENIOR"
     return "ADULT"
 
 
 def find_allergens(pet):
-    # the allergies field, plus any sentence in the notes that mentions an allergy
+    # the allergies box, plus any sentence in the notes that mentions an allergy
     lines = [pet.allergies.lower()]
     notes = (pet.medical_notes + ". " + pet.conditions).lower()
     for sentence in notes.split("."):
@@ -131,7 +112,7 @@ def find_allergens(pet):
     return allergens
 
 
-# Turn database objects into plain dicts (training uses the same dicts)
+# Turn database objects into plain dicts (the training data uses the same dicts)
 
 def pet_profile(pet):
     text = " ".join(
@@ -144,141 +125,70 @@ def pet_profile(pet):
             if word in text:
                 needs.add(need)
 
+    age_years = DEFAULT_AGE
+    if pet.date_of_birth:
+        age_years = (timezone.localdate() - pet.date_of_birth).days / 365.25
+
+    weight_kg = DEFAULT_WEIGHT[pet.pet_type]
+    if pet.weight_kg:
+        weight_kg = float(pet.weight_kg)
+
+    life_stage = life_stage_for(pet.pet_type, age_years)
+    if "senior" in text:
+        life_stage = "SENIOR"
+
     return {
         "name": pet.name,
         "pet_type": pet.pet_type,
+        "age_years": age_years,
+        "weight_kg": weight_kg,
+        "life_stage": life_stage,
         "needs": needs,
         "allergens": find_allergens(pet),
-        "life_stage": life_stage_of(pet),
     }
 
 
-def product_info(product, popularity):
+def product_info(product):
     return {
         "id": product.pk,
+        "name": product.name,
         "pet_type": product.pet_type,
         "category": product.category.name,
-        "brand": product.brand.name,
         "care_tags": split_tags(product.care_tags),
         "ingredients": product.ingredients.lower(),
         "life_stage": product.life_stage,
-        "price_cents": product.price_cents,
-        "popularity": popularity.get(product.pk, 0.0),
     }
 
 
-def product_popularity():
-    # number of times each product was ordered, scaled so the best seller is 1.0
-    counts = {}
-    items = OrderItem.objects.exclude(order__status=Order.Status.CANCELLED)
-    for item in items:
-        counts[item.product_id] = counts.get(item.product_id, 0) + item.quantity
+# Pet -> one row of numbers for the tree
+# Same as predict_classifier.ipynb: start with every column the tree was trained on,
+# fill in the ones this pet has, and leave the rest as 0.
 
-    if not counts:
-        return {}
-    highest = max(counts.values())
-    popularity = {}
-    for product_id, count in counts.items():
-        popularity[product_id] = count / highest
-    return popularity
-
-
-def purchase_history(customer):
-    days_since = {}  # product id -> days since the last time it was bought
-    category_counts = {}
-    brands = set()
-    prices = []
-
-    items = (
-        OrderItem.objects.filter(order__customer=customer)
-        .exclude(order__status=Order.Status.CANCELLED)
-        .select_related("order", "product__category", "product__brand")
-    )
-    for item in items:
-        days = (timezone.now() - item.order.created_at).days
-        if item.product_id not in days_since or days < days_since[item.product_id]:
-            days_since[item.product_id] = days
-
-        category = item.product.category.name
-        category_counts[category] = category_counts.get(category, 0) + 1
-        brands.add(item.product.brand.name)
-        prices.append(item.unit_price_cents)
-
-    return make_history(days_since, category_counts, brands, prices)
-
-
-def make_history(days_since, category_counts, brands, prices):
-    average_price = None
-    if prices:
-        average_price = sum(prices) / len(prices)
-    return {
-        "days_since": days_since,
-        "category_counts": category_counts,
-        "total_items": sum(category_counts.values()),
-        "brands": brands,
-        "average_price": average_price,
+def pet_row(pet):
+    row = {
+        "age_years": pet["age_years"],
+        "weight_kg": pet["weight_kg"],
+        "pet_type_" + pet["pet_type"]: 1,
+        "life_stage_" + pet["life_stage"]: 1,
     }
+    for need in pet["needs"]:
+        row["need_" + need] = 1
+    for allergen in pet["allergens"]:
+        row["allergy_" + allergen] = 1
+    return row
 
 
-# Features for one (pet, product) pair
-
-def build_features(pet, product, history):
-    features = []
-
-    # pet need x product care tag, e.g. pet has joint problems and product is for joints
-    matched_needs = pet["needs"] & product["care_tags"]
-    for need in NEEDS:
-        features.append(1 if need in matched_needs else 0)
-
-    # product is for a health need the pet does not have
-    features.append(1 if product["care_tags"] and not matched_needs else 0)
-
-    # pet life stage x product life stage (puppy food for a senior dog is a mismatch)
-    if product["life_stage"] == "ALL":
-        features.append(0)
-        features.append(0)
-    elif product["life_stage"] == pet["life_stage"]:
-        features.append(1)
-        features.append(0)
-    else:
-        features.append(0)
-        features.append(1)
-
-    for category in CATEGORIES:
-        features.append(1 if product["category"] == category else 0)
-
-    # repurchase timing
-    consumable = product["category"] in CONSUMABLE_CATEGORIES
-    days = history["days_since"].get(product["id"])
-    bought_before = days is not None
-    features.append(1 if bought_before else 0)
-    features.append(1 if bought_before and consumable and days >= RESTOCK_DAYS else 0)
-    features.append(1 if bought_before and days < RECENT_DAYS else 0)
-    features.append(1 if bought_before and not consumable else 0)
-
-    # what this customer usually buys
-    if history["total_items"]:
-        share = history["category_counts"].get(product["category"], 0) / history["total_items"]
-    else:
-        share = 0
-    features.append(share)
-    features.append(1 if product["brand"] in history["brands"] else 0)
-
-    features.append(product["popularity"])
-
-    # price fit: 0 when the price is close to what the customer normally pays
-    if history["average_price"]:
-        gap = abs(math.log(product["price_cents"] / history["average_price"]))
-        features.append(min(gap, 3))
-    else:
-        features.append(0)
-
-    return features
+def pet_features(pet, columns):
+    row = pet_row(pet)
+    values = {}
+    for column in columns:
+        values[column] = row.get(column, 0)
+    return pd.DataFrame([values], columns=columns)
 
 
 # Safety and business rules, checked after the model
 
-def is_allowed(pet, product, history):
+def is_allowed(pet, product, bought_ids):
     if product["pet_type"] != pet["pet_type"]:
         return False
 
@@ -288,34 +198,29 @@ def is_allowed(pet, product, history):
             return False
 
     # a toy or stroller is only bought once
-    bought_before = product["id"] in history["days_since"]
-    if bought_before and product["category"] not in CONSUMABLE_CATEGORIES:
+    if product["id"] in bought_ids and product["category"] not in CONSUMABLE_CATEGORIES:
         return False
     return True
 
 
-# One-line reason taken from the feature that pushed the score up the most
+# One-line reason: the pet detail on the tree's path that matches the product
 
-def make_reason(pet, product, history, features, model):
-    scaler = model.named_steps["scale"]
-    classifier = model.named_steps["model"]
-    scaled = (np.array(features) - scaler.mean_) / scaler.scale_
-    weights = classifier.coef_[0]
-
-    best_name = None
-    best_value = 0
-    for i, name in enumerate(FEATURE_NAMES):
-        value = weights[i] * scaled[i]
-        if features[i] > 0 and weights[i] > 0 and value > best_value:
-            best_name = name
-            best_value = value
-
+def make_reason(pet, product, path_columns):
     name = pet["name"]
-    if best_name is None:
-        return "A good match for " + name
-    if best_name.startswith("need_"):
-        return NEED_REASONS[best_name[5:]].format(name=name)
-    if best_name == "life_stage_match":
+    matched_needs = pet["needs"] & product["care_tags"]
+
+    # 1. a health need the tree looked at, and the product is made for it
+    for column in path_columns:
+        if column.startswith("need_") and column[5:] in matched_needs:
+            return NEED_REASONS[column[5:]].format(name=name)
+
+    # 2. any health need the product is made for
+    for need in NEEDS:
+        if need in matched_needs:
+            return NEED_REASONS[need].format(name=name)
+
+    # 3. made for the pet's age
+    if product["life_stage"] == pet["life_stage"]:
         if pet["life_stage"] == "SENIOR":
             return "Because " + name + " is a senior " + pet_type_name(pet["pet_type"])
         if pet["life_stage"] == "ADULT":
@@ -323,16 +228,27 @@ def make_reason(pet, product, history, features, model):
         if pet["pet_type"] == "DOG":
             return "Made for puppies like " + name
         return "Made for kittens like " + name
-    if best_name == "due_for_restock":
-        days = history["days_since"][product["id"]]
-        return f"Time to restock, you last bought this {days} days ago"
-    if best_name == "likes_category":
-        return "You often buy " + product["category"].lower() + " at Pawpal"
-    if best_name == "likes_brand":
-        return "You have bought " + product["brand"] + " before"
-    if best_name == "popularity":
-        return "Popular with other " + pet_type_name(pet["pet_type"]) + " owners"
-    return "A good match for " + name
+
+    return "Popular with " + pet_type_name(pet["pet_type"]) + " owners like you"
+
+
+def path_columns_for(model, columns, features):
+    # the pet details the tree checked on its way to the answer (only the ones the pet has)
+    used = []
+    nodes = model.decision_path(features).indices
+    for node in nodes:
+        column_number = model.tree_.feature[node]
+        if column_number >= 0:
+            column = columns[column_number]
+            if features.iloc[0][column] > 0 and column not in used:
+                used.append(column)
+    return used
+
+
+def highest_chance_first(candidate):
+    # sort order: biggest chance first; same chance -> smaller product id first
+    chance, product_id, product, info = candidate
+    return (-chance, product_id)
 
 
 # Load the saved model once and keep it in memory
@@ -353,16 +269,21 @@ def recommend_for_customer(customer, per_pet=3):
     if saved is None:
         return []  # model not trained yet: python manage.py train_recommender
     model = saved["model"]
+    columns = saved["columns"]
 
-    history = purchase_history(customer)
-    popularity = product_popularity()
+    # products the customer bought before (for the "bought once" rule)
+    bought_ids = set(
+        OrderItem.objects.filter(order__customer=customer)
+        .exclude(order__status=Order.Status.CANCELLED)
+        .values_list("product_id", flat=True)
+    )
     in_cart = set(CartItem.objects.filter(customer=customer).values_list("product_id", flat=True))
 
     # only products that are on sale and in stock
     products = (
         Product.objects.filter(is_active=True, stock_quantity__gt=0)
         .exclude(pk__in=in_cart)
-        .select_related("category", "brand")
+        .select_related("category")
     )
 
     results = []
@@ -370,34 +291,35 @@ def recommend_for_customer(customer, per_pet=3):
     # recommendations are for dogs and cats only
     for pet in customer.pets.filter(pet_type__in=["DOG", "CAT"]):
         profile = pet_profile(pet)
+        features = pet_features(profile, columns)
+
+        # the tree's chance for every product, e.g. {"Royal Canin Kitten Dry Food 2kg": 0.31, ...}
+        chances = {}
+        product_chances = model.predict_proba(features)[0]
+        for i in range(len(model.classes_)):
+            chances[model.classes_[i]] = product_chances[i]
+        path_columns = path_columns_for(model, columns, features)
 
         candidates = []
         for product in products:
-            info = product_info(product, popularity)
-            if product.pk in shown or not is_allowed(profile, info, history):
-                continue
-            features = build_features(profile, info, history)
-            candidates.append((product, info, features))
+            info = product_info(product)
+            chance = chances.get(product.name, 0)
+            if chance > 0 and product.pk not in shown and is_allowed(profile, info, bought_ids):
+                candidates.append((chance, product.pk, product, info))
+        candidates.sort(key=highest_chance_first)
 
-        if not candidates:
-            continue
-
-        rows = np.array([features for product, info, features in candidates])
-        scores = model.predict_proba(rows)[:, 1]
-
-        ranked = sorted(zip(scores, range(len(candidates))), reverse=True)
         items = []
-        for score, i in ranked[:per_pet]:
-            product, info, features = candidates[i]
+        for chance, pk, product, info in candidates[:per_pet]:
             shown.add(product.pk)
             items.append(
                 {
                     "pet": pet,
                     "product": product,
-                    "reason": make_reason(profile, info, history, features, model),
-                    "score": round(score * 100),
+                    "reason": make_reason(profile, info, path_columns),
+                    "score": round(chance * 100),
                 }
             )
-        results.append({"pet": pet, "items": items})
+        if items:
+            results.append({"pet": pet, "items": items})
 
     return results

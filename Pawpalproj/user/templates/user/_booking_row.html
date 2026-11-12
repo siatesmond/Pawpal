@@ -6,7 +6,9 @@
     <p>For {{ booking.pet.name }} · {{ booking.slot.outlet.name }}</p>
     <p>
       {% if booking.check_out_date %}Check-in {% endif %}{{ booking.slot.start_time|date:"D, j M Y · g:i A" }}
-      {% if booking.check_out_date %}<br>Check-out {{ booking.check_out_date|date:"D, j M Y" }} · {{ booking.slot.start_time|date:"g:i A" }}{% endif %}
+      {% if booking.check_out_date %}
+        <br>Check-out {{ booking.check_out_date|date:"D, j M Y" }} · {{ booking.slot.start_time|date:"g:i A" }}
+      {% endif %}
     </p>
   </div>
 

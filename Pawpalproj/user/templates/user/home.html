@@ -76,7 +76,7 @@
             {% if pet.profile_picture %}
               <img class="pet-photo" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
             {% else %}
-              <span class="pet-photo pet-photo-empty" aria-hidden="true">{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %}</span>
+              <span class="pet-photo pet-photo-empty" aria-hidden="true">{{ pet.get_emoji }}</span>
             {% endif %}
             <div>
               <strong>{{ pet.name }}</strong>
@@ -107,24 +107,24 @@
 
 {# Pop-up after logging in: the top pick for each pet #}
 {% if show_popup and recommendations %}
-  <dialog id="recommend-popup" class="recommend-popup">
-    <div class="home-card-head">
-      <h2>Picked for your pets 🐾</h2>
-      <form method="dialog"><button class="recommend-close" aria-label="Close">×</button></form>
+  {# shown once after logging in (the view clears the flag), so closing just reloads the page #}
+  <div class="recommend-overlay">
+    <div class="recommend-popup" role="dialog" aria-labelledby="recommend-popup-title">
+      <div class="home-card-head">
+        <h2 id="recommend-popup-title">Picked for your pets 🐾</h2>
+        <a class="recommend-close" href="{% url 'user:customer_home' %}" aria-label="Close">×</a>
+      </div>
+      <div class="rec-grid">
+        {% for group in recommendations %}
+          {% with item=group.items.0 %}
+            {% include "user/_recommend_card.html" with show_pet=True %}
+          {% endwith %}
+        {% endfor %}
+      </div>
+      <div class="recommend-popup-foot">
+        <a class="home-btn home-btn-outline" href="{% url 'user:customer_home' %}">Maybe later</a>
+      </div>
     </div>
-    <div class="rec-grid">
-      {% for group in recommendations %}
-        {% with item=group.items.0 %}
-          {% include "user/_recommend_card.html" with show_pet=True %}
-        {% endwith %}
-      {% endfor %}
-    </div>
-    <form method="dialog" class="recommend-popup-foot">
-      <button class="home-btn home-btn-outline">Maybe later</button>
-    </form>
-  </dialog>
-  <script>
-    document.getElementById("recommend-popup").showModal();
-  </script>
+  </div>
 {% endif %}
 {% endblock %}

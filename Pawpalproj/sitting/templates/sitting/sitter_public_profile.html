@@ -47,7 +47,7 @@
         <h2>Reviews</h2>
         {% for review in reviews %}
           <div class="review">
-            <span class="stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+            {% include "sitting/_stars.html" with rating=review.rating %}
             <span>{{ review.comment|default:"No comment" }}</span>
             <span class="muted small">{{ review.reviewer.first_name }} · {{ review.created_at|date:"j M Y" }}</span>
           </div>

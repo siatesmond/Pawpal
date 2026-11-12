@@ -21,7 +21,13 @@
     {% endif %}
     <div>
       <dt>Points discount</dt>
-      <dd>{% if points_used %}− SGD {{ discount_dollars|floatformat:2 }} <small>({{ points_used }} pts)</small>{% else %}SGD 0.00{% endif %}</dd>
+      <dd>
+        {% if points_used %}
+          − SGD {{ discount_dollars|floatformat:2 }} <small>({{ points_used }} pts)</small>
+        {% else %}
+          SGD 0.00
+        {% endif %}
+      </dd>
     </div>
     <div class="detail-total">
       <dt>Total paid</dt>

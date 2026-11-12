@@ -45,7 +45,13 @@
           <tr {% if selected.pk == job.pk %}class="owner-row-selected"{% endif %}>
             <td>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }}</td>
             <td>{{ job.owner.first_name }} {{ job.owner.last_name }}</td>
-            <td>{% if job.sitter %}{{ job.sitter.first_name }} {{ job.sitter.last_name }}{% else %}<span class="owner-small">Open to all</span>{% endif %}</td>
+            <td>
+            {% if job.sitter %}
+              {{ job.sitter.first_name }} {{ job.sitter.last_name }}
+            {% else %}
+              <span class="owner-small">Open to all</span>
+            {% endif %}
+          </td>
             <td>{{ job.pets.all|join:", " }}</td>
             <td>SGD {{ job.total_price_display }}</td>
             <td><span class="status-pill status-{{ job.status }}">{{ job.get_status_display }}</span></td>
@@ -68,17 +74,56 @@
       <table class="owner-table">
         <tr><td>Dates</td><td>{{ selected.start_date|date:"j M" }}–{{ selected.end_date|date:"j M Y" }} ({{ selected.number_of_days }} day{{ selected.number_of_days|pluralize }})</td></tr>
         <tr><td>Owner</td><td>{{ selected.owner.first_name }} {{ selected.owner.last_name }} · {{ selected.owner.mobile }}</td></tr>
-        <tr><td>Sitter</td><td>{% if selected.sitter %}{{ selected.sitter.first_name }} {{ selected.sitter.last_name }} · {{ selected.sitter.mobile }}{% else %}Not chosen yet (open to all sitters){% endif %}</td></tr>
+        <tr>
+          <td>Sitter</td>
+          <td>
+            {% if selected.sitter %}
+              {{ selected.sitter.first_name }} {{ selected.sitter.last_name }} · {{ selected.sitter.mobile }}
+            {% else %}
+              Not chosen yet (open to all sitters)
+            {% endif %}
+          </td>
+        </tr>
         <tr><td>Pets</td><td>{{ selected.pets.all|join:", " }}</td></tr>
         <tr><td>Location</td><td>{{ selected.location }}</td></tr>
         <tr><td>Care</td><td>{{ selected.care_requirements|default:"–" }}</td></tr>
         {% if selected.status == "cancelled" %}
-          <tr><td>Cancelled by</td><td>{{ selected.get_cancelled_by_display|default:"–" }}{% if selected.cancellation_reason %} · {{ selected.cancellation_reason }}{% endif %}</td></tr>
+          <tr>
+            <td>Cancelled by</td>
+            <td>
+              {{ selected.get_cancelled_by_display|default:"–" }}
+              {% if selected.cancellation_reason %}
+                · {{ selected.cancellation_reason }}
+              {% endif %}
+            </td>
+          </tr>
         {% endif %}
         <tr><td>Price</td><td>SGD {{ selected.total_price_display }}</td></tr>
         <tr><td>Pawpal 10%</td><td>SGD {{ selected.commission_display }} · sitter gets SGD {{ selected.sitter_payout_display }}</td></tr>
-        <tr><td>Payment</td><td>{% if payment %}{{ payment.get_status_display }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}{% else %}Not paid yet{% endif %}</td></tr>
-        {% if selected.owner_rating %}<tr><td>Owner rating</td><td>{{ selected.owner_rating }} / 5{% if selected.owner_feedback %} · {{ selected.owner_feedback }}{% endif %}</td></tr>{% endif %}
+        <tr>
+          <td>Payment</td>
+          <td>
+            {% if payment %}
+              {{ payment.get_status_display }}
+              {% if payment.card_number %}
+                · card {{ payment.card_number }}
+              {% endif %}
+            {% else %}
+              Not paid yet
+            {% endif %}
+          </td>
+        </tr>
+        {% if selected.owner_rating %}
+          <tr>
+            <td>Owner rating</td>
+            <td>
+              {{ selected.owner_rating }} / 5
+              {% if selected.owner_feedback %}
+                · {{ selected.owner_feedback }}
+              {% endif %}
+            </td>
+          </tr>
+        {% endif %}
       </table>
 
       <h2 class="owner-subtitle">Sitter updates</h2>
@@ -96,9 +141,9 @@
         <form method="post" action="{% url 'core:owner_cancel_sitting' selected.pk %}" class="owner-cancel-form">
           {% csrf_token %}
           <label>Reason (sent to the customer and sitter)
-            <input type="text" name="reason" placeholder="e.g. Sitter is unwell">
+            {{ cancel_form.reason }}
           </label>
-          <button type="submit" class="owner-btn-danger" onclick="return confirm('Cancel this sitting request? A paid request will be refunded.');">Cancel request</button>
+          <details class="confirm-inline"><summary class="owner-btn-danger">Cancel request</summary><span class="confirm-inline-box"><span>Cancel this sitting request? A paid request will be refunded.</span> <button type="submit" class="owner-btn-danger confirm-inline-yes">Yes, cancel request</button></span></details>
         </form>
       {% endif %}
     {% else %}

@@ -1,8 +1,6 @@
-"""
-OneMap is Singapore's free government map service (no API key needed).
-We use it to turn a postal code or street name into a map position, so
-Pawpal can work out distances between pet owners and pet sitters.
-"""
+# OneMap is Singapore's free government map service (no API key needed).
+# We use it to change a postal code or street name into a map location,
+# so Pawpal can find the distance between pet owners and pet sitters.
 
 import json
 import urllib.parse
@@ -28,7 +26,9 @@ def search_onemap(search_text):
     except Exception:
         return None  # no internet / OneMap busy: don't remember this, try again next time
 
-    place = results[0] if results else {}
+    place = {}
+    if results:
+        place = results[0]
     found_places[search_text] = place
     return place
 

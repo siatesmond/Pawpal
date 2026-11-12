@@ -22,23 +22,17 @@
 
     <div class="sitter-card status-card">
       <div class="status-heading"><h2>Application status</h2><span class="status-pill status-{{ sitter.application_status|lower }}">{{ sitter.get_application_status_display }}</span></div>
+      {# the view decides each step's state; sitter.css draws the matching icon #}
       <ol class="status-timeline">
-        <li class="complete">
-          <span class="timeline-marker">✓</span>
-          <div><strong>Account created &amp; application submitted</strong><small>{{ sitter.applied_at|date:"j M Y, g:i a" }}</small></div>
-        </li>
-        <li class="complete">
-          <span class="timeline-marker">✓</span>
-          <div><strong>Email verified</strong><small>Verification complete</small></div>
-        </li>
-        <li class="{% if sitter.application_status == 'PENDING' %}current{% else %}complete{% endif %}">
-          <span class="timeline-marker">{% if sitter.application_status == "PENDING" %}•{% else %}✓{% endif %}</span>
-          <div><strong>Under review by Pawpal</strong><small>Business owner review</small></div>
-        </li>
-        <li class="{% if sitter.application_status == 'APPROVED' %}complete{% elif sitter.application_status == 'REJECTED' %}rejected{% endif %}">
-          <span class="timeline-marker">{% if sitter.application_status == "APPROVED" %}✓{% elif sitter.application_status == "REJECTED" %}!{% else %}•{% endif %}</span>
-          <div><strong>Approved — start accepting jobs</strong></div>
-        </li>
+        {% for step in steps %}
+          <li class="{{ step.state }}">
+            <span class="timeline-marker" aria-hidden="true"></span>
+            <div>
+              <strong>{{ step.title }}</strong>
+              {% if step.note %}<small>{{ step.note }}</small>{% endif %}
+            </div>
+          </li>
+        {% endfor %}
       </ol>
     </div>
 

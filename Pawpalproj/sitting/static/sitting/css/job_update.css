@@ -1,17 +1,14 @@
-/* Post an update: photo box shows the chosen photo */
-.update-photo-slot {
-  overflow: hidden;
+/* Post an update: file picker in a dashed box */
+.update-photo-box {
+  padding: 12px;
+  border: 1px dashed #c9c3b6;
+  border-radius: 10px;
+  background: #fff;
 }
 
-.update-photo-slot img {
+.update-photo-box input[type="file"] {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-#update-photo-name {
-  margin: -4px 0 0;
-  overflow-wrap: anywhere;
+  font-size: 13px;
 }
 
 /* Photo in the update timeline */
@@ -167,12 +164,36 @@
 }
 
 /* Optional reason when cancelling */
-.cancel-reason-input {
+.cancel-job-form input[name="reason"] {
   flex: 1;
   min-width: 180px;
   padding: 8px 12px;
   border: 1px solid #ddd5c6;
   border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+}
+
+/* Earnings: From / To dates and Apply, like the business owner's dashboard */
+.earnings-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.earnings-filters label {
+  display: grid;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.earnings-filters input {
+  padding: 8px 10px;
+  border: 1px solid #ddd5c6;
+  border-radius: 10px;
+  background: #fff;
   font: inherit;
   font-size: 13px;
 }

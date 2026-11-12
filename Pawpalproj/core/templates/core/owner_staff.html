@@ -22,17 +22,21 @@
       <strong>{{ staff.first_name }} {{ staff.last_name }}</strong>
       <span>{{ staff.outlet.name|cut:"Pawpal " }}</span>
       <span>Staff</span>
-      <span class="{% if staff.is_active %}owner-staff-active{% else %}owner-staff-inactive{% endif %}">
-        {% if staff.is_active %}Active{% else %}Deactivated{% endif %}
-      </span>
+      {% if staff.is_active %}
+        <span class="owner-staff-active">Active</span>
+      {% else %}
+        <span class="owner-staff-inactive">Deactivated</span>
+      {% endif %}
       <form method="post" action="{% url 'core:owner_toggle_staff' staff.pk %}">
         {% csrf_token %}
         <a class="owner-link" href="{% url 'core:owner_edit_staff' staff.pk %}">Edit</a>
         &nbsp;
-        <button type="submit" class="owner-staff-action owner-staff-action-button"
-                {% if staff.is_active %}onclick="return confirm('Deactivate this staff member? They will not be able to log in.');"{% endif %}>
-          {% if staff.is_active %}Deactivate{% else %}Reactivate{% endif %}
-        </button>
+        {% if staff.is_active %}
+          {# ask first, because a deactivated staff member cannot log in #}
+          <details class="confirm-inline"><summary class="owner-staff-action owner-staff-action-button">Deactivate</summary><span class="confirm-inline-box"><span>Deactivate this staff member? They will not be able to log in.</span> <button type="submit" class="owner-staff-action owner-staff-action-button confirm-inline-yes">Yes, deactivate</button></span></details>
+        {% else %}
+          <button type="submit" class="owner-staff-action owner-staff-action-button">Reactivate</button>
+        {% endif %}
       </form>
     </div>
     {% empty %}

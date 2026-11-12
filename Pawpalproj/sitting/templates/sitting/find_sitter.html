@@ -52,7 +52,7 @@
         <p class="field-label">Which pets?</p>
         <div class="chips">
           {% for pet in pets %}
-            <label class="chip"><input type="checkbox" name="pets" value="{{ pet.pk }}" {% if pet.pk|stringformat:"d" in values.pet_ids %}checked{% endif %}><span>{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %} {{ pet.name }}</span></label>
+            <label class="chip"><input type="checkbox" name="pets" value="{{ pet.pk }}" {% if pet.pk|stringformat:"d" in values.pet_ids %}checked{% endif %}><span>{{ pet.get_emoji }} {{ pet.name }}</span></label>
           {% empty %}
             <a href="/user/pets/" class="link small">Add a pet first →</a>
           {% endfor %}
@@ -83,7 +83,11 @@
           <div class="find-sitter-info">
             <h3>{{ sitter.first_name }} {{ sitter.last_name|slice:":1" }}. {% if forloop.first %}<span class="pill pill-honey pill-sm">Best match</span>{% endif %}</h3>
             <p class="small">
-              {% if sitter.rating %}★ {{ sitter.rating }} ({{ sitter.review_count }} review{{ sitter.review_count|pluralize }}){% else %}New sitter{% endif %}
+              {% if sitter.rating %}
+                ★ {{ sitter.rating }} ({{ sitter.review_count }} review{{ sitter.review_count|pluralize }})
+              {% else %}
+                New sitter
+              {% endif %}
               {% if sitter.distance is not None %} · {{ sitter.distance }} km away{% endif %}
             </p>
             <p class="muted small">{{ sitter.experience_years }} yrs · {{ sitter.pet_experience|lower }}{% if sitter.breed_jobs %} · {{ sitter.breed_jobs }} job{{ sitter.breed_jobs|pluralize }} with your breed{% endif %}</p>
@@ -133,10 +137,23 @@
       <div class="s-card-head"><h2>My sitting requests</h2><a href="{% url 'sitting:my_sitting_requests' %}" class="link small">View all →</a></div>
       {% for job in my_requests %}
         <div class="find-request-row">
-          <span>{{ job.start_date|date:"d" }}–{{ job.end_date|date:"d M" }} · {% if job.sitter %}{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.{% else %}Open to all sitters{% endif %}</span>
-          <span class="pill pill-sm {% if job.status == 'completed' %}pill-success{% elif job.status == 'pending' %}pill-honey{% else %}pill-outline{% endif %}">{{ job.get_status_display }}</span>
+          <span>
+            {{ job.start_date|date:"d" }}–{{ job.end_date|date:"d M" }} ·
+            {% if job.sitter %}
+              {{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.
+            {% else %}
+              Open to all sitters
+            {% endif %}
+          </span>
+          <span class="pill pill-sm {{ job.status_colour }}">{{ job.get_status_display }}</span>
           <a href="{% url 'sitting:request_detail' job.pk %}{% if job.status == 'completed' %}#review{% endif %}" class="link small">
-            {% if job.status == "completed" %}Review sitter{% elif job.status == "pending" %}Confirm &amp; pay{% else %}Track updates{% endif %}
+            {% if job.status == "completed" %}
+              Review sitter
+            {% elif job.status == "pending" %}
+              Confirm &amp; pay
+            {% else %}
+              Track updates
+            {% endif %}
           </a>
         </div>
       {% empty %}

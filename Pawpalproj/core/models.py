@@ -1,7 +1,10 @@
 from django.db import models
 
 
-# Create your models here.
+# Models in this file:
+# Outlet  (a Pawpal shop: where services happen and orders are picked up)
+
+
 class Outlet(models.Model):
     name = models.CharField(max_length=255)
     address = models.CharField(max_length=255)

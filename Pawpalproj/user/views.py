@@ -2,6 +2,7 @@ import secrets
 from datetime import timedelta
 
 from django.contrib import messages
+from django.contrib.auth import logout
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
 from django.db.models import F, Q, Sum
@@ -14,6 +15,7 @@ from payment.services import can_cancel, cancel_deadline, get_points_balance, pa
 from service.models import Booking, BookingUpdate, TimeSlot
 
 from .forms import (
+    CancelReasonForm,
     ForgotPasswordEmailForm,
     AddressForm,
     LoginForm,
@@ -23,6 +25,7 @@ from .forms import (
     ProfileForm,
     RegisterForm,
     ResetPasswordForm,
+    read_cancel_reason,
 )
 from .models import OTP, Address, Customer, Pet, User
 from payment.models import PointsTransaction
@@ -33,7 +36,7 @@ from .utils import get_current_customer
 # USER TYPE AND OTP HELPERS
 
 def get_user_type(user):
-    """Which child table this user has a row in (multi-table inheritance)."""
+    # Which type this user is: customer, staff, owner or sitter (each type has its own table)
     if hasattr(user, "customer"):
         return "customer"
     if hasattr(user, "staff"):
@@ -319,8 +322,8 @@ class ForgotPasswordView(View):
             # Check the new password and confirmation entered by the user.
             form = ResetPasswordForm(request.POST)
             if form.is_valid():
-                # Hash the new password before saving it in the database.
-                user.password = make_password(form.cleaned_data["password"])
+                # set_password() hashes the new password before it is saved.
+                user.set_password(form.cleaned_data["password"])
                 user.save(update_fields=["password"])
 
                 # Delete any remaining reset code after the password changes.
@@ -351,12 +354,12 @@ class ForgotPasswordView(View):
 
 class LogoutView(View):
     def get(self, request, *args, **kwargs):
-        # clears all session data
-        request.session.flush()
+        # Django's logout() (Lecture 13) clears all the session data
+        logout(request)
         return redirect("/user/login/")
 
 class CustomerHomeView(View):
-    """customer home. The middleware has already checked the login."""
+    # Customer home page. The middleware already checked that the user is logged in.
 
     template_name = "user/home.html"
 
@@ -369,7 +372,7 @@ class CustomerHomeView(View):
             .order_by("slot__start_time")
         )
 
-        # products picked by the logistic regression model (user/recommender.py)
+        # products picked by the Decision Tree model (user/recommender.py)
         recommendations = recommend_for_customer(customer)
 
         context = {
@@ -413,13 +416,10 @@ class CustomerProfileView(View):
 
         if request.POST.get("action") == "change_password":
             password_form = PasswordChangeForm(request.POST)
-            if password_form.is_valid() and check_password(
-                password_form.cleaned_data["current_password"],
-                customer.password,
+            if password_form.is_valid() and customer.check_password(
+                password_form.cleaned_data["current_password"]
             ):
-                customer.password = make_password(
-                    password_form.cleaned_data["new_password"]
-                )
+                customer.set_password(password_form.cleaned_data["new_password"])
                 customer.save(update_fields=["password"])
                 messages.success(request, "Your password has been updated.")
                 return redirect("user:profile")
@@ -516,7 +516,7 @@ class BookingListView(View):
             },
         )
 
-# Checks if booking's appointment time has not started and if it is within the 24-hour cancellation window
+# A booking can be cancelled only inside the cancel window and before the appointment starts
 def _booking_can_cancel(booking):
     return can_cancel(booking) and booking.slot.start_time > timezone.now()
 
@@ -526,9 +526,10 @@ def _cancel_context(request, record, allowed):
     not_started = record.status in (record.Status.PENDING, record.Status.CONFIRMED)
     return {
         "can_cancel": allowed,
-        "confirm_cancel": allowed and request.GET.get("cancel") == "1", #shows cancel confirmation message
+        "confirm_cancel": allowed and request.GET.get("cancel") == "1", # shows the cancel confirmation message
         "cancel_deadline": cancel_deadline(record),
-        "cancel_closed": not_started and not allowed,  
+        "cancel_closed": not_started and not allowed,
+        "cancel_form": CancelReasonForm(),
     }
 
 
@@ -544,7 +545,7 @@ class BookingDetailView(View):
             pk=booking_id,
             customer=customer,
         )
-        # Booking updates, with staff and photos prefetched (newest first)
+        # Booking updates, with the staff and photos loaded together (newest first)
         updates = (
             booking.updates.select_related("staff")
             .prefetch_related("photos")
@@ -558,7 +559,7 @@ class BookingDetailView(View):
                 "customer": customer,
                 "booking": booking,
                 "updates": updates,
-                **payment_summary(booking, booking.price_cents), #helper function in services.py to calculate
+                **payment_summary(booking, booking.price_cents), # payment_summary() in payment/services.py works out the amounts paid
                 **_cancel_context(request, booking, _booking_can_cancel(booking)),
                 "active_account_page": "bookings",
             },
@@ -584,7 +585,7 @@ class BookingCancelView(View):
                 return redirect("user:booking_detail", booking.pk)
 
             # the customer's reason is optional; it is shown to staff and the owner
-            reason = request.POST.get("reason", "").strip()
+            reason = read_cancel_reason(request)
             booking.status = Booking.Status.CANCELLED
             booking.cancelled_at = timezone.now()
             booking.cancellation_reason = reason
@@ -644,7 +645,7 @@ class PointsHistoryView(View):
         )
 
 
-# CustomerOrders
+# Customer orders
 class OrderListView(View):
 
     template_name = "user/orders.html"
@@ -698,7 +699,7 @@ class OrderDetailView(View):
                 "order": order,
                 "items": items,
                 "delivery_fee_dollars": order.delivery_fee_cents / 100,
-                **payment_summary(order, order.subtotal_cents), #helper function in services.py to calculate
+                **payment_summary(order, order.subtotal_cents), # payment_summary() in payment/services.py works out the amounts paid
                 **_cancel_context(request, order, can_cancel(order)),
                 "active_account_page": "orders",
             },
@@ -726,7 +727,7 @@ class OrderCancelView(View):
             # the customer's reason is optional; it is shown to staff and the owner
             order.status = Order.Status.CANCELLED
             order.cancelled_at = timezone.now()
-            order.cancellation_reason = request.POST.get("reason", "").strip()
+            order.cancellation_reason = read_cancel_reason(request)
             order.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
 
             # Put the items back into stock
@@ -938,7 +939,7 @@ def delete_address(request, address_id):
 # REDIRECT USERS TO THE CORRECT HOME PAGE
 
 def home_for(user_type):
-    """Where each type of user lands after logging in."""
+    # The page each type of user goes to after logging in
     return {
         "customer": "/user/home/",
         "staff": "/inventory/staff/bookings/",
@@ -952,7 +953,9 @@ def home_for(user_type):
 def cart(request):
     customer = get_object_or_404(Customer, pk=request.session.get("user_id"))
     cart_items = CartItem.objects.select_related("product").filter(customer=customer)
-    subtotal_cents = sum(item.line_total_cents for item in cart_items)
+    subtotal_cents = 0
+    for item in cart_items:
+        subtotal_cents += item.line_total_cents
 
     return render(
         request,
@@ -966,19 +969,8 @@ def cart(request):
     )
 
 
-# Add a product to the customer's cart
+# Add a product to the customer's cart (the middleware already checked it is a customer)
 def add_to_cart(request, product_id):
-    # Check if the user is authenticated as customer
-    if (
-        "user_id" not in request.session
-        or request.session.get("user_type") != "customer"
-    ):
-        messages.error(
-            request, "You must be logged in as a customer to add items to the cart!"
-        )
-        return redirect("user:login")
-
-    # Get customer id from session
     customer = get_object_or_404(Customer, pk=request.session.get("user_id"))
 
     # Get product if active
@@ -1006,24 +998,15 @@ def add_to_cart(request, product_id):
 
 # Increase the quantity of a cart item by one
 def increment_cart_item(request, item_id):
-    if (
-        "user_id" not in request.session
-        or request.session.get("user_type") != "customer"
-    ):
-        messages.error(
-            request, "You must be logged in as a customer to update your cart."
-        )
-        return redirect("user:login")
-
     item = get_object_or_404(
         CartItem.objects.select_related("product"),
         pk=item_id,
         customer_id=request.session[
             "user_id"
-        ],  # ensures only customer can edit own cart
+        ],  # a customer can only change their own cart
     )
 
-    # Check stock availability before saving the incremented quantity
+    # only add one more if there is enough stock
     if item.quantity >= item.product.stock_quantity:
         messages.error(
             request,
@@ -1038,25 +1021,16 @@ def increment_cart_item(request, item_id):
 
 # Decrease the quantity of a cart item by one
 def decrement_cart_item(request, item_id):
-    if (
-        "user_id" not in request.session
-        or request.session.get("user_type") != "customer"
-    ):
-        messages.error(
-            request, "You must be logged in as a customer to update your cart."
-        )
-        return redirect("user:login")
-
     # Get the cart item user clicked on
     item = get_object_or_404(
         CartItem.objects.select_related("product"),
         pk=item_id,
         customer_id=request.session[
             "user_id"
-        ],  # ensures only customer can edit own cart
+        ],  # a customer can only change their own cart
     )
 
-    # Check stock availability before saving the decremented quantity
+    # take one away; at 1, remove the item from the cart
     if item.quantity > 1:
         item.quantity -= 1
         item.save(update_fields=["quantity"])

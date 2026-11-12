@@ -6,13 +6,20 @@
     {% with items=order.items.all %}
       <p>
         {{ items|length }} item{{ items|length|pluralize }} ·
-        {% for item in items|slice:":2" %}{{ item.product.name }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        {# the first 2 products, e.g. "Salmon kibble, Feather toy" #}
+        {% for item in items|slice:":2" %}
+          {{ item.product.name }}{% if not forloop.last %},{% endif %}
+        {% endfor %}
         {% if items|length > 2 %} +{{ items|length|add:"-2" }} more{% endif %}
       </p>
     {% endwith %}
     <p>
       Placed {{ order.created_at|date:"D, j M Y" }} ·
-      {% if order.pickup_outlet %}Pick-up at {{ order.pickup_outlet.name }}{% else %}Delivery{% endif %}
+      {% if order.pickup_outlet %}
+        Pick-up at {{ order.pickup_outlet.name }}
+      {% else %}
+        Delivery
+      {% endif %}
     </p>
   </div>
 

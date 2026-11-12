@@ -1,6 +1,5 @@
 from django import forms
 from django.conf import settings
-from django.contrib.auth.hashers import check_password, make_password
 from django.contrib.auth.password_validation import validate_password
 
 from .models import Address, Customer, Pet, User, check_email_domain
@@ -14,16 +13,31 @@ PASSWORD_HELP = (
 
 def check_password_strength(password):
     # lists everything the password is missing, e.g. "Password needs an uppercase letter and a number."
+    # look at each character once and note what kinds it has
+    has_upper = False
+    has_lower = False
+    has_number = False
+    has_special = False
+    for char in password:
+        if char.isupper():
+            has_upper = True
+        elif char.islower():
+            has_lower = True
+        elif char.isdigit():
+            has_number = True
+        else:
+            has_special = True
+
     missing = []
     if len(password) < 8:
         missing.append("at least 8 characters")
-    if not any(char.isupper() for char in password):
+    if not has_upper:
         missing.append("an uppercase letter")
-    if not any(char.islower() for char in password):
+    if not has_lower:
         missing.append("a lowercase letter")
-    if not any(char.isdigit() for char in password):
+    if not has_number:
         missing.append("a number")
-    if all(char.isalnum() for char in password):
+    if not has_special:
         missing.append("a special character (e.g. ! @ # $)")
     if missing:
         if len(missing) == 1:
@@ -39,17 +53,15 @@ class LoginForm(forms.Form):
     password = forms.CharField(widget=forms.PasswordInput)
     remember = forms.BooleanField(label="Remember me", required=False)
 
-    # A function in Django to get the cleaned data after key in the field
+    # Django runs clean() after checking each box; here we check the email and password together
     def clean(self):
         cleaned_data = super().clean()
         email = cleaned_data.get("email")
         password = cleaned_data.get("password")
-        # Check email and password
+        # Find the account by email, then compare the password with the saved hash
         if email and password:
-            # Check in sqlite and filter the email check for two condition
             user = User.objects.filter(email__iexact=email, is_active=True).first()
-            # if dh the user and password is wrong
-            if user is None or not check_password(password, user.password):
+            if user is None or not user.check_password(password):
                 raise forms.ValidationError("Incorrect email or password.")
             cleaned_data["user"] = user
 
@@ -102,7 +114,7 @@ class RegisterForm(forms.ModelForm):
 
     def clean(self):
         cleaned_data = super().clean()
-        # if the password is match with confirm password
+        # check that the password and confirm password are the same
         # only compare when the password itself passed its checks
         if cleaned_data.get("password") and cleaned_data.get("password") != cleaned_data.get("confirm_password"):
             self.add_error("confirm_password", "Passwords do not match.")
@@ -111,8 +123,8 @@ class RegisterForm(forms.ModelForm):
     def save(self, commit=True):
         # save to database
         customer = super().save(commit=False)
-        # store hashed with make_password() function
-        customer.password = make_password(self.cleaned_data["password"])
+        # set_password() stores the password as a hash, never as plain text
+        customer.set_password(self.cleaned_data["password"])
         if commit:
             customer.save()
         return customer
@@ -121,7 +133,7 @@ class RegisterForm(forms.ModelForm):
 class ProfileForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Email changes require a separate verification flow, so keep it fixed here.
+        # The email cannot be changed here (a new email would need to be verified first)
         self.fields["email"].disabled = True
         self.fields["email"].help_text = (
             "To change your email, please contact admin at "
@@ -190,13 +202,37 @@ class PetForm(forms.ModelForm):
             "profile_picture": forms.FileInput(
                 attrs={"accept": "image/jpeg,image/png,image/webp"}
             ),
+            "pet_type": forms.RadioSelect,
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # only dogs and cats can be added, shown as two big choices
+        self.fields["pet_type"].choices = [("DOG", "Dog"), ("CAT", "Cat")]
 
     def clean_profile_picture(self):
         image = self.cleaned_data.get("profile_picture")
         if image and image.size >= 100 * 1024 * 1024:
             raise forms.ValidationError("The pet image must be 100 MB or smaller.")
         return image
+
+
+class CancelReasonForm(forms.Form):
+    # Optional reason saved with a cancellation, so staff and the owner can see why.
+    # Used for bookings, orders and sitting requests.
+    reason = forms.CharField(label="Reason (optional)", max_length=200, required=False)
+
+    def __init__(self, *args, placeholder="e.g. My plans changed", **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["reason"].widget.attrs["placeholder"] = placeholder
+
+
+def read_cancel_reason(request):
+    # the reason typed in the cancel form, or "" when it was left empty
+    form = CancelReasonForm(request.POST)
+    if form.is_valid():
+        return form.cleaned_data["reason"]
+    return ""
 
 
 class PasswordChangeForm(forms.Form):

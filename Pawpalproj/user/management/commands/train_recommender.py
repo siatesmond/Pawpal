@@ -1,21 +1,18 @@
-# Trains the product recommender.
+# Trains the product recommender (Decision Tree), the same steps as the course notebook.
+#   python manage.py make_training_data   (first, makes user/ml/pet_purchases.csv)
 #   python manage.py train_recommender
 #
-# Pawpal only has a few real orders, so we make synthetic customers and pets,
-# give each one a purchase history, and simulate what they buy next.
-# The model then learns which (pet, product) pairs lead to a purchase.
+#   X = the pet's details (pet type, age, weight, life stage, health needs, allergy)
+#   y = the product the owner bought (product_bought)
 
-import math
 from datetime import datetime
 
 import joblib
 import numpy as np
+import pandas as pd
 from django.core.management.base import BaseCommand, CommandError
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import roc_auc_score
-from sklearn.model_selection import GridSearchCV, GroupKFold, GroupShuffleSplit
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn import metrics, tree
+from sklearn.model_selection import GridSearchCV, train_test_split
 
 from inventory.models import Product
 from user import recommender
@@ -23,229 +20,138 @@ from user import recommender
 SEED = 42  # same random numbers every run, so results can be repeated
 
 
-# Synthetic data
+def read_data():
+    df = pd.read_csv(recommender.DATA_PATH, keep_default_na=False)
 
-def make_fake_pet(rng):
-    pet_type = rng.choice(["DOG", "CAT"])
-    life_stage = rng.choice(["YOUNG", "ADULT", "SENIOR"], p=[0.2, 0.55, 0.25])
+    # turn the text columns into 0/1 columns (one-hot encoding), e.g. pet_type -> pet_type_DOG, pet_type_CAT
+    X = pd.get_dummies(df[["age_years", "weight_kg", "pet_type", "life_stage"]], columns=["pet_type", "life_stage"])
 
-    needs = set()
-    for need in recommender.NEEDS:
-        chance = 0.12
-        if life_stage == "SENIOR" and need in ["joint", "heart", "dental"]:
-            chance = 0.4  # older pets have more joint, heart and teeth problems
-        if need == "hairball" and pet_type != "CAT":
-            chance = 0
-        if rng.random() < chance:
-            needs.add(need)
+    # "joint;skin" -> need_joint = 1, need_skin = 1
+    needs = df["health_needs"].str.get_dummies(sep=";").add_prefix("need_")
+    # "chicken" -> allergy_chicken = 1 (no allergy -> all 0)
+    allergies = df["allergy"].str.get_dummies().add_prefix("allergy_")
+    X = pd.concat([X, needs, allergies], axis=1).astype(float)
 
+    y = df["product_bought"]
+    return df, X, y
+
+
+def csv_pet(row):
+    # one CSV row -> the pet dict that is_allowed() needs
     allergens = set()
-    if rng.random() < 0.2:
-        allergens.add(rng.choice(["chicken", "beef", "fish", "lamb"]))
-
-    return {
-        "name": "Pet",
-        "pet_type": pet_type,
-        "needs": needs,
-        "allergens": allergens,
-        "life_stage": life_stage,
-    }
+    if row["allergy"]:
+        allergens.add(row["allergy"])
+    return {"pet_type": row["pet_type"], "allergens": allergens}
 
 
-def chance_to_buy(pet, product, history, appeal):
-    # The hidden "real world" rule the model has to discover.
-    # The model never sees this function, only the purchases it produces.
-    score = -3.2 + appeal[product["id"]]
-    matched = pet["needs"] & product["care_tags"]
-    score += 2.0 * len(matched)
-    if product["care_tags"] and not matched:
-        score -= 0.6
-    if product["life_stage"] == pet["life_stage"]:
-        score += 1.0
-    elif product["life_stage"] != "ALL":
-        score -= 2.0
-    if product["category"] == "Food":
-        score += 0.6
-    if product["category"] == "Accessories":
-        score -= 0.6
-
-    days = history["days_since"].get(product["id"])
-    consumable = product["category"] in recommender.CONSUMABLE_CATEGORIES
-    if days is not None:
-        if not consumable:
-            score -= 3.0
-        elif days >= recommender.RESTOCK_DAYS:
-            score += 1.8
-        elif days < recommender.RECENT_DAYS:
-            score -= 1.0
-
-    if history["total_items"]:
-        score += 1.5 * history["category_counts"].get(product["category"], 0) / history["total_items"]
-    if product["brand"] in history["brands"]:
-        score += 0.5
-    if history["average_price"]:
-        score -= 0.4 * abs(math.log(product["price_cents"] / history["average_price"]))
-
-    for allergen in pet["allergens"]:
-        if allergen in product["ingredients"]:
-            return 0.0  # owners never buy food their pet is allergic to
-    return 1 / (1 + math.exp(-score))
-
-
-def make_dataset(products, customers, rng):
-    # some products are simply liked more (taste, packaging, word of mouth)
-    appeal = {}
+def top_3_accuracy(model, df, X, y, products):
+    # is the product the owner really bought in the 3 we would show?
+    by_name = {}
     for product in products:
-        appeal[product["id"]] = rng.normal(0, 0.7)
+        by_name[product["name"]] = product
 
-    # 1. past purchases for every fake customer
-    people = []
-    order_counts = {}
-    for customer_id in range(customers):
-        pet = make_fake_pet(rng)
-        empty = recommender.make_history({}, {}, set(), [])
-        days_since = {}
-        category_counts = {}
-        brands = set()
-        prices = []
-
-        matching = [p for p in products if p["pet_type"] == pet["pet_type"]]
-        for i in range(rng.integers(0, 7)):
-            weights = np.array([chance_to_buy(pet, p, empty, appeal) for p in matching])
-            if weights.sum() == 0:
+    chances = model.predict_proba(X)
+    hits = 0
+    for i in range(len(X)):
+        row = df.iloc[i]
+        pet = csv_pet(row)
+        top = []
+        for j in np.argsort(-chances[i]):
+            name = model.classes_[j]
+            if name in by_name and recommender.is_allowed(pet, by_name[name], set()):
+                top.append(name)
+            if len(top) == 3:
                 break
-            product = matching[rng.choice(len(matching), p=weights / weights.sum())]
-            days = int(rng.integers(1, 120))
-            if product["id"] not in days_since or days < days_since[product["id"]]:
-                days_since[product["id"]] = days
-            category_counts[product["category"]] = category_counts.get(product["category"], 0) + 1
-            brands.add(product["brand"])
-            prices.append(product["price_cents"])
-            order_counts[product["id"]] = order_counts.get(product["id"], 0) + 1
+        if y.iloc[i] in top:
+            hits += 1
+    return hits / len(X)
 
-        history = recommender.make_history(days_since, category_counts, brands, prices)
-        people.append((customer_id, pet, history))
 
-    # 2. popularity from those purchases, best seller = 1.0
-    highest = max(order_counts.values())
+def best_sellers_top_3(df_train, df_test, products):
+    # baseline without ML: always show the 3 best sellers for that pet type
+    by_name = {}
     for product in products:
-        product["popularity"] = order_counts.get(product["id"], 0) / highest
+        by_name[product["name"]] = product
 
-    # 3. one row per (customer, product): did they buy it in the next month?
-    rows = []
-    labels = []
-    groups = []
-    allowed = []
-    popularity = []
-    for customer_id, pet, history in people:
-        for product in products:
-            if product["pet_type"] != pet["pet_type"]:
-                continue
-            bought = rng.random() < chance_to_buy(pet, product, history, appeal)
-            rows.append(recommender.build_features(pet, product, history))
-            labels.append(1 if bought else 0)
-            groups.append(customer_id)
-            allowed.append(recommender.is_allowed(pet, product, history))
-            popularity.append(product["popularity"])
-
-    return (
-        np.array(rows),
-        np.array(labels),
-        np.array(groups),
-        np.array(allowed),
-        np.array(popularity),
-    )
-
-
-# Precision@3: of the 3 products we would show, how many did the customer buy?
-
-def precision_at_3(scores, labels, groups, allowed):
-    results = []
-    for customer_id in np.unique(groups):
-        rows = np.where((groups == customer_id) & allowed)[0]
-        if labels[rows].sum() == 0:
-            continue  # bought nothing, cannot score this customer
-        top = rows[np.argsort(-scores[rows])[:3]]
-        results.append(labels[top].sum() / 3)
-    return float(np.mean(results))
+    hits = 0
+    for i in range(len(df_test)):
+        row = df_test.iloc[i]
+        pet = csv_pet(row)
+        sellers = df_train[df_train["pet_type"] == row["pet_type"]]["product_bought"].value_counts().index
+        top = []
+        for name in sellers:
+            if name in by_name and recommender.is_allowed(pet, by_name[name], set()):
+                top.append(name)
+            if len(top) == 3:
+                break
+        if row["product_bought"] in top:
+            hits += 1
+    return hits / len(df_test)
 
 
 class Command(BaseCommand):
-    help = "Train the logistic regression product recommender"
-
-    def add_arguments(self, parser):
-        parser.add_argument("--customers", type=int, default=3000)
+    help = "Train the Decision Tree product recommender from user/ml/pet_purchases.csv"
 
     def handle(self, *args, **options):
-        rng = np.random.default_rng(SEED)
+        if not recommender.DATA_PATH.exists():
+            raise CommandError("No training data yet. Run: python manage.py make_training_data")
 
         products = []
-        # dogs and cats only
-        dog_and_cat = Product.objects.filter(pet_type__in=["DOG", "CAT"])
-        for product in dog_and_cat.select_related("category", "brand"):
-            products.append(recommender.product_info(product, {}))
-        if not products:
-            raise CommandError("No products found. Load the seed data first (/core/loadData/).")
+        for product in Product.objects.filter(pet_type__in=["DOG", "CAT"]).select_related("category"):
+            products.append(recommender.product_info(product))
 
-        X, y, groups, allowed, popularity = make_dataset(products, options["customers"], rng)
+        df, X, y = read_data()
 
-        # Train / test split by customer, so the test customers are never seen in training
-        splitter = GroupShuffleSplit(n_splits=1, test_size=0.25, random_state=SEED)
-        train, test = next(splitter.split(X, y, groups))
-
-        # Scale the features, then tune C (regularisation) with 5-fold cross-validation
-        pipeline = Pipeline(
-            [
-                ("scale", StandardScaler()),
-                ("model", LogisticRegression(max_iter=1000)),
-            ]
+        # 70% to train, 30% to test, the same as the course notebook
+        X_train, X_test, y_train, y_test, df_train, df_test = train_test_split(
+            X, y, df, train_size=0.7, test_size=0.3, shuffle=True, stratify=y, random_state=SEED
         )
+
+        # pick the best tree size with 5-fold cross-validation
         search = GridSearchCV(
-            pipeline,
-            {"model__C": [0.001, 0.01, 0.1, 1, 10]},
-            scoring="roc_auc",
-            cv=GroupKFold(n_splits=5),
+            tree.DecisionTreeClassifier(criterion="gini", splitter="best", random_state=SEED),
+            {"max_depth": [4, 6, 8, 10, 12], "min_samples_leaf": [5, 20, 50]},
+            scoring="accuracy",
+            cv=5,
         )
-        search.fit(X[train], y[train], groups=groups[train])
-        model = search.best_estimator_
+        search.fit(X_train, y_train)
+        clf = search.best_estimator_
 
-        # Evaluate on the held-out test customers
-        model_scores = model.predict_proba(X[test])[:, 1]
-        model_auc = roc_auc_score(y[test], model_scores)
-        baseline_auc = roc_auc_score(y[test], popularity[test])
-        model_p3 = precision_at_3(model_scores, y[test], groups[test], allowed[test])
-        baseline_p3 = precision_at_3(popularity[test], y[test], groups[test], allowed[test])
+        # Check the model on the test pets it has never seen
+        train_accuracy = metrics.accuracy_score(y_train, clf.predict(X_train))
+        test_accuracy = metrics.accuracy_score(y_test, clf.predict(X_test))
+        model_top_3 = top_3_accuracy(clf, df_test, X_test, y_test, products)
+        baseline_top_3 = best_sellers_top_3(df_train, df_test, products)
 
         # Report
         lines = []
-        lines.append("Pawpal product recommender (logistic regression)")
+        lines.append("Pawpal product recommender (Decision Tree)")
         lines.append("Trained " + datetime.now().strftime("%d %b %Y %H:%M"))
         lines.append("")
-        lines.append(f"Products in catalogue: {len(products)}")
-        lines.append(f"Synthetic customers:   {options['customers']}")
-        lines.append(f"(pet, product) rows:   {len(y)}  (train {len(train)}, test {len(test)})")
-        lines.append(f"Rows that were bought: {y.mean() * 100:.1f}%")
+        lines.append(f"Training data: {recommender.DATA_PATH.name}, {len(df)} rows")
+        lines.append(f"Train / test:  {len(X_train)} / {len(X_test)}")
+        lines.append(f"Columns (X):   {len(X.columns)}")
+        lines.append(f"Products (y):  {len(clf.classes_)}")
         lines.append("")
-        lines.append(f"Best C from 5-fold CV: {search.best_params_['model__C']}")
-        lines.append(f"Cross-validation ROC-AUC: {search.best_score_:.3f}")
+        lines.append(f"Best tree from 5-fold CV: max_depth={clf.max_depth}, min_samples_leaf={clf.min_samples_leaf}")
+        lines.append(f"Tree size: {clf.tree_.node_count} nodes, {clf.get_n_leaves()} leaves")
         lines.append("")
-        lines.append("Test set results          Model   Popularity baseline")
-        lines.append(f"ROC-AUC                   {model_auc:.3f}   {baseline_auc:.3f}")
-        lines.append(f"Precision@3               {model_p3:.3f}   {baseline_p3:.3f}")
+        lines.append(f"Training accuracy: {train_accuracy:.3f}")
+        lines.append(f"Testing accuracy:  {test_accuracy:.3f}  (the 1 product the tree picks first)")
         lines.append("")
-        lines.append("Coefficients (after scaling, so they can be compared)")
-        lines.append("Positive = more likely to buy, negative = less likely")
-        weights = model.named_steps["model"].coef_[0]
-        order = np.argsort(-weights)
+        lines.append("Top-3 accuracy on the test pets (the bought product is one of the 3 we show)")
+        lines.append(f"  Decision Tree:           {model_top_3:.3f}")
+        lines.append(f"  Best sellers (no ML):    {baseline_top_3:.3f}")
+        lines.append("")
+        lines.append("Feature importances (how much each pet detail helps the tree)")
+        order = np.argsort(-clf.feature_importances_)
         for i in order:
-            lines.append(f"  {recommender.FEATURE_NAMES[i]:<22} {weights[i]:+.3f}")
+            if clf.feature_importances_[i] > 0:
+                lines.append(f"  {X.columns[i]:<22} {clf.feature_importances_[i]:.3f}")
         report = "\n".join(lines)
 
-        recommender.MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump(
-            {"model": model, "feature_names": recommender.FEATURE_NAMES},
-            recommender.MODEL_PATH,
-        )
+        # save the model and the column order, so a real pet can be turned into the same columns
+        joblib.dump({"model": clf, "columns": list(X.columns)}, recommender.MODEL_PATH)
         recommender.REPORT_PATH.write_text(report + "\n")
 
         self.stdout.write(report)

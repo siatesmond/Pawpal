@@ -7,7 +7,7 @@
         {% if pet.profile_picture %}
           <img class="pet-detail-photo" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
         {% else %}
-          <div class="pet-detail-photo">{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %}</div>
+          <div class="pet-detail-photo">{{ pet.get_emoji }}</div>
         {% endif %}
         <div>
           <strong>{{ pet.name }}</strong>
@@ -15,7 +15,11 @@
           <div class="pet-detail-chips">
             {% if pet.get_age %}<span>{{ pet.get_age }}</span>{% endif %}
             {% if pet.weight_kg %}<span>{{ pet.weight_kg|floatformat:1 }} kg</span>{% endif %}
-            {% if pet.last_vaccination_date %}<span>Vaccinated {{ pet.last_vaccination_date|date:"M Y" }}</span>{% else %}<span>No vaccination record</span>{% endif %}
+            {% if pet.last_vaccination_date %}
+              <span>Vaccinated {{ pet.last_vaccination_date|date:"M Y" }}</span>
+            {% else %}
+              <span>No vaccination record</span>
+            {% endif %}
           </div>
         </div>
       </div>

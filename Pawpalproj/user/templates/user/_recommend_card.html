@@ -4,7 +4,9 @@
     {% if item.product.image_url %}
       <img src="{{ item.product.image_url.url }}" alt="{{ item.product.name }}">
     {% else %}
-      <span aria-hidden="true">{% if item.product.pet_type == "CAT" %}🐱{% else %}🐶{% endif %}</span>
+      <span aria-hidden="true">
+        {% if item.product.pet_type == "CAT" %}🐱{% else %}🐶{% endif %}
+      </span>
     {% endif %}
     {% if show_pet %}<span class="rec-for">For {{ item.pet.name }}</span>{% endif %}
   </a>

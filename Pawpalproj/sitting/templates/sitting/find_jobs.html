@@ -4,9 +4,9 @@
 {% block title %}Find jobs | Pawpal{% endblock %}
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
-<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}?v=2" />
 {# Leaflet: free map library, no API key needed #}
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}" />
 {% endblock %}
 
 {% block content %}
@@ -81,77 +81,21 @@
           {% for value in pet_types %}<input type="hidden" name="pet_type" value="{{ value }}">{% endfor %}
           <input type="hidden" name="job_length" value="{{ job_length }}">
           <input type="hidden" name="min_pay" value="{{ min_pay }}">
-          <select name="sort" onchange="this.form.submit()">
+          <select name="sort">
             <option value="nearest" {% if sort == "nearest" %}selected{% endif %}>Sort: Nearest</option>
             <option value="date" {% if sort == "date" %}selected{% endif %}>Sort: Start date</option>
           </select>
+          <button type="submit" class="btn btn-outline">Sort</button>
         </form>
       </div>
 
       {% if map_centre %}
-        {# Map: my service area + one pin per request #}
-        {# Leaflet draws the map, OpenStreetMap supplies the map pictures (free, no key) #}
-        <div id="jobs-map" style="height: 320px; border-radius: 16px; z-index: 0;"></div>
-        {{ map_pins|json_script:"map-pins" }}
+        {# interactive map: drawn by static/sitting/js/jobs_map.js from the data below #}
+        <div id="jobs-map" class="jobs-map-box"></div>
         {{ map_centre|json_script:"map-centre" }}
+        {{ map_pins|json_script:"map-pins" }}
         <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-        <script>
-          // read the data the view sent with |json_script
-          const pins = JSON.parse(document.getElementById("map-pins").textContent);
-          const centre = JSON.parse(document.getElementById("map-centre").textContent);
-
-          // Singapore only: OneMap has no map pictures outside these corners
-          const singapore = L.latLngBounds([1.144, 103.535], [1.494, 104.502]);
-
-          // map centred on the sitter's service area
-          const map = L.map("jobs-map", { maxBounds: singapore, minZoom: 11, maxZoom: 19 })
-            .setView([centre.lat, centre.lng], 12);
-
-          // Map pictures from OneMap (Singapore government, free, no key).
-          // OpenStreetMap's servers block local test sites, which showed "Access blocked".
-          L.tileLayer("https://www.onemap.gov.sg/maps/tiles/Default/{z}/{x}/{y}.png", {
-            minZoom: 11,
-            maxZoom: 19,
-            bounds: singapore,
-            attribution: '<a href="https://www.onemap.gov.sg/" target="_blank">OneMap</a> &copy; contributors | <a href="https://www.sla.gov.sg/" target="_blank">Singapore Land Authority</a>',
-          }).addTo(map);
-
-          // green circle = the distance filter around the sitter (5 km when "Any")
-          L.circle([centre.lat, centre.lng], {
-            radius: {% if max_distance != "any" %}{{ max_distance }} * 1000{% else %}5000{% endif %},
-            color: "#55644A",
-            fillColor: "#55644A",
-            fillOpacity: 0.12,
-            weight: 1,
-          }).addTo(map);
-
-          // the sitter's own location: a green dot with a "You" label,
-          // so it looks different from the blue request pins
-          L.circleMarker([centre.lat, centre.lng], {
-            radius: 9,
-            color: "#ffffff",
-            weight: 3,
-            fillColor: "#55644A",
-            fillOpacity: 1,
-          })
-            .addTo(map)
-            .bindTooltip("You · {{ sitter.service_area|escapejs }}", { permanent: true, direction: "bottom", offset: [0, 8] });
-
-          // turn < > & " into safe text, so names typed by users cannot inject HTML
-          function safe(text) {
-            const box = document.createElement("span");
-            box.textContent = text;
-            return box.innerHTML;
-          }
-
-          // one pin per request; click it to see the details
-          for (const pin of pins) {
-            const popupText =
-              "<strong>" + safe(pin.title) + "</strong><br>" + safe(pin.pets) +
-              "<br>SGD " + safe(pin.price) + (pin.distance !== null ? " · " + pin.distance + " km" : "");
-            L.marker([pin.lat, pin.lng]).addTo(map).bindPopup(popupText);
-          }
-        </script>
+        <script src="{% static 'sitting/js/jobs_map.js' %}"></script>
       {% else %}
         <div class="map-placeholder">Map — add your service area to see nearby requests</div>
       {% endif %}
@@ -196,7 +140,7 @@
               {% if job.sent_to_me %}
                 {# a request sent only to me -> decline it and tell the owner #}
                 <input type="hidden" name="action" value="decline">
-                <button type="submit" class="btn btn-outline" onclick="return confirm('Decline this request? The owner will be notified.');">Decline</button>
+                <details class="confirm-inline"><summary class="btn btn-outline">Decline</summary><span class="confirm-inline-box"><span>Decline this request? The owner will be notified.</span> <button type="submit" class="btn btn-outline confirm-inline-yes">Yes, decline</button></span></details>
               {% else %}
                 {# an open request -> just hide it from my list #}
                 <input type="hidden" name="action" value="hide">

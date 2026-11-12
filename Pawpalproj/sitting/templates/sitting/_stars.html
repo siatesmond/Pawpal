@@ -1,0 +1,3 @@
+{# A rating shown as 5 stars, e.g. rating=3 -> ★★★☆☆. Use: {% include "sitting/_stars.html" with rating=review.rating %} #}
+{# (kept on one line so there are no spaces between the stars) #}
+<span class="stars">{% for i in "12345" %}{% if forloop.counter <= rating %}★{% else %}☆{% endif %}{% endfor %}</span>

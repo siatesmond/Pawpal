@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
 <link rel="stylesheet" href="{% static 'sitting/css/find_sitter.css' %}" />
 <link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
-<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}?v=2" />
+<link rel="stylesheet" href="{% static 'user/css/account_records.css' %}" />
 {% endblock %}
 
 {% block content %}
@@ -17,7 +17,7 @@
       <h1>Pet sitting · {{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }}</h1>
       <p>{{ job.number_of_days }} day{{ job.number_of_days|pluralize }} · {{ job.location }}</p>
     </div>
-    <span class="pill {% if job.status == 'completed' %}pill-success{% elif job.status == 'pending' %}pill-honey{% else %}pill-outline{% endif %}">{{ job.get_status_display }}</span>
+    <span class="pill {{ job.status_colour }}">{{ job.get_status_display }}</span>
   </div>
 
   {# Status progress #}
@@ -63,8 +63,8 @@
               <p class="field-label">Rating</p>
               <div class="star-picker">
                 {% for radio in review_form.rating %}
-                  <input type="radio" name="rating" value="{{ radio.data.value }}" id="star{{ radio.data.value }}" {% if radio.data.selected %}checked{% endif %}>
-                  <label for="star{{ radio.data.value }}" title="{{ radio.data.value }} star{{ radio.data.value|pluralize }}">★</label>
+                  {{ radio.tag }}
+                  <label for="{{ radio.id_for_label }}" title="{{ radio.choice_label }} star{{ radio.choice_label|pluralize }}">★</label>
                 {% endfor %}
               </div>
               {% if review_form.rating.errors %}<div class="review-error">{{ review_form.rating.errors }}</div>{% endif %}
@@ -79,6 +79,7 @@
             <div class="field">
               <label for="{{ review_form.photo.id_for_label }}">{{ review_form.photo.label }}</label>
               {{ review_form.photo }}
+              <img id="{{ review_form.photo.id_for_label }}-preview" class="photo-preview" alt="Chosen photo" hidden>
               {% if review_form.photo.errors %}<div class="review-error">{{ review_form.photo.errors }}</div>{% endif %}
             </div>
 
@@ -92,7 +93,7 @@
           <div class="s-card" id="review">
             <div class="s-card-head"><h2>Your review</h2><span class="muted small">{{ my_review.created_at|date:"j M Y" }}</span></div>
             <div class="review">
-              <span class="stars">{% for i in "12345" %}{% if forloop.counter <= my_review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+              {% include "sitting/_stars.html" with rating=my_review.rating %}
               <span>{{ my_review.comment|default:"No comment" }}</span>
               {% if my_review.photo %}<img src="{{ my_review.photo.url }}" alt="Your review photo" class="update-photo">{% endif %}
             </div>
@@ -101,7 +102,7 @@
               <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete_review">
-                <button type="submit" class="link-danger" onclick="return confirm('Delete your review?');">Delete</button>
+                <details class="confirm-inline"><summary class="link-danger">Delete</summary><span class="confirm-inline-box"><span>Delete your review?</span> <button type="submit" class="link-danger confirm-inline-yes">Yes, delete</button></span></details>
               </form>
             </div>
           </div>
@@ -135,14 +136,40 @@
       <div class="s-card">
         <h2>Details</h2>
         <table class="earn-table">
-          <tr><td class="muted">Sitter</td><td>{% if job.sitter %}<a href="{% url 'sitting:sitter_public_profile' job.sitter.pk %}" class="link">{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.</a>{% else %}Open to all sitters{% endif %}</td></tr>
+          <tr>
+          <td class="muted">Sitter</td>
+          <td>
+            {% if job.sitter %}
+              <a href="{% url 'sitting:sitter_public_profile' job.sitter.pk %}" class="link">{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.</a>
+            {% else %}
+              Open to all sitters
+            {% endif %}
+          </td>
+        </tr>
           <tr><td class="muted">Pets</td><td>{{ pets|join:", " }}</td></tr>
           <tr><td class="muted">Care</td><td>{{ job.care_requirements|default:"–" }}</td></tr>
           {% if job.status == "cancelled" %}
-            <tr><td class="muted">Cancelled by</td><td>{% if job.cancelled_by == "customer" %}You{% else %}{{ job.get_cancelled_by_display|default:"–" }}{% endif %}{% if job.cancellation_reason %}<br><span class="muted small">{{ job.cancellation_reason }}</span>{% endif %}</td></tr>
+            <tr>
+          <td class="muted">Cancelled by</td>
+          <td>
+            {% if job.cancelled_by == "customer" %}
+              You
+            {% else %}
+              {{ job.get_cancelled_by_display|default:"–" }}
+            {% endif %}
+            {% if job.cancellation_reason %}
+              <br><span class="muted small">{{ job.cancellation_reason }}</span>
+            {% endif %}
+          </td>
+        </tr>
           {% endif %}
           <tr><td class="muted">Price</td><td>SGD {{ job.total_price_display }}{% if job.status == "open" and not job.sitter %} (estimate){% endif %}</td></tr>
-          {% if payment %}<tr><td class="muted">Paid</td><td>SGD {{ paid_amount }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}</td></tr>{% endif %}
+          {% if payment %}
+          <tr>
+            <td class="muted">Paid</td>
+            <td>SGD {{ paid_amount }}{% if payment.card_number %} · card {{ payment.card_number }}{% endif %}</td>
+          </tr>
+        {% endif %}
         </table>
       </div>
 

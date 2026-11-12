@@ -471,3 +471,84 @@
   color: var(--muted);
   cursor: not-allowed;
 }
+
+/* "Are you sure?" step without JavaScript: clicking the button (a <summary>)
+   opens a short question with a "Yes, ..." button that really submits the form */
+.confirm-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.confirm-inline > summary {
+  display: inline-flex;
+  align-items: center;
+  list-style: none;
+  cursor: pointer;
+}
+
+.confirm-inline > summary::-webkit-details-marker {
+  display: none;
+}
+
+.confirm-inline[open] > summary {
+  opacity: 0.6;
+}
+
+.confirm-inline-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #f0d5d0;
+  border-radius: 10px;
+  background: #fbf1ef;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* the confirm button always looks like a red "can't undo" button */
+.confirm-inline-box .confirm-inline-yes {
+  padding: 6px 14px;
+  border: 1px solid var(--danger);
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Photo chosen in an upload box, shown before saving (static/js/photo_preview.js) */
+.photo-preview {
+  display: block;
+  width: 120px;
+  height: 120px;
+  margin-top: 8px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}
+
+.photo-preview[hidden],
+.photo-preview-list[hidden] {
+  display: none;
+}
+
+.photo-preview-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.photo-preview-list img {
+  width: 90px;
+  height: 90px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+}

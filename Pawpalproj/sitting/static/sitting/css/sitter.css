@@ -438,11 +438,13 @@
   color: #aaa398;
 }
 
-.status-timeline li.complete,
+.status-timeline li.done,
 .status-timeline li.current {
   color: var(--text);
 }
 
+/* Round marker for each step. The icon is drawn by CSS (no text inside):
+   --icon is a small SVG picture, used as a stencil filled with the text colour */
 .timeline-marker {
   display: inline-flex;
   flex: 0 0 32px;
@@ -454,23 +456,41 @@
   border-radius: 50%;
   background: #eeeae2;
   color: #8d867d;
-  font-size: 16px;
-  font-weight: 600;
 }
 
-.status-timeline li.complete .timeline-marker {
+.timeline-marker::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+/* done = green tick */
+.status-timeline li.done .timeline-marker {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");
   background: #5b8d63;
   color: #fff;
 }
 
+/* current = orange clock (being reviewed) */
 .status-timeline li.current .timeline-marker {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3Cpath d='M12 8v4.5l3 2'/%3E%3C/svg%3E");
   background: #e8a43a;
   color: #fff;
 }
 
+/* rejected = red exclamation mark */
 .status-timeline li.rejected .timeline-marker {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 6.5v7'/%3E%3Cpath d='M12 17.5h.01'/%3E%3C/svg%3E");
   background: #c85c4e;
   color: #fff;
+}
+
+/* waiting = grey dot (not reached yet) */
+.status-timeline li.waiting .timeline-marker {
+  --icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='2.5' fill='black'/%3E%3C/svg%3E");
 }
 
 .status-timeline li > div {
@@ -1092,7 +1112,7 @@
 /* Earnings */
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 18px;
   margin-bottom: 28px;
 }
@@ -1347,3 +1367,11 @@
   }
 }
 
+/* Error message under a form box (Django form errors) */
+.sitter .errorlist {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #b3261e;
+  font-size: 13px;
+}

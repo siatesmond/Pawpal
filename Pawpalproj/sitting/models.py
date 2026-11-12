@@ -7,7 +7,16 @@ from django.core.validators import (
 )
 from django.db import models
 from django.db.models import Q
+
 from user.models import BusinessOwner, Customer, Pet, User
+
+# Models in this file:
+# PetSitter       (a User who looks after pets)
+# SittingRequest  (a pet owner's request, and the job once a sitter takes it)
+# SittingUpdate   (status changes, notes and photos during a job)
+
+
+# Allowed file types and where uploads are saved
 
 IMAGE_TYPES = FileExtensionValidator(allowed_extensions=["jpg", "jpeg", "png", "webp"])
 DOCUMENT_TYPES = FileExtensionValidator(
@@ -25,11 +34,7 @@ update_images = FileSystemStorage(
 )
 
 
-# Create your models here.
-# PetSitter
-# SittingRequest
-# SittingUpdate
-
+# Pet sitters
 
 class PetSitter(User):
 
@@ -72,6 +77,8 @@ class PetSitter(User):
     def daily_rate_display(self):
         return f"{self.daily_rate_cents / 100:.2f}"
 
+
+# Sitting requests and jobs
 
 class SittingRequest(models.Model):
     class Status(models.TextChoices):
@@ -133,6 +140,14 @@ class SittingRequest(models.Model):
             ),
         ]
 
+    def status_colour(self):
+        # colour of the status pill: green when completed, yellow when waiting for payment
+        if self.status == "completed":
+            return "pill-success"
+        if self.status == "pending":
+            return "pill-honey"
+        return "pill-outline"
+
     @property
     def number_of_days(self):
         # both the start and end day count, e.g. 20 Nov to 24 Nov = 5 days
@@ -160,6 +175,8 @@ class SittingRequest(models.Model):
     def sitter_payout_display(self):
         return f"{self.sitter_payout_cents / 100:.2f}"
 
+
+# Updates during a job
 
 class SittingUpdate(models.Model):
     request = models.ForeignKey(

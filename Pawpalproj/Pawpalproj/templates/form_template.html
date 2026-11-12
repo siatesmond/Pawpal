@@ -46,6 +46,8 @@ Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit,
                     </div>
                 {% endif %}
                 {{ field }}
+                {# the chosen photo appears here straight away (photo_preview.js) #}
+                <img id="{{ field.id_for_label }}-preview" class="photo-preview" alt="Chosen photo" hidden>
             {% else %}
                 <!-- Input layout -->
                 <label for="{{ field.id_for_label }}">
@@ -78,6 +80,7 @@ Options: form_css_class, form_id, enctype, cancel_url, submit_text, hide_submit,
         <div class="form-group" style="margin-top: 1rem;">
             <label for="id_photos">Upload Photos</label>
             <input type="file" name="photos" id="id_photos" multiple accept="image/*">
+            <div id="id_photos-preview" class="photo-preview-list" hidden></div>
             <small style="display: block; margin-top: 0.25rem; color: #666;">You can select multiple images</small>
         </div>
     {% endif %}

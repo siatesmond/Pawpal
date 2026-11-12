@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-"""Django's command-line utility for administrative tasks."""
+# Django's command line tool, e.g. python manage.py runserver
 import os
 import sys
 
 
 def main():
-    """Run administrative tasks."""
+    # Run the command typed after manage.py
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Pawpalproj.settings')
     try:
         from django.core.management import execute_from_command_line

@@ -4,7 +4,7 @@
 {% block title %}My profile | Pawpal{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'user/css/profile.css' %}?v=2" />
+<link rel="stylesheet" href="{% static 'user/css/profile.css' %}" />
 {% endblock %}
 
 {% block content %}
@@ -68,7 +68,7 @@
             <a href="{% url 'user:edit_address' address.id %}">Edit</a>
             <form method="post" action="{% url 'user:delete_address' address.id %}">
               {% csrf_token %}
-              <button type="submit" class="address-link address-remove" onclick="return confirm('Remove this address?');">Remove</button>
+              <details class="confirm-inline"><summary class="address-link address-remove">Remove</summary><span class="confirm-inline-box"><span>Remove this address?</span> <button type="submit" class="address-link address-remove confirm-inline-yes">Yes, remove</button></span></details>
             </form>
           </div>
         </div>

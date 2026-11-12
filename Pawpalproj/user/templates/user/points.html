@@ -46,14 +46,23 @@
           {% for transaction in transactions %}
             <li class="points-row">
               <span class="points-type points-type-{{ transaction.transaction_type|lower }}">
-                {% if transaction.transaction_type == "ADJUSTED" %}Adjusted by Pawpal{% else %}{{ transaction.get_transaction_type_display }}{% endif %}
+                {% if transaction.transaction_type == "ADJUSTED" %}
+                  Adjusted by Pawpal
+                {% else %}
+                  {{ transaction.get_transaction_type_display }}
+                {% endif %}
               </span>
               <div class="points-info">
                 <strong>{{ transaction.reason }}</strong>
                 <small>{{ transaction.created_at|date:"j M Y, g:i A" }}</small>
               </div>
               <div class="points-amount">
-                <strong class="{% if transaction.points >= 0 %}points-plus{% else %}points-minus{% endif %}">{% if transaction.points >= 0 %}+{% endif %}{{ transaction.points }}</strong>
+                {# green "+200" for points added, red "-150" for points used #}
+                {% if transaction.points >= 0 %}
+                  <strong class="points-plus">+{{ transaction.points }}</strong>
+                {% else %}
+                  <strong class="points-minus">{{ transaction.points }}</strong>
+                {% endif %}
                 <small>Balance {{ transaction.balance_after }}</small>
               </div>
             </li>

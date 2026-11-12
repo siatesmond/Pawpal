@@ -47,7 +47,12 @@
         {% if order.pickup_outlet %}
           <div>
             <dt>Pick-up outlet</dt>
-            <dd>{{ order.pickup_outlet.name }}{% if order.pickup_outlet.address %}<br><small>{{ order.pickup_outlet.address }}</small>{% endif %}</dd>
+            <dd>
+            {{ order.pickup_outlet.name }}
+            {% if order.pickup_outlet.address %}
+              <br><small>{{ order.pickup_outlet.address }}</small>
+            {% endif %}
+          </dd>
           </div>
         {% else %}
           <div>
@@ -77,7 +82,15 @@
       <section class="profile-panel">
         <h2>Cancellation</h2>
         <dl class="detail-list">
-          <div><dt>Cancelled by</dt><dd>You{% if order.cancelled_at %} on {{ order.cancelled_at|date:"D, j M Y · g:i A" }}{% endif %}</dd></div>
+          <div>
+            <dt>Cancelled by</dt>
+            <dd>
+              You
+              {% if order.cancelled_at %}
+                on {{ order.cancelled_at|date:"D, j M Y · g:i A" }}
+              {% endif %}
+            </dd>
+          </div>
           <div><dt>Reason</dt><dd>{{ order.cancellation_reason|default:"No reason given" }}</dd></div>
         </dl>
       </section>

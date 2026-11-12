@@ -22,10 +22,24 @@
           <tr>
             <td>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M Y" }}</td>
             <td>{{ job.pets.all|join:", " }}</td>
-            <td>{% if job.sitter %}{{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.{% else %}Open to all sitters{% endif %}</td>
+            <td>
+              {% if job.sitter %}
+                {{ job.sitter.first_name }} {{ job.sitter.last_name|slice:":1" }}.
+              {% else %}
+                Open to all sitters
+              {% endif %}
+            </td>
             <td class="num">SGD {{ job.total_price_display }}</td>
-            <td><span class="pill pill-sm {% if job.status == 'completed' %}pill-success{% elif job.status == 'pending' %}pill-honey{% else %}pill-outline{% endif %}">{{ job.get_status_display }}</span></td>
-            <td><a href="{% url 'sitting:request_detail' job.pk %}{% if job.status == 'completed' %}#review{% endif %}" class="link small">{% if job.status == "pending" %}Confirm &amp; pay{% elif job.status == "completed" %}Review sitter{% else %}View{% endif %}</a></td>
+            <td><span class="pill pill-sm {{ job.status_colour }}">{{ job.get_status_display }}</span></td>
+            <td>
+              {% if job.status == "pending" %}
+                <a href="{% url 'sitting:request_detail' job.pk %}" class="link small">Confirm &amp; pay</a>
+              {% elif job.status == "completed" %}
+                <a href="{% url 'sitting:request_detail' job.pk %}#review" class="link small">Review sitter</a>
+              {% else %}
+                <a href="{% url 'sitting:request_detail' job.pk %}" class="link small">View</a>
+              {% endif %}
+            </td>
           </tr>
         {% empty %}
           <tr><td colspan="6" style="text-align: center;">No sitting requests yet.</td></tr>

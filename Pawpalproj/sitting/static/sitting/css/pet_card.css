@@ -120,3 +120,10 @@
   margin: 0;
   font-size: 13px;
 }
+
+/* Find jobs: interactive map box (drawn by static/sitting/js/jobs_map.js) */
+.jobs-map-box {
+  height: 320px;
+  border-radius: 16px;
+  z-index: 0;
+}

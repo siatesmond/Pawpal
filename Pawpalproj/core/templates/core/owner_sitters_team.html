@@ -67,7 +67,7 @@
             {% csrf_token %}
             <input type="hidden" name="action" value="reject">
             <input type="hidden" name="return_to" value="/admin-panel/pet-sitters/">
-            <textarea name="rejection_reason" rows="2" required placeholder="Reason for rejection"></textarea>
+            {{ reject_form.rejection_reason }}
             <button type="submit" class="owner-reject-button">Reject...</button>
           </form>
         </div>

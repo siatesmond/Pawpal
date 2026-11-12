@@ -70,7 +70,13 @@
 
       <button type="submit" class="sitter-button pp-submit">{% if edit_mode %}Update &amp; resubmit{% else %}Create account &amp; apply{% endif %}</button>
     </form>
-    <p class="sitter-login-note">{% if edit_mode %}Your updated application will be reviewed again.{% else %}We'll send a verification email. Already have a Pawpal account? <a href="{% url 'user:login' %}">Log in →</a>{% endif %}</p>
+    <p class="sitter-login-note">
+          {% if edit_mode %}
+            Your updated application will be reviewed again.
+          {% else %}
+            We'll send a verification email. Already have a Pawpal account? <a href="{% url 'user:login' %}">Log in →</a>
+          {% endif %}
+        </p>
   </div>
 
   <aside class="sitter-aside">

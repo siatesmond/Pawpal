@@ -4,81 +4,73 @@ from django.shortcuts import redirect
 from .models import User
 from .views import home_for
 
-# URL prefix -> which user types may open it
+# User type -> the pages only that type can open.
+# Any page not listed here (e.g. /, /user/login/, /loadData/) is open to everyone.
 PROTECTED_PATHS = {
-    "/user/home/": ["customer"],
-    "/user/profile/": ["customer"],
-    "/user/profile/address/": ["customer"],
-    "/user/pets/": ["customer"],
-    "/user/bookings/": ["customer"],
-    "/user/orders/": ["customer"],
-    "/user/points/": ["customer"],
-    "/user/cart/": ["customer"],
-    "/inventory/staff/": ["staff", "owner"],
-    "/inventory/stock/": ["staff", "owner"],
-    "/service/book/": ["customer"],
-    # Only the business owner can open the owner dashboard and accounts
-    "/admin-panel/": ["owner"],
-    "/core/admin-panel/": ["owner"],  # same pages through the old /core/ prefix
-    "/sitting/jobs/": ["sitter"],
-    "/sitting/my-jobs/": ["sitter"],
-    "/sitting/earnings/": ["sitter"],
-    "/sitting/profile/": ["sitter"],
-    "/sitting/application/": ["sitter"],
-    # customer side: find & request a pet sitter
-    "/sitting/find/": ["customer"],
-    "/sitting/sitters/": ["customer"],
-    "/sitting/requests/": ["customer"],
+    # Customer pages
+    "customer": [
+        "/user/home/",
+        "/user/profile/",
+        "/user/pets/",
+        "/user/bookings/",
+        "/user/orders/",
+        "/user/points/",
+        "/user/cart/",
+        "/service/book/",
+        "/sitting/find/",
+        "/sitting/sitters/",
+        "/sitting/requests/",
+    ],
+    # Staff pages (the business owner can open them too)
+    "staff": [
+        "/inventory/staff/",
+        "/inventory/stock/",
+    ],
+    # Business owner (admin) pages
+    "owner": [
+        "/admin-panel/",
+        "/core/admin-panel/",
+    ],
+    # Pet sitter pages
+    "sitter": [
+        "/sitting/jobs/",
+        "/sitting/my-jobs/",
+        "/sitting/earnings/",
+        "/sitting/profile/",
+        "/sitting/application/",
+    ],
 }
 
 
-def login_required_middleware(get_response):
-    # One-time configuration and initialisation.
+def security_middleware(get_response):
 
     def middleware(request):
-        # Code executed for each request BEFORE the view is called.
-        for prefix, allowed_types in PROTECTED_PATHS.items():
-            if request.path.startswith(prefix):
-                if "user_id" not in request.session:
-                    return redirect("/user/login/")  # not logged in
-                user = User.objects.filter(
-                    pk=request.session.get("user_id"),
-                    is_active=True,
-                ).first()
-                actual_type = get_user_type(user) if user else None
 
-                # Account deleted or deactivated: log out completely
-                if actual_type is None:
+        # 1. Find which user type this page is for
+        page_for = None
+        for user_type, paths in PROTECTED_PATHS.items():
+            for path in paths:
+                if request.path.startswith(path):
+                    page_for = user_type
+
+        if page_for is not None:
+
+            # 2. Not logged in (or the account was deactivated): go to the login page
+            if not User.objects.filter(pk=request.session.get("user_id"), is_active=True).exists():
+                if "user_id" in request.session:
                     request.session.flush()
-                    return redirect("/user/login/")
+                return redirect("/user/login/")
 
-                # Logged in, but this page is for another role (e.g. staff on an
-                # owner page): keep them logged in and send them to their own home page
-                if actual_type not in allowed_types:
-                    messages.error(request, "That page isn't available for your account.")
-                    return redirect(home_for(actual_type))
-                if request.session.get("user_type") != actual_type:
-                    request.session["user_type"] = actual_type
-                break
+            # 3. Logged in as another user type: show an error and go back to their home page
+            user_type = request.session.get("user_type")
+            owner_on_staff_page = user_type == "owner" and page_for == "staff"
+            if user_type != page_for and not owner_on_staff_page:
+                messages.error(request, "That page isn't available for your account.")
+                return redirect(home_for(user_type))
 
+        # 4. Allowed: let the view run
         response = get_response(request)
 
-        # Code executed for each request/response AFTER the view is called.
         return response
 
     return middleware
-
-
-def get_user_type(user):
-    """Return the role represented by the user's multi-table child row."""
-    if user is None:
-        return None
-    if hasattr(user, "customer"):
-        return "customer"
-    if hasattr(user, "staff"):
-        return "staff"
-    if hasattr(user, "businessowner"):
-        return "owner"
-    if hasattr(user, "petsitter"):
-        return "sitter"
-    return None

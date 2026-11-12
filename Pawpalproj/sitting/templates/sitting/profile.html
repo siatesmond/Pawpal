@@ -35,23 +35,25 @@
         <input type="hidden" name="form" value="profile">
         <div><h2>Sitter profile</h2><p class="s-card-sub">This is what pet owners see when you accept their request.</p></div>
 
-        <div class="field"><label for="bio">Bio</label><textarea id="bio" name="bio">{{ sitter.bio }}</textarea></div>
+        <div class="field">{{ profile_form.bio.label_tag }}{{ profile_form.bio }}{{ profile_form.bio.errors }}</div>
         <div class="grid-2">
-          <div class="field"><label for="postal_code">Home postal code</label><input id="postal_code" name="postal_code" value="{{ sitter.postal_code }}" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" placeholder="e.g. 529536" required><span class="muted small">Area shown to owners: {{ sitter.service_area }}</span></div>
-          <div class="field"><label for="experience_years">Years of experience</label><input type="number" min="0" id="experience_years" name="experience_years" value="{{ sitter.experience_years }}" required></div>
+          <div class="field">{{ profile_form.postal_code.label_tag }}{{ profile_form.postal_code }}<span class="muted small">Area shown to owners: {{ sitter.service_area }}</span>{{ profile_form.postal_code.errors }}</div>
+          <div class="field">{{ profile_form.experience_years.label_tag }}{{ profile_form.experience_years }}{{ profile_form.experience_years.errors }}</div>
         </div>
 
         <div class="field">
-          <p class="field-label">Pet experience</p>
+          <p class="field-label">{{ profile_form.pet_experience.label }}</p>
           <div class="chips">
-            {% for chip in experience_chips %}
-              <label class="chip"><input type="checkbox" name="pet_experience" value="{{ chip.value }}" {% if chip.checked %}checked{% endif %}><span>{{ chip.label }}</span></label>
+            {# each tick box is drawn as a chip #}
+            {% for checkbox in profile_form.pet_experience %}
+              <label class="chip">{{ checkbox.tag }}<span>{{ checkbox.choice_label }}</span></label>
             {% endfor %}
           </div>
+          {{ profile_form.pet_experience.errors }}
         </div>
 
         <div class="rate-row">
-          <div class="field"><label for="daily_rate">Daily rate (SGD)</label><input type="number" step="0.01" min="0.01" id="daily_rate" name="daily_rate" value="{{ sitter.daily_rate_display }}" required></div>
+          <div class="field">{{ profile_form.daily_rate.label_tag }}{{ profile_form.daily_rate }}{{ profile_form.daily_rate.errors }}</div>
           <div class="rate-info"><strong>You receive SGD {{ daily_payout }} / day</strong><span class="muted small">after Pawpal’s 10% commission</span></div>
         </div>
 
@@ -62,8 +64,9 @@
               {% if sitter.id_document %}<strong>📄 {{ sitter.id_document.name }}</strong>{% else %}<strong>No document uploaded</strong>{% endif %}
               <span class="muted small">Verified by Pawpal · PDF, JPG or PNG</span>
             </div>
-            <label class="btn btn-outline">Replace<input type="file" name="id_document" accept=".pdf,.jpg,.jpeg,.png" hidden></label>
+            <label class="btn btn-outline">Replace{{ profile_form.id_document }}</label>
           </div>
+          {{ profile_form.id_document.errors }}
         </div>
 
         <div class="actions">
@@ -78,10 +81,9 @@
         <input type="hidden" name="form" value="account">
         <h2>Account details</h2>
         <div class="grid-2">
-          <div class="field"><label for="first_name">First name</label><input id="first_name" name="first_name" value="{{ sitter.first_name }}" required></div>
-          <div class="field"><label for="last_name">Last name</label><input id="last_name" name="last_name" value="{{ sitter.last_name }}"></div>
-          <div class="field"><label for="email">Email</label><input type="email" id="email" name="email" value="{{ sitter.email }}" required></div>
-          <div class="field"><label for="mobile">Mobile number (8 digits)</label><input id="mobile" name="mobile" value="{{ sitter.mobile }}" maxlength="8" required></div>
+          {% for field in account_form %}
+            <div class="field">{{ field.label_tag }}{{ field }}{{ field.errors }}</div>
+          {% endfor %}
           <div class="field"><label>Username</label><input value="{{ sitter.username }}" disabled></div>
           <div class="field"><label>Member since</label><input value="{{ sitter.date_joined|date:'j M Y' }}" disabled></div>
         </div>
@@ -93,10 +95,10 @@
         {% csrf_token %}
         <input type="hidden" name="form" value="password">
         <h2>Change password</h2>
-        <div class="field"><label for="current_password">Current password</label><input type="password" id="current_password" name="current_password" required></div>
+        <div class="field">{{ password_form.current_password.label_tag }}{{ password_form.current_password }}{{ password_form.current_password.errors }}</div>
         <div class="grid-2">
-          <div class="field"><label for="new_password">New password</label><input type="password" id="new_password" name="new_password" minlength="8" placeholder="e.g. Pawpal123!" required><small class="muted small">At least 8 characters, with an uppercase letter, a lowercase letter, a number and a special character (e.g. ! @ # $).</small></div>
-          <div class="field"><label for="confirm_password">Confirm new password</label><input type="password" id="confirm_password" name="confirm_password" minlength="8" placeholder="re-enter new password" required></div>
+          <div class="field">{{ password_form.new_password.label_tag }}{{ password_form.new_password }}<small class="muted small">{{ password_form.new_password.help_text }}</small>{{ password_form.new_password.errors }}</div>
+          <div class="field">{{ password_form.confirm_password.label_tag }}{{ password_form.confirm_password }}{{ password_form.confirm_password.errors }}</div>
         </div>
         <button type="submit" class="btn btn-dark">Update password</button>
       </form>

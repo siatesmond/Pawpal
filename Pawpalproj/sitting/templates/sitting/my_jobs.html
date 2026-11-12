@@ -2,8 +2,11 @@
 {% load static %}
 
 {% block title %}My jobs | Pawpal{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
-<link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}?v=2" /><link rel="stylesheet" href="{% static 'sitting/css/job_update.css' %}?v=3" />{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+  <link rel="stylesheet" href="{% static 'sitting/css/pet_card.css' %}" />
+  <link rel="stylesheet" href="{% static 'sitting/css/job_update.css' %}" />
+{% endblock %}
 
 {% block content %}
 <section class="sitter">
@@ -11,9 +14,9 @@
 
   {# Tabs: ?tab=... shows only that group #}
   <nav class="tabs">
-    {% for value, label in tabs %}
+    {% for value, label, count in tabs %}
       <a href="?tab={{ value }}" class="pill {% if tab == value %}pill-active{% else %}pill-outline{% endif %}">
-        {{ label }} ({% if value == "all" %}{{ counts.all }}{% elif value == "in_progress" %}{{ counts.in_progress }}{% elif value == "upcoming" %}{{ counts.upcoming }}{% elif value == "pending" %}{{ counts.pending }}{% elif value == "completed" %}{{ counts.completed }}{% else %}{{ counts.cancelled }}{% endif %})
+        {{ label }} ({{ count }})
       </a>
     {% endfor %}
   </nav>
@@ -53,7 +56,7 @@
               <input type="hidden" name="request_id" value="{{ job.pk }}">
               <input type="hidden" name="tab" value="{{ tab }}">
               <input type="hidden" name="action" value="complete">
-              <button type="submit" class="btn btn-outline" onclick="return confirm('Mark this job as completed?');">Mark as completed</button>
+              <details class="confirm-inline"><summary class="btn btn-outline">Mark as completed</summary><span class="confirm-inline-box"><span>Mark this job as completed?</span> <button type="submit" class="btn btn-outline confirm-inline-yes">Yes, mark as completed</button></span></details>
             </form>
           </article>
         {% empty %}
@@ -74,7 +77,14 @@
               {% include "sitting/_pet_avatar.html" %}
               <div class="job-info">
                 <strong>{{ job.pet_list|join:" + " }}</strong>
-                <p>{% if job.can_start %}Starts today{% else %}Starts in {{ job.starts_in }} day{{ job.starts_in|pluralize }}{% endif %} · {{ job.care_requirements }}</p>
+                <p>
+              {% if job.can_start %}
+                Starts today
+              {% else %}
+                Starts in {{ job.starts_in }} day{{ job.starts_in|pluralize }}
+              {% endif %}
+              · {{ job.care_requirements }}
+            </p>
                 <span class="muted small">{{ job.location }}</span>
                 {% include "sitting/_pet_details.html" %}
                 {% include "sitting/_owner_reviews.html" %}
@@ -91,13 +101,13 @@
                   <button type="submit" class="btn btn-dark">Start job</button>
                 </form>
               {% endif %}
-              <form method="post">
+              <form method="post" class="cancel-job-form">
                 {% csrf_token %}
                 <input type="hidden" name="request_id" value="{{ job.pk }}">
                 <input type="hidden" name="tab" value="{{ tab }}">
                 <input type="hidden" name="action" value="cancel">
-                <input type="text" name="reason" maxlength="200" class="cancel-reason-input" placeholder="Reason for cancelling (optional)">
-                <button type="submit" class="link-danger" onclick="return confirm('Cancel this job? The owner will be refunded.');">Cancel job</button>
+                {{ cancel_form.reason }}
+                <details class="confirm-inline"><summary class="link-danger">Cancel job</summary><span class="confirm-inline-box"><span>Cancel this job? The owner will be refunded.</span> <button type="submit" class="link-danger confirm-inline-yes">Yes, cancel job</button></span></details>
               </form>
             </div>
           </article>
@@ -130,7 +140,7 @@
               <input type="hidden" name="request_id" value="{{ job.pk }}">
               <input type="hidden" name="tab" value="{{ tab }}">
               <input type="hidden" name="action" value="withdraw">
-              <button type="submit" class="btn btn-outline" onclick="return confirm('Withdraw from this request?');">Withdraw</button>
+              <details class="confirm-inline"><summary class="btn btn-outline">Withdraw</summary><span class="confirm-inline-box"><span>Withdraw from this request?</span> <button type="submit" class="btn btn-outline confirm-inline-yes">Yes, withdraw</button></span></details>
             </form>
           </article>
         {% empty %}
@@ -160,7 +170,7 @@
                 {# already rated: show what I gave #}
                 <div class="done-rated">
                   <span class="muted small">Your rating of {{ job.owner.first_name }}</span>
-                  <span class="stars">{% for i in "12345" %}{% if forloop.counter <= job.owner_rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+                  {% include "sitting/_stars.html" with rating=job.owner_rating %}
                   {% if job.owner_feedback %}<p>“{{ job.owner_feedback }}”</p>{% endif %}
                 </div>
               {% else %}
@@ -173,14 +183,14 @@
                     <input type="hidden" name="tab" value="{{ tab }}">
                     <input type="hidden" name="action" value="rate">
                     <p class="rate-question">How was {{ job.owner.first_name }} as a pet owner?</p>
-                    {# stars are radio buttons; written 5 to 1 so the CSS can colour the stars to the left #}
+                    {# stars are the form's radio buttons, 5 to 1, so the CSS can colour the stars to the left #}
                     <div class="star-picker">
-                      {% for number in "54321" %}
-                        <input type="radio" id="rate-{{ job.pk }}-{{ number }}" name="owner_rating" value="{{ number }}" required>
-                        <label for="rate-{{ job.pk }}-{{ number }}" title="{{ number }} star{{ number|pluralize }}">★</label>
+                      {% for radio in job.rate_form.owner_rating %}
+                        {{ radio.tag }}
+                        <label for="{{ radio.id_for_label }}" title="{{ radio.choice_label }} star{{ radio.choice_label|pluralize }}">★</label>
                       {% endfor %}
                     </div>
-                    <textarea name="owner_feedback" rows="2" placeholder="Optional: clear care notes? on time? easy to reach?"></textarea>
+                    {{ job.rate_form.owner_feedback }}
                     <div class="rate-actions">
                       <span class="muted small">Only you and Pawpal can see this rating.</span>
                       <button type="submit" class="btn btn-dark">Save rating</button>
@@ -207,7 +217,17 @@
             </div>
             <p class="muted">{{ job.pet_list|join:" + " }}</p>
             {% if job.cancelled_by %}
-              <p class="small">Cancelled by {% if job.cancelled_by == "sitter" %}you{% else %}{{ job.get_cancelled_by_display }}{% endif %}{% if job.cancellation_reason %} · {{ job.cancellation_reason }}{% endif %}</p>
+              <p class="small">
+                Cancelled by
+                {% if job.cancelled_by == "sitter" %}
+                  you
+                {% else %}
+                  {{ job.get_cancelled_by_display }}
+                {% endif %}
+                {% if job.cancellation_reason %}
+                  · {{ job.cancellation_reason }}
+                {% endif %}
+              </p>
             {% endif %}
           </article>
         {% empty %}
@@ -224,43 +244,18 @@
           <input type="hidden" name="action" value="update">
           <input type="hidden" name="tab" value="{{ tab }}">
           <h2>Post an update</h2>
+          <div class="field">{{ update_form.request_id.label_tag }}{{ update_form.request_id }}</div>
+          <div class="field">{{ update_form.note.label_tag }}{{ update_form.note }}</div>
+          {# a normal file picker, which shows the chosen file name by itself #}
           <div class="field">
-            <label for="update-job">Job</label>
-            <select id="update-job" name="request_id" required>
-              {% for job in in_progress %}
-                <option value="{{ job.pk }}">{{ job.pet_list|join:" + " }} · {{ job.owner.first_name }} · Day {{ job.day_number }} of {{ job.number_of_days }}</option>
-              {% endfor %}
-            </select>
+            {{ update_form.photo.label_tag }}
+            <div class="update-photo-box">
+              {{ update_form.photo }}
+              {# photo_preview.js shows the chosen photo here (id = the file box's id + "-preview") #}
+              <img id="{{ update_form.photo.id_for_label }}-preview" class="photo-preview" alt="Chosen photo" hidden>
+            </div>
+            <small class="muted small">{{ update_form.photo.help_text }}</small>
           </div>
-          <div class="field">
-            <label for="update-note">Message</label>
-            <textarea id="update-note" name="note" placeholder="How is the pet doing? e.g. walk, meals, mood..."></textarea>
-          </div>
-          {# the file picker is hidden; the box shows the chosen photo so the sitter knows it is attached #}
-          <label class="photo-slot update-photo-slot">
-            <input type="file" name="photo" id="update-photo" accept=".jpg,.jpeg,.png,.webp">
-            <img id="update-photo-preview" alt="Chosen photo" hidden>
-            <span id="update-photo-text">+ Photo</span>
-          </label>
-          <p id="update-photo-name" class="muted small"></p>
-          <script>
-            const photoInput = document.getElementById("update-photo");
-            photoInput.addEventListener("change", function () {
-              const preview = document.getElementById("update-photo-preview");
-              const text = document.getElementById("update-photo-text");
-              const name = document.getElementById("update-photo-name");
-              if (photoInput.files.length > 0) {
-                preview.src = URL.createObjectURL(photoInput.files[0]);
-                preview.hidden = false;
-                text.hidden = true;
-                name.textContent = "Photo attached: " + photoInput.files[0].name;
-              } else {
-                preview.hidden = true;
-                text.hidden = false;
-                name.textContent = "";
-              }
-            });
-          </script>
           <button type="submit" class="btn btn-dark btn-block">Post update</button>
           <p class="muted small">The owner is notified and sees this in their booking timeline.</p>
         </form>
@@ -269,7 +264,15 @@
           <h2>Update timeline</h2>
           <ul class="timeline">
             {% for update in timeline %}
-              <li><div><span class="muted small">{{ update.created_at|date:"j M, g:i a" }}</span><br>{{ update.note|default:"Photo added" }}{% if update.photo %}<a href="{{ update.photo.url }}" target="_blank"><img class="update-thumb" src="{{ update.photo.url }}" alt="Update photo"></a>{% endif %}</div></li>
+              <li>
+                <div>
+                  <span class="muted small">{{ update.created_at|date:"j M, g:i a" }}</span><br>
+                  {{ update.note|default:"Photo added" }}
+                  {% if update.photo %}
+                    <a href="{{ update.photo.url }}" target="_blank"><img class="update-thumb" src="{{ update.photo.url }}" alt="Update photo"></a>
+                  {% endif %}
+                </div>
+              </li>
             {% empty %}
               <li>No updates yet.</li>
             {% endfor %}

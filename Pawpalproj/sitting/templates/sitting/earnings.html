@@ -2,34 +2,50 @@
 {% load static %}
 
 {% block title %}Earnings | Pawpal{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />{% endblock %}
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'sitting/css/sitter.css' %}" />
+  <link rel="stylesheet" href="{% static 'sitting/css/job_update.css' %}" />
+{% endblock %}
 
 {% block content %}
 <section class="sitter">
   <div class="sitter-head">
     <div><h1>Earnings</h1><p>Your payouts after Pawpal’s 10% commission</p></div>
-    {# Choose the month to see #}
-    <form method="get" class="actions">
-      <input type="month" name="month" value="{{ month_value }}" onchange="this.form.submit()">
+    {# Choose the dates to see, the same as the business owner's dashboard #}
+    <form method="get" class="earnings-filters">
+      <label>From<input type="date" name="start" value="{{ start|date:'Y-m-d' }}"></label>
+      <label>To<input type="date" name="end" value="{{ end|date:'Y-m-d' }}"></label>
+      <button type="submit" class="btn btn-dark">Apply</button>
     </form>
   </div>
 
   <div class="stats">
-    <div class="s-card s-card-blue stat"><span class="eyebrow">Payout · {{ month_label }}</span><strong>SGD {{ month_payout }}</strong><span class="muted">from {{ month_jobs|length }} completed job{{ month_jobs|length|pluralize }}</span></div>
-    <div class="s-card stat"><span class="eyebrow">Pending payout</span><strong>SGD {{ pending_payout }}</strong><span class="muted">{{ pending_count }} completed job{{ pending_count|pluralize }}, sent 3 days after the last sitting day</span></div>
-    <div class="s-card stat"><span class="eyebrow">Lifetime earnings</span><strong>SGD {{ lifetime_payout }}</strong><span class="muted">{{ lifetime_count }} job{{ lifetime_count|pluralize }} since {{ sitter.date_joined|date:"M Y" }}</span></div>
-    <div class="s-card stat"><span class="eyebrow">Average rating</span><strong>{% if average_rating %}{{ average_rating }} ★{% else %}–{% endif %}</strong><span class="muted">from {{ review_count }} owner review{{ review_count|pluralize }}</span></div>
+    <div class="s-card s-card-blue stat">
+      <span class="eyebrow">Payout · {{ period_label }}</span>
+      <strong>SGD {{ period_payout }}</strong>
+      <span class="muted">from {{ period_jobs|length }} completed job{{ period_jobs|length|pluralize }}</span>
+    </div>
+    <div class="s-card stat">
+      <span class="eyebrow">Lifetime earnings</span>
+      <strong>SGD {{ lifetime_payout }}</strong>
+      <span class="muted">{{ lifetime_count }} job{{ lifetime_count|pluralize }} since {{ sitter.date_joined|date:"M Y" }}</span>
+    </div>
+    <div class="s-card stat">
+      <span class="eyebrow">Average rating</span>
+      <strong>{% if average_rating %}{{ average_rating }} ★{% else %}–{% endif %}</strong>
+      <span class="muted">from {{ review_count }} owner review{{ review_count|pluralize }}</span>
+    </div>
   </div>
 
   <div class="sitter-cols">
     <div class="sitter-stack">
       <div class="s-card">
-        <div class="s-card-head"><h2>Completed jobs · {{ month_label }}</h2><span class="muted">{{ month_jobs|length }} job{{ month_jobs|length|pluralize }}</span></div>
+        <div class="s-card-head"><h2>Completed jobs · {{ period_label }}</h2><span class="muted">{{ period_jobs|length }} job{{ period_jobs|length|pluralize }}</span></div>
         <div class="table-wrap">
           <table class="earn-table">
-            <thead><tr><th>Dates</th><th>Owner</th><th>Pets</th><th class="num">Job price</th><th class="num">Commission</th><th class="num">Payout</th><th class="num">Status</th></tr></thead>
+            <thead><tr><th>Dates</th><th>Owner</th><th>Pets</th><th class="num">Job price</th><th class="num">Commission</th><th class="num">Payout</th></tr></thead>
             <tbody>
-              {% for job in month_jobs %}
+              {% for job in period_jobs %}
                 <tr>
                   <td><strong>{{ job.start_date|date:"j M" }}–{{ job.end_date|date:"j M" }}</strong></td>
                   <td>{{ job.owner.first_name }} {{ job.owner.last_name|slice:":1" }}.</td>
@@ -37,25 +53,23 @@
                   <td class="num">{{ job.total_price_display }}</td>
                   <td class="num muted">– {{ job.commission_display }}</td>
                   <td class="num"><strong>{{ job.sitter_payout_display }}</strong></td>
-                  <td class="num">{% if job.is_paid %}<span class="pill pill-success pill-sm">Paid</span>{% else %}<span class="pill pill-cream pill-sm">Payout on {{ job.payout_date|date:"j M" }}</span>{% endif %}</td>
                 </tr>
               {% empty %}
-                <tr><td colspan="7" style="text-align: center;">No completed jobs in {{ month_label }}.</td></tr>
+                <tr><td colspan="6" style="text-align: center;">No completed jobs in {{ period_label }}.</td></tr>
               {% endfor %}
-              {% if month_jobs %}
+              {% if period_jobs %}
                 <tr>
                   <td colspan="3"><strong>Total (SGD)</strong></td>
-                  <td class="num"><strong>{{ month_price }}</strong></td>
-                  <td class="num muted">– {{ month_commission }}</td>
-                  <td class="num"><strong>{{ month_payout }}</strong></td>
-                  <td></td>
+                  <td class="num"><strong>{{ period_price }}</strong></td>
+                  <td class="num muted">– {{ period_commission }}</td>
+                  <td class="num"><strong>{{ period_payout }}</strong></td>
                 </tr>
               {% endif %}
             </tbody>
           </table>
         </div>
       </div>
-      <p class="muted small">Payouts are sent to your bank account within 3 days after a job is marked completed. Pawpal keeps a 10% commission on every sitting job.</p>
+      <p class="muted small">Pawpal keeps a 10% commission on every sitting job.</p>
     </div>
 
     <aside class="sitter-stack">
@@ -84,7 +98,7 @@
         <h2>Recent reviews</h2>
         {% for review in recent_reviews %}
           <div class="review">
-            <span class="stars">{% for i in "12345" %}{% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}{% endfor %}</span>
+            {% include "sitting/_stars.html" with rating=review.rating %}
             <span>{{ review.comment|default:"No comment" }}</span>
             <span class="muted small">{{ review.reviewer.first_name }} · {{ review.created_at|date:"j M" }}</span>
           </div>

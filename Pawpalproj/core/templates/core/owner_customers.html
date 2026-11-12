@@ -27,9 +27,11 @@
             <td>{{ customer.mobile|default:"—" }}</td>
             <td>{{ customer.point_balance }}</td>
             <td>
-              <span class="status-pill owner-customer-status {% if customer.is_verified %}status-approved{% else %}status-pending{% endif %}">
-                {% if customer.is_verified %}Verified{% else %}Not verified{% endif %}
-              </span>
+              {% if customer.is_verified %}
+                <span class="status-pill owner-customer-status status-approved">Verified</span>
+              {% else %}
+                <span class="status-pill owner-customer-status status-pending">Not verified</span>
+              {% endif %}
             </td>
             <td><a class="view-details-btn" href="{% querystring customer=customer.pk %}">View details</a></td>
           </tr>
@@ -55,9 +57,11 @@
           <li><b>Points balance:</b> {{ selected_customer.point_balance }}</li>
           <li><b>Addresses:</b> {{ selected_customer.addresses.count }}</li>
           <li><b>Account status:</b>
-            <span class="status-pill owner-customer-status {% if selected_customer.is_verified %}status-approved{% else %}status-pending{% endif %}">
-              {% if selected_customer.is_verified %}Verified{% else %}Not verified{% endif %}
-            </span>
+            {% if selected_customer.is_verified %}
+              <span class="status-pill owner-customer-status status-approved">Verified</span>
+            {% else %}
+              <span class="status-pill owner-customer-status status-pending">Not verified</span>
+            {% endif %}
           </li>
         </ul>
       </div>
@@ -70,14 +74,12 @@
       <form method="post" action="{% url 'core:owner_adjust_points' selected_customer.pk %}">
         {% csrf_token %}
         <table width="100%">
+          {% for field in points_form %}
           <tr>
-            <td><label for="points">Points</label></td>
-            <td><input id="points" type="number" name="points" placeholder="e.g. 200 or -200" required></td>
+            <td>{{ field.label_tag }}</td>
+            <td>{{ field }}</td>
           </tr>
-          <tr>
-            <td><label for="reason">Reason</label></td>
-            <td><input id="reason" type="text" name="reason" placeholder="e.g. Goodwill for late pick-up" required></td>
-          </tr>
+          {% endfor %}
         </table>
         <button type="submit" class="owner-btn-dark" style="margin-top: 0.5rem;">Save adjustment</button>
       </form>

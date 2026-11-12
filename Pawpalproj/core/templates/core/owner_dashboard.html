@@ -29,12 +29,29 @@
   <article>
     <span>Total revenue</span>
     <strong>SGD {{ total_revenue }}</strong>
-    <small>{% if revenue_change is not None %}{% if revenue_change >= 0 %}▲{% else %}▼{% endif %} {{ revenue_change }}% vs previous period{% else %}{{ start|date:"j M" }} – {{ end|date:"j M Y" }}{% endif %}</small>
+    <small>
+      {% if revenue_change is None %}
+        {# nothing to compare with: show the dates instead #}
+        {{ start|date:"j M" }} – {{ end|date:"j M Y" }}
+      {% elif revenue_change >= 0 %}
+        ▲ {{ revenue_change }}% vs previous period
+      {% else %}
+        ▼ {{ revenue_change }}% vs previous period
+      {% endif %}
+    </small>
   </article>
   <article>
     <span>Bookings</span>
     <strong>{{ booking_count }}</strong>
-    <small>{% if booking_change >= 0 %}▲ {{ booking_change }}{% else %}▼ {{ booking_change|stringformat:"d"|cut:"-" }}{% endif %} vs previous period</small>
+    <small>
+      {# cut:"-" removes the minus sign, because the ▼ already shows it went down #}
+      {% if booking_change >= 0 %}
+        ▲ {{ booking_change }}
+      {% else %}
+        ▼ {{ booking_change|stringformat:"d"|cut:"-" }}
+      {% endif %}
+      vs previous period
+    </small>
   </article>
   <article>
     <span>Pet sitting commission (10%)</span>
@@ -106,7 +123,15 @@
             <td>{{ row.label }}</td>
             <td>SGD {{ row.amount }}</td>
             <td>{{ row.share }}%</td>
-            <td>{% if row.change is None %}–{% elif row.change >= 0 %}▲ {{ row.change }}%{% else %}▼ {{ row.change|stringformat:"d"|cut:"-" }}%{% endif %}</td>
+            <td>
+              {% if row.change is None %}
+                –
+              {% elif row.change >= 0 %}
+                ▲ {{ row.change }}%
+              {% else %}
+                ▼ {{ row.change|stringformat:"d"|cut:"-" }}%
+              {% endif %}
+            </td>
           </tr>
         {% endfor %}
         <tr class="owner-total-row"><td>Total</td><td>SGD {{ total_revenue }}</td><td>100%</td><td></td></tr>

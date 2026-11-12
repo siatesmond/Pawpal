@@ -4,7 +4,7 @@
     {% if pet.profile_picture %}
       <img class="avatar" src="{{ pet.profile_picture.url }}" alt="{{ pet.name }}">
     {% else %}
-      <div class="avatar">{% if pet.pet_type == "DOG" %}🐶{% elif pet.pet_type == "CAT" %}🐱{% else %}🐾{% endif %}</div>
+      <div class="avatar">{{ pet.get_emoji }}</div>
     {% endif %}
   {% empty %}
     <div class="avatar">🐾</div>

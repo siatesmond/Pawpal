@@ -14,6 +14,12 @@
     <small>POINTS BALANCE</small>
     <strong>{{ customer.point_balance }} pts</strong>
     <span>= SGD {{ customer.get_point_value }} off your next order</span>
-    <span style="margin-top: 4px; color: var(--green); font-size: 12px; font-weight: 600;">{% if active_account_page == "points" %}Your points history ↓{% else %}View points history →{% endif %}</span>
+    <span style="margin-top: 4px; color: var(--green); font-size: 12px; font-weight: 600;">
+      {% if active_account_page == "points" %}
+        Your points history ↓
+      {% else %}
+        View points history →
+      {% endif %}
+    </span>
   </a>
 </aside>
