@@ -34,7 +34,7 @@ def add_points(customer, points, transaction_type, reason, payment=None):
 
     # Update the customer's points balance 
     customer.point_balance += points
-    customer.save(update_fields=["points_balance"])
+    customer.save(update_fields=["point_balance"])
 
 # Calculate the discount in cents for a given subtotal and points to redeem.
 # 1 point = 1 cent 
