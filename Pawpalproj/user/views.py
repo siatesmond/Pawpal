@@ -4,14 +4,14 @@ from datetime import timedelta
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
-from django.db.models import F, Q, Sum
+from django.db.models import Q, Sum
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views import View
 from inventory.models import CartItem, Order, Product
 from payment.services import can_cancel, cancel_deadline, get_points_balance, payment_summary, refund_payment
-from service.models import Booking, BookingUpdate, TimeSlot
+from service.models import Booking, BookingUpdate
 
 from .forms import (
     ForgotPasswordEmailForm,
@@ -590,10 +590,12 @@ class BookingCancelView(View):
             booking.cancellation_reason = reason
             booking.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
 
-            # Increase the capacity in the time slot
-            TimeSlot.objects.filter(pk=booking.slot_id, booked_count__gt=0).update(
-                booked_count=F("booked_count") - 1
-            )
+            # Increase back the capacity in the time slot
+            slot = booking.slot
+            if slot.booked_count > 0:
+                slot.booked_count -= 1
+                slot.save(update_fields=["booked_count"])
+
             # Create a BookingUpdate to update to Cancelled status
             note = "Cancelled by the customer."
             if reason:
@@ -730,10 +732,10 @@ class OrderCancelView(View):
             order.save(update_fields=["status", "cancelled_at", "cancellation_reason"])
 
             # Put the items back into stock
-            for item in order.items.all():
-                Product.objects.filter(pk=item.product_id).update(
-                    stock_quantity=F("stock_quantity") + item.quantity
-                )
+            for item in order.items.select_realated("product"):
+                product = item.product
+                product.stock_quantity += item.quantity
+                product.save(update_fields=["stock_quantity"])
 
             # Points
             refund_payment(order, label=f"order #{order.pk}")
