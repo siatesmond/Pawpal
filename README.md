@@ -127,27 +127,64 @@ Copy the code from the terminal into the verification page.
 
 ### Optional: send real emails through Gmail
 
-To send real emails, set a Gmail address and a Gmail **App Password** before starting the server. (An App Password is a 16-character password made in *Google Account → Security → 2-Step Verification → App passwords*. It is not your normal Gmail password.)
+To send real emails, Pawpal needs a Gmail address and a Gmail **App Password**. (An App Password is a 16-character password made in *Google Account → Security → 2-Step Verification → App passwords*. It is not your normal Gmail password.)
+
+**Step 1.** Create a file called `export.txt` in the top `Pawpal` folder (next to this README) with these two lines:
 
 macOS:
 ```bash
 export EMAIL_HOST_USER="your.address@gmail.com"
 export EMAIL_HOST_PASSWORD="your-16-character-app-password"
-python manage.py runserver
+```
+
+Windows (save it as `export.bat` instead):
+```bash
+set EMAIL_HOST_USER=your.address@gmail.com
+set EMAIL_HOST_PASSWORD=your-16-character-app-password
+```
+
+**Step 2.** Load the file in the terminal, then start the server from the `Pawpalproj` folder:
+
+macOS:
+```bash
+source ../export.txt
 ```
 
 Windows:
 ```bash
-set EMAIL_HOST_USER=your.address@gmail.com
-set EMAIL_HOST_PASSWORD=your-16-character-app-password
+..\export.bat
+```
+
+```bash
 python manage.py runserver
 ```
 
-These only last until the terminal window is closed. Never put the App Password in the code or on GitHub.
+If both values are set, Pawpal sends emails through Gmail. If not, the code is printed in the terminal as above. The values only last until the terminal window is closed, so load the file again each time.
+
+> **Keep it private.** `export.txt` and `export.bat` are listed in `.gitignore`, so they are never uploaded to GitHub. Never put the App Password in the code.
 
 ---
 
-## 6. Run the automated tests
+## 6. Product recommender (machine learning)
+
+The "Picked for your pets" products on the customer home page, the shop page and the pop-up after login come from a **Decision Tree** model (scikit-learn). It looks at each pet's type, age, weight, life stage, health needs and food allergy, then suggests the 3 products the owner is most likely to buy. Safety rules then remove products the pet is allergic to, out-of-stock products and products already in the cart.
+
+The trained model is already included, so **nothing needs to be done to use it**. To train it again (from the `Pawpalproj` folder, after loading the demo data):
+
+```bash
+python manage.py make_training_data
+python manage.py train_recommender
+```
+
+| File | What it is |
+|---|---|
+| `user/ml/pet_purchases.csv` | Mock training data: 10,000 pets and the product each owner bought |
+| `user/ml/recommender.joblib` | The trained Decision Tree, loaded by `user/recommender.py` |
+| `user/ml/report.txt` | Accuracy results from the last training run |
+
+---
+
+## 7. Run the automated tests
 
 From the `Pawpalproj` folder:
 
@@ -159,7 +196,7 @@ The tests use their own temporary database, so your demo data is not changed.
 
 ---
 
-## 7. Problems?
+## 8. Problems?
 
 | Problem | Fix |
 |---|---|
@@ -169,15 +206,18 @@ The tests use their own temporary database, so your demo data is not changed.
 | "That port is already in use" | Another server is still running. Stop it with `Ctrl + C`, or run `python manage.py runserver 8001` and use port 8001 |
 | Page looks unstyled after an update | Hard-refresh the browser: `Cmd + Shift + R` (macOS) or `Ctrl + Shift + R` (Windows) |
 | Pet sitter map is empty or shows no distances | The map and distances need an internet connection |
-| Never received the verification email | Check the `runserver` terminal for the code (see section 5) |
+| Never received the verification email | Check the `runserver` terminal for the code (see section 5). If you use Gmail, check that `export.txt` was loaded in the **same** terminal before `runserver` |
+| Gmail says "Username and Password not accepted" | Use an App Password, not your normal Gmail password, and remove any spaces in it |
 
 ---
 
-## 8. Project structure
+## 9. Project structure
 
 ```
 Pawpal/
 ├── README.md
+├── .gitignore
+├── export.txt               your Gmail settings (private, not on GitHub)
 └── Pawpalproj/              Django project folder (run commands here)
     ├── manage.py
     ├── requirements.txt

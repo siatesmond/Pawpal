@@ -1,0 +1,10 @@
+# Private email settings (never upload)
+export.txt
+export.bat
+.env
+
+# Mac and Python files
+.DS_Store
+__pycache__/
+*.pyc
+venv/
